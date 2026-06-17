@@ -1,0 +1,361 @@
+<!-- insights.page.html -->
+<ion-content [fullscreen]="true" class="insights-content" [attr.data-theme]="darkMode ? 'dark' : 'light'">
+
+  <div class="insights-wrap">
+
+    <!-- Ambient blobs -->
+    <div class="blob blob-top"></div>
+    <div class="blob blob-bottom"></div>
+
+    <!-- ── Top Bar ── -->
+    <div class="insights-top-bar">
+      <div>
+        <h1 class="insights-title">Insights</h1>
+        <p class="insights-sub">Week {{ pregnancyWeek }} · {{ trimester }}</p>
+      </div>
+    </div>
+
+    <!-- ── Featured Article (Hero) ── -->
+<div class="hero-card" [class.visible]="animReady">
+  
+  <!-- REPLACE the old placeholder div with this img tag -->
+  <img 
+    src="assets/icon/yourchangingbody.jpg" 
+    class="hero-image" 
+    alt="What's happening inside you"
+  />
+
+    <div class="hero-body">
+        <span class="hero-tag">This Week</span>
+        <h2 class="hero-title">What's happening inside you at Week {{ pregnancyWeek }}</h2>
+        <p class="hero-excerpt">Your baby is the size of a {{ babySize.fruit }} and developing rapidly. Here's everything your body is doing right now.</p>
+        <div class="hero-meta">
+          <span class="hero-read-time">5 min read</span>
+          <span class="hero-dot">·</span>
+          <span class="hero-category">Body Changes</span>
+        </div>
+      </div>
+    </div>
+
+        <!-- ── Section: Most Popular ── -->
+    <div class="section-block" [class.visible]="animReady">
+      <div class="section-header-row">
+        <h3 class="section-heading">Most popular this trimester</h3>
+        <button class="see-all-btn">See all</button>
+      </div>
+
+      <div class="card-scroll">
+        <div
+          class="article-card"
+          *ngFor="let article of popularArticles; let i = index"
+          (click)="i === 0 ? openArticle('body') : i === 1 ? openArticle('checkups') : null"
+        >
+          <!-- Show real image if available, else show placeholder -->
+          <img
+            *ngIf="article.image"
+            [src]="article.image"
+            class="article-image"
+            [alt]="article.title"
+          />
+          <div
+            *ngIf="!article.image"
+            class="article-image-placeholder"
+            [style.background]="article.bgColor"
+          ></div>
+
+          <div class="article-body">
+            <span class="article-tag">{{ article.tag }}</span>
+            <h4 class="article-title">{{ article.title }}</h4>
+            <p class="article-read-time">{{ article.readTime }} min read</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Section: Understanding Your Body ── -->
+    <div class="section-block" [class.visible]="animReady">
+      <div class="section-header-row">
+        <h3 class="section-heading">Understanding your body</h3>
+        <button class="see-all-btn">See all</button>
+      </div>
+
+      <div class="card-scroll">
+        <div class="article-card" *ngFor="let article of bodyArticles">
+          <div class="article-image-placeholder" [style.background]="article.bgColor"></div>
+          <div class="article-body">
+            <span class="article-tag">{{ article.tag }}</span>
+            <h4 class="article-title">{{ article.title }}</h4>
+            <p class="article-read-time">{{ article.readTime }} min read</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Daily Insight Banner ── -->
+    <div class="insight-banner" [class.visible]="animReady">
+      <div class="banner-label">Today's Insight</div>
+      <p class="banner-text">{{ todayInsight.text }}</p>
+      <span class="banner-source">{{ todayInsight.source }}</span>
+    </div>
+
+    <!-- ── Section: Baby Development ── -->
+    <div class="section-block" [class.visible]="animReady">
+      <div class="section-header-row">
+        <h3 class="section-heading">Baby development</h3>
+        <button class="see-all-btn">See all</button>
+      </div>
+
+      <div class="card-scroll">
+        <div class="article-card" *ngFor="let article of babyArticles">
+          <div class="article-image-placeholder" [style.background]="article.bgColor"></div>
+          <div class="article-body">
+            <span class="article-tag">{{ article.tag }}</span>
+            <h4 class="article-title">{{ article.title }}</h4>
+            <p class="article-read-time">{{ article.readTime }} min read</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Section: Nutrition & Wellness ── -->
+    <div class="section-block" [class.visible]="animReady">
+      <div class="section-header-row">
+        <h3 class="section-heading">Nutrition &amp; wellness</h3>
+        <button class="see-all-btn">See all</button>
+      </div>
+
+      <div class="card-scroll">
+        <div class="article-card" *ngFor="let article of nutritionArticles">
+          <div class="article-image-placeholder" [style.background]="article.bgColor"></div>
+          <div class="article-body">
+            <span class="article-tag">{{ article.tag }}</span>
+            <h4 class="article-title">{{ article.title }}</h4>
+            <p class="article-read-time">{{ article.readTime }} min read</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Section: Mind & Emotions ── -->
+    <div class="section-block" [class.visible]="animReady">
+      <div class="section-header-row">
+        <h3 class="section-heading">Mind &amp; emotions</h3>
+        <button class="see-all-btn">See all</button>
+      </div>
+
+      <div class="card-scroll">
+        <div class="article-card" *ngFor="let article of mindArticles">
+          <div class="article-image-placeholder" [style.background]="article.bgColor"></div>
+          <div class="article-body">
+            <span class="article-tag">{{ article.tag }}</span>
+            <h4 class="article-title">{{ article.title }}</h4>
+            <p class="article-read-time">{{ article.readTime }} min read</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Section: Preparing for Birth ── -->
+    <div class="section-block" [class.visible]="animReady">
+      <div class="section-header-row">
+        <h3 class="section-heading">Preparing for birth</h3>
+        <button class="see-all-btn">See all</button>
+      </div>
+
+      <div class="card-scroll">
+        <div class="article-card" *ngFor="let article of birthArticles">
+          <div class="article-image-placeholder" [style.background]="article.bgColor"></div>
+          <div class="article-body">
+            <span class="article-tag">{{ article.tag }}</span>
+            <h4 class="article-title">{{ article.title }}</h4>
+            <p class="article-read-time">{{ article.readTime }} min read</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="height: 88px;"></div>
+  </div>
+
+  <!-- ── Bottom Navigation ── -->
+  <div class="bottom-nav">
+    <button class="nav-item" (click)="navigate('/home', 'home')">
+      <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+        <path d="M3 9.5L11 3L19 9.5V19a1 1 0 01-1 1H4a1 1 0 01-1-1V9.5Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>
+        <path d="M8 20v-6h6v6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <span>Today</span>
+    </button>
+    <button class="nav-item active">
+      <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+        <rect x="3" y="3" width="7" height="7" rx="2" stroke="currentColor" stroke-width="1.7"/>
+        <rect x="12" y="3" width="7" height="7" rx="2" stroke="currentColor" stroke-width="1.7"/>
+        <rect x="3" y="12" width="7" height="7" rx="2" stroke="currentColor" stroke-width="1.7"/>
+        <rect x="12" y="12" width="7" height="7" rx="2" stroke="currentColor" stroke-width="1.7"/>
+      </svg>
+      <span>Insights</span>
+    </button>
+    <button class="nav-item" (click)="navigate('/appointments')">
+      <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+        <path d="M8 9h6M8 13h4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+        <rect x="3" y="4" width="16" height="15" rx="2" stroke="currentColor" stroke-width="1.7"/>
+        <path d="M8 2v3M14 2v3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+      </svg>
+      <span>Appointments</span>
+    </button>
+    <button class="nav-item" (click)="navigate('/profile')">
+      <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+        <circle cx="11" cy="8" r="4" stroke="currentColor" stroke-width="1.7"/>
+        <path d="M4 19c0-3.9 3.1-7 7-7s7 3.1 7 7" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+      </svg>
+      <span>Profile</span>
+    </button>
+  </div>
+
+  <!-- ══════════════════════════════════════════ -->
+  <!-- ARTICLE READER OVERLAY                     -->
+  <!-- ══════════════════════════════════════════ -->
+  <div
+    class="article-reader-overlay"
+    *ngIf="articleOpen"
+    [class.slide-in]="articleAnimIn"
+    [attr.data-theme]="darkMode ? 'dark' : 'light'"
+  >
+
+    <!-- ── BODY CHANGES ARTICLE ── -->
+    <ng-container *ngIf="currentArticle === 'body'">
+      <div class="ar-hero">
+        <button class="ar-back-btn" (click)="closeArticle()">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <path d="M10 3L5 8l5 5"/>
+          </svg>
+        </button>
+        <img src="assets/icon/yourchangingbody.jpg" class="ar-hero-img" alt="Your changing body" />
+        <div class="ar-hero-label">
+          <span class="ar-hero-tag">Body Changes</span>
+        </div>
+      </div>
+
+      <div class="ar-scroll">
+        <div class="ar-title-block">
+          <h1 class="ar-title">Your changing body: up to 42 weeks</h1>
+          <div class="ar-meta-row">
+            <span class="ar-meta">6 min read</span>
+            <span class="ar-meta-dot">·</span>
+            <span class="ar-meta">DailyMom Health</span>
+          </div>
+        </div>
+
+        <div class="ar-week-tabs">
+          <button
+            class="ar-week-btn"
+            *ngFor="let tab of articleWeekTabs"
+            [class.active]="activeWeekTab === tab.id"
+            (click)="setWeekTab(tab.id)"
+          >{{ tab.label }}</button>
+        </div>
+
+        <div class="ar-panel" *ngIf="activePanel">
+          <div class="ar-section">
+            <div class="ar-trimester-tag">{{ activePanel.tag }}</div>
+            <h2 class="ar-section-title">{{ activePanel.title }}</h2>
+            <p class="ar-body-text">{{ activePanel.intro }}</p>
+            <div class="ar-highlight-card">
+              <div class="ar-highlight-label">{{ activePanel.highlight.label }}</div>
+              <div class="ar-highlight-text">{{ activePanel.highlight.text }}</div>
+            </div>
+          </div>
+          <div class="ar-change-list">
+            <div class="ar-change-item" *ngFor="let change of activePanel.changes">
+              <div class="ar-change-icon" [style.background]="change.iconBg">{{ change.icon }}</div>
+              <div class="ar-change-info">
+                <div class="ar-change-label">{{ change.label }}</div>
+                <div class="ar-change-desc">{{ change.desc }}</div>
+              </div>
+            </div>
+          </div>
+          <div class="ar-tip-banner">
+            <span class="ar-tip-icon">💡</span>
+            <div>
+              <div class="ar-tip-text">{{ activePanel.tip.text }}</div>
+              <div class="ar-tip-source">{{ activePanel.tip.source }}</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="ar-divider"></div>
+        <p class="ar-disclaimer">Always discuss any concerns with your midwife or OB-GYN. Every pregnancy is unique.</p>
+        <div style="height: 40px;"></div>
+      </div>
+    </ng-container>
+
+    <!-- ── CHECKUPS ARTICLE ── -->
+    <ng-container *ngIf="currentArticle === 'checkups'">
+      <div class="ar-hero ar-hero--checkups">
+        <button class="ar-back-btn" (click)="closeArticle()">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <path d="M10 3L5 8l5 5"/>
+          </svg>
+        </button>
+        <img src="assets/icon/checkupswhenhowandwhy.jpg" class="ar-hero-img" alt="Checkups" />
+        <div class="ar-hero-label">
+          <span class="ar-hero-tag ar-hero-tag--medical">Medical</span>
+        </div>
+      </div>
+
+      <div class="ar-scroll">
+        <div class="ar-title-block">
+          <h1 class="ar-title">Checkups: when, how, and why</h1>
+          <div class="ar-meta-row">
+            <span class="ar-meta">4 min read</span>
+            <span class="ar-meta-dot">·</span>
+            <span class="ar-meta">DailyMom Health</span>
+          </div>
+        </div>
+
+        <div class="ar-week-tabs">
+          <button
+            class="ar-week-btn"
+            *ngFor="let tab of checkupTabs"
+            [class.active]="activeCheckupTab === tab.id"
+            (click)="setCheckupTab(tab.id)"
+          >{{ tab.label }}</button>
+        </div>
+
+        <div class="ar-panel" *ngIf="activeCheckupPanel">
+          <div class="ar-section">
+            <div class="ar-trimester-tag ar-trimester-tag--medical">{{ activeCheckupPanel.tag }}</div>
+            <h2 class="ar-section-title">{{ activeCheckupPanel.title }}</h2>
+            <p class="ar-body-text">{{ activeCheckupPanel.intro }}</p>
+            <div class="ar-highlight-card ar-highlight-card--medical">
+              <div class="ar-highlight-label ar-highlight-label--medical">{{ activeCheckupPanel.highlight.label }}</div>
+              <div class="ar-highlight-text">{{ activeCheckupPanel.highlight.text }}</div>
+            </div>
+          </div>
+          <div class="ar-change-list">
+            <div class="ar-change-item" *ngFor="let item of activeCheckupPanel.items">
+              <div class="ar-change-icon" [style.background]="item.iconBg">{{ item.icon }}</div>
+              <div class="ar-change-info">
+                <div class="ar-change-label ar-change-label--medical">{{ item.label }}</div>
+                <div class="ar-change-desc">{{ item.desc }}</div>
+              </div>
+            </div>
+          </div>
+          <div class="ar-tip-banner ar-tip-banner--medical">
+            <span class="ar-tip-icon">💡</span>
+            <div>
+              <div class="ar-tip-text">{{ activeCheckupPanel.tip.text }}</div>
+              <div class="ar-tip-source">{{ activeCheckupPanel.tip.source }}</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="ar-divider"></div>
+        <p class="ar-disclaimer">Always discuss any concerns with your midwife or OB-GYN. Every pregnancy is unique.</p>
+        <div style="height: 40px;"></div>
+      </div>
+    </ng-container>
+
+  </div>
+
+</ion-content>

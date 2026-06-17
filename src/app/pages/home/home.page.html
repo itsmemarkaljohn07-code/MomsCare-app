@@ -1,0 +1,385 @@
+<!-- home.page.html -->
+<ion-content [fullscreen]="true" class="home-content"
+             [attr.data-theme]="darkMode ? 'dark' : 'light'">
+
+  <!-- ══ Health Input Modal ══ -->
+  <div class="modal-overlay" *ngIf="showHealthModal" (click)="closeHealthModal()">
+    <div class="modal-sheet" (click)="$event.stopPropagation()">
+      <div class="modal-handle"></div>
+      <div class="modal-header">
+        <h3 class="modal-title">Log Health Data</h3>
+        <p class="modal-sub">{{ today | date:'MMMM d, yyyy' }}</p>
+      </div>
+
+      <!-- Weight -->
+      <div class="input-group" [class.active]="activeField === 'weight'">
+        <div class="input-label-row">
+          <span class="input-ico">⚖️</span>
+          <label class="input-label">Current Weight</label>
+        </div>
+        <div class="input-row">
+          <input class="health-input" type="number" step="0.1"
+                 [(ngModel)]="healthDraft.weight"
+                 (focus)="activeField='weight'" (blur)="activeField=''"
+                 placeholder="e.g. 62.4" />
+          <span class="input-unit">kg</span>
+        </div>
+      </div>
+
+      <!-- Blood Pressure -->
+      <div class="input-group" [class.active]="activeField === 'bp'">
+        <div class="input-label-row">
+          <span class="input-ico">❤️</span>
+          <label class="input-label">Blood Pressure</label>
+        </div>
+        <div class="input-row bp-row">
+          <input class="health-input bp-input" type="number"
+                 [(ngModel)]="healthDraft.bpSys"
+                 (focus)="activeField='bp'" (blur)="activeField=''"
+                 placeholder="120" maxlength="3" />
+          <span class="bp-slash">/</span>
+          <input class="health-input bp-input" type="number"
+                 [(ngModel)]="healthDraft.bpDia"
+                 (focus)="activeField='bp'" (blur)="activeField=''"
+                 placeholder="80" maxlength="3" />
+          <span class="input-unit">mmHg</span>
+        </div>
+        <p class="input-hint">Systolic / Diastolic</p>
+      </div>
+
+      <!-- Fetal Kicks -->
+      <div class="input-group" [class.active]="activeField === 'kicks'">
+        <div class="input-label-row">
+          <span class="input-ico">👣</span>
+          <label class="input-label">Fetal Kicks Today</label>
+        </div>
+        <div class="kick-counter">
+          <button class="kick-btn minus" (click)="adjustKicks(-1)">−</button>
+          <div class="kick-display">
+            <span class="kick-num">{{ healthDraft.kicks }}</span>
+            <span class="kick-unit">kicks</span>
+          </div>
+          <button class="kick-btn plus" (click)="adjustKicks(1)">+</button>
+        </div>
+        <p class="input-hint">Tap + each time you feel a movement</p>
+      </div>
+
+      <button class="modal-save-btn" (click)="saveHealth()">
+        <span>Save Health Data</span>
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+          <path d="M3 8h10M9 4l4 4-4 4" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- ══ Home Tab ══ -->
+  <div class="home-wrap" *ngIf="activeTab === 'home'">
+
+    <!-- Ambient -->
+    <div class="ambient-orb orb-a"></div>
+    <div class="ambient-orb orb-b"></div>
+
+    <!-- ── Top Bar ── -->
+    <div class="top-bar" [class.visible]="animReady">
+      <div class="top-brand">
+        <img src="assets/icon/dailymom_icon.png" alt="DailyMom" class="brand-icon" />
+        <span class="brand-text"><span class="bd">Moms</span><span class="bm">Care</span></span>
+      </div>
+      <div class="top-bar-right">
+        <div class="date-chip">
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+            <rect x="1.5" y="2" width="9" height="9" rx="1.5" stroke="currentColor" stroke-width="1.2"/>
+            <path d="M4 1v2M8 1v2M1.5 5h9" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+          </svg>
+          <span>{{ currentTime | date:'MMM d' }}</span>
+        </div>
+        <button class="icon-btn notif-btn" aria-label="Notifications">
+          <svg width="18" height="18" viewBox="0 0 22 22" fill="none">
+            <path d="M11 2a7 7 0 00-7 7v3l-1.5 2.5h17L18 12V9a7 7 0 00-7-7Z" stroke="currentColor" stroke-width="1.6"/>
+            <path d="M9 17a2 2 0 004 0" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+          </svg>
+          <span class="notif-dot"></span>
+        </button>
+      </div>
+    </div>
+
+    <!-- ── Greeting ── -->
+    <div class="greeting-area" [class.visible]="animReady">
+      <p class="greeting-text">{{ greeting }}, Maria 👋</p>
+      <div class="greeting-pills">
+        <span class="pill pill-week">Week {{ pregnancyWeek }}</span>
+        <span class="pill pill-trim">{{ trimester }}</span>
+        <span class="pill pill-days">{{ daysRemaining }}d to go</span>
+      </div>
+    </div>
+
+    <!-- ════════════════════════════════════════ -->
+    <!-- PREGNANCY HERO CARD                      -->
+    <!-- ════════════════════════════════════════ -->
+    <div class="hero-card" [class.visible]="animReady">
+      <!-- Decorative ring -->
+      <div class="hero-ring"></div>
+
+      <div class="hero-top">
+        <!-- Left side -->
+        <div class="hero-left">
+          <div class="week-badge">W{{ pregnancyWeek }}</div>
+          <div class="hero-big-num">
+            {{ pregnancyWeek }}<span class="hero-of">/40</span>
+          </div>
+          <p class="hero-label">weeks along</p>
+          <div class="hero-progress">
+            <div class="hero-progress-fill" [style.width.%]="pregnancyProgress"></div>
+          </div>
+          <p class="hero-pct">{{ pregnancyProgress }}% complete · {{ 40 - pregnancyWeek }}w left</p>
+        </div>
+
+        <!-- Right side -->
+        <div class="hero-right">
+          <div class="fruit-bubble">
+            <span class="fruit-emoji">{{ babySize.emoji }}</span>
+          </div>
+          <p class="fruit-label">size of a</p>
+          <p class="fruit-name">{{ babySize.fruit }}</p>
+          <p class="fruit-dims">{{ babySize.length }}</p>
+          <p class="fruit-dims">{{ babySize.weight }}</p>
+        </div>
+      </div>
+
+      <!-- Message strip -->
+      <div class="hero-message">
+        <span class="hero-msg-star">✦</span>
+        <p>{{ weeklyMessage }}</p>
+      </div>
+    </div>
+
+    <!-- ════════════════════════════════════════ -->
+    <!-- DUE DATE STRIP                           -->
+    <!-- ════════════════════════════════════════ -->
+    <div class="due-strip" [class.visible]="animReady">
+      <div class="due-strip-left">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+          <circle cx="8" cy="8" r="6.5" stroke="var(--pink)" stroke-width="1.3"/>
+          <path d="M8 5v3.5l2.5 1.5" stroke="var(--pink)" stroke-width="1.3" stroke-linecap="round"/>
+        </svg>
+        <div>
+          <p class="due-strip-label">Due Date</p>
+          <p class="due-strip-date">September 15, 2025</p>
+        </div>
+      </div>
+      <div class="due-strip-right">
+        <span class="due-strip-num">{{ daysRemaining }}</span>
+        <span class="due-strip-unit">days</span>
+      </div>
+    </div>
+
+    <!-- ════════════════════════════════════════ -->
+    <!-- UPCOMING APPOINTMENTS                    -->
+    <!-- ════════════════════════════════════════ -->
+    <div class="section-header" [class.visible]="animReady">
+      <p class="section-title">Upcoming Appointments</p>
+      <button class="section-link">See all</button>
+    </div>
+
+    <div class="appt-list" [class.visible]="animReady">
+      <div class="appt-row" *ngFor="let appt of appointments; let i = index"
+           [class]="'appt-type-' + appt.type"
+           [class.appt-first]="i === 0">
+
+        <!-- Date column -->
+        <div class="appt-date-col">
+          <span class="appt-month">{{ appt.date.split(' ')[0] }}</span>
+          <span class="appt-day-num">{{ appt.date.split(' ')[1] }}</span>
+          <span class="appt-weekday">{{ appt.day }}</span>
+        </div>
+
+        <!-- Divider -->
+        <div class="appt-divider-line">
+          <div class="appt-dot"></div>
+          <div class="appt-line"></div>
+        </div>
+
+        <!-- Content -->
+        <div class="appt-content">
+          <div class="appt-ico-wrap">{{ appt.icon }}</div>
+          <div class="appt-text">
+            <p class="appt-name">{{ appt.label }}</p>
+            <p class="appt-doc">{{ appt.doctor }}</p>
+          </div>
+          <span class="appt-soon-tag" *ngIf="i === 0">Soon</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════════════════════════════════════ -->
+    <!-- HEALTH SNAPSHOT                          -->
+    <!-- ════════════════════════════════════════ -->
+    <div class="section-header" [class.visible]="animReady">
+      <p class="section-title">Health Snapshot</p>
+      <button class="section-link log-btn" (click)="openHealthModal()">
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+          <path d="M6 2v8M2 6h8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+        </svg>
+        Log data
+      </button>
+    </div>
+
+    <div class="health-grid" [class.visible]="animReady">
+      <!-- Weight -->
+      <div class="health-tile" (click)="openHealthModal()">
+        <div class="health-tile-top">
+          <span class="health-tile-ico">⚖️</span>
+          <span class="health-tile-label">Weight</span>
+        </div>
+        <p class="health-tile-val">{{ health.weight }}<span class="health-tile-unit">kg</span></p>
+        <div class="health-tile-bar">
+          <div class="health-tile-fill weight-fill" [style.width.%]="(health.weight / 90) * 100"></div>
+        </div>
+        <p class="health-tile-note">Tap to update</p>
+      </div>
+
+      <!-- Blood Pressure -->
+      <div class="health-tile" (click)="openHealthModal()">
+        <div class="health-tile-top">
+          <span class="health-tile-ico">❤️</span>
+          <span class="health-tile-label">Blood Pressure</span>
+        </div>
+        <p class="health-tile-val bp-val">{{ health.bp }}</p>
+        <p class="health-tile-sub">mmHg</p>
+        <p class="health-tile-note">Tap to update</p>
+      </div>
+
+      <!-- Fetal Kicks -->
+      <div class="health-tile kicks-tile" (click)="openHealthModal()">
+        <div class="health-tile-top">
+          <span class="health-tile-ico">👣</span>
+          <span class="health-tile-label">Fetal Kicks</span>
+        </div>
+        <div class="kicks-display">
+          <p class="health-tile-val">{{ health.kicks }}<span class="health-tile-unit">today</span></p>
+          <div class="kick-dots">
+            <span class="kick-dot" *ngFor="let k of kickDots; let i = index"
+                  [class.filled]="i < health.kicks"></span>
+          </div>
+        </div>
+        <p class="health-tile-note">Tap to update</p>
+      </div>
+
+      <!-- Mood -->
+      <div class="health-tile mood-tile">
+        <div class="health-tile-top">
+          <span class="health-tile-ico">🌟</span>
+          <span class="health-tile-label">Mood</span>
+        </div>
+        <div class="mood-row">
+          <button class="mood-btn" *ngFor="let m of moodLabels; let i = index"
+                  [class.selected]="health.mood === i"
+                  (click)="setMood(i)">{{ m }}</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════════════════════════════════════ -->
+    <!-- DAILY CHECKLIST                          -->
+    <!-- ════════════════════════════════════════ -->
+    <div class="section-header" [class.visible]="animReady">
+      <p class="section-title">Daily Checklist</p>
+      <span class="section-badge">{{ checklistDone }}/{{ checklist.length }}</span>
+    </div>
+
+    <div class="checklist-card" [class.visible]="animReady">
+      <div class="checklist-progress-bar">
+        <div class="checklist-progress-fill" [style.width.%]="checklistPercent"></div>
+      </div>
+      <div class="checklist-items">
+        <div class="checklist-item" *ngFor="let item of checklist"
+             (click)="toggleChecklist(item)"
+             [class.done]="item.done">
+          <div class="check-box" [class.checked]="item.done">
+            <svg *ngIf="item.done" width="10" height="10" viewBox="0 0 10 10" fill="none">
+              <path d="M2 5L4.2 7.5L8 3" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <span class="check-ico">{{ item.icon }}</span>
+          <span class="check-task">{{ item.task }}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════════════════════════════════════ -->
+    <!-- SUPPORT CARD                             -->
+    <!-- ════════════════════════════════════════ -->
+    <div class="support-card" [class.visible]="animReady">
+      <div class="support-inner">
+        <p class="support-quote">"You're growing a whole human being.<br>That's the most extraordinary thing in the world."</p>
+        <p class="support-tagline">You're doing amazing, Mama 💖</p>
+      </div>
+      <div class="support-deco">💗&nbsp;💕&nbsp;💖</div>
+    </div>
+
+    <div style="height: 90px;"></div>
+  </div>
+
+  <!-- ══ Appointments Tab ══ -->
+  <div class="placeholder-tab" *ngIf="activeTab === 'appts'">
+    <div class="placeholder-content">
+      <span class="placeholder-emoji">📅</span>
+      <h3>Appointments</h3>
+      <div class="appt-full-list">
+        <div class="appt-full-item" *ngFor="let appt of appointments">
+          <div class="appt-full-icon">{{ appt.icon }}</div>
+          <div class="appt-full-info">
+            <p class="appt-full-label">{{ appt.label }}</p>
+            <p class="appt-full-meta">{{ appt.day }}, {{ appt.date }} · {{ appt.doctor }}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ Tracker Tab ══ -->
+  <div class="placeholder-tab" *ngIf="activeTab === 'tracker'">
+    <div class="placeholder-content">
+      <span class="placeholder-emoji">📊</span>
+      <h3>Insights</h3>
+      <p>Coming soon — being redesigned!</p>
+    </div>
+  </div>
+
+  <!-- ══ Bottom Navigation ══ -->
+  <div class="bottom-nav">
+    <button class="nav-item" [class.active]="activeTab === 'home'" (click)="setTab('home')">
+      <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+        <path d="M3 9.5L11 3L19 9.5V19a1 1 0 01-1 1H4a1 1 0 01-1-1V9.5Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>
+        <path d="M8 20v-6h6v6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <span>Today</span>
+    </button>
+    <button class="nav-item" [class.active]="activeTab === 'tracker'" (click)="navigate('/insights')">
+      <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+        <rect x="3" y="3" width="7" height="7" rx="2" stroke="currentColor" stroke-width="1.7"/>
+        <rect x="12" y="3" width="7" height="7" rx="2" stroke="currentColor" stroke-width="1.7"/>
+        <rect x="3" y="12" width="7" height="7" rx="2" stroke="currentColor" stroke-width="1.7"/>
+        <rect x="12" y="12" width="7" height="7" rx="2" stroke="currentColor" stroke-width="1.7"/>
+      </svg>
+      <span>Insights</span>
+    </button>
+    <button class="nav-item" [class.active]="activeTab === 'appts'" (click)="navigate('/appointments')">
+      <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+        <path d="M8 9h6M8 13h4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+        <rect x="3" y="4" width="16" height="15" rx="2" stroke="currentColor" stroke-width="1.7"/>
+        <path d="M8 2v3M14 2v3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+      </svg>
+      <span>Appointments</span>
+    </button>
+    <button class="nav-item" [class.active]="activeTab === 'profile'" (click)="navigate('/profile')">
+      <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+        <circle cx="11" cy="8" r="4" stroke="currentColor" stroke-width="1.7"/>
+        <path d="M4 19c0-3.9 3.1-7 7-7s7 3.1 7 7" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+      </svg>
+      <span>Profile</span>
+    </button>
+  </div>
+
+</ion-content>

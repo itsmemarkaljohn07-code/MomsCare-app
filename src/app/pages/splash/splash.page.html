@@ -1,0 +1,150 @@
+<!-- splash.page.html -->
+<ion-content [fullscreen]="true" [scrollY]="false" class="splash-content">
+  <div class="splash-container" [class.fade-out]="splashDone">
+
+    <!-- Ambient blobs -->
+    <div class="blob blob-1"></div>
+    <div class="blob blob-2"></div>
+    <div class="blob blob-3"></div>
+
+    <!-- ── Doodle background layer ── -->
+    <div class="doodle-layer">
+
+      <!-- Stars / sparkles -->
+      <svg class="doodle star-1" width="18" height="18" viewBox="0 0 18 18" fill="none">
+        <path d="M9 1l1.8 5.4H17l-4.9 3.5 1.9 5.6L9 12l-5 3.5 1.9-5.6L1 6.4h6.2Z" fill="rgba(224,126,184,0.55)"/>
+      </svg>
+      <svg class="doodle star-2" width="13" height="13" viewBox="0 0 18 18" fill="none">
+        <path d="M9 1l1.8 5.4H17l-4.9 3.5 1.9 5.6L9 12l-5 3.5 1.9-5.6L1 6.4h6.2Z" fill="rgba(181,127,212,0.5)"/>
+      </svg>
+      <svg class="doodle star-3" width="14" height="14" viewBox="0 0 18 18" fill="none">
+        <path d="M9 1l1.8 5.4H17l-4.9 3.5 1.9 5.6L9 12l-5 3.5 1.9-5.6L1 6.4h6.2Z" fill="rgba(122,207,207,0.55)"/>
+      </svg>
+      <svg class="doodle star-4" width="16" height="16" viewBox="0 0 18 18" fill="none">
+        <path d="M9 1l1.8 5.4H17l-4.9 3.5 1.9 5.6L9 12l-5 3.5 1.9-5.6L1 6.4h6.2Z" fill="rgba(224,126,184,0.45)"/>
+      </svg>
+      <svg class="doodle star-5" width="10" height="10" viewBox="0 0 18 18" fill="none">
+        <path d="M9 1l1.8 5.4H17l-4.9 3.5 1.9 5.6L9 12l-5 3.5 1.9-5.6L1 6.4h6.2Z" fill="rgba(181,127,212,0.6)"/>
+      </svg>
+      <svg class="doodle star-6" width="11" height="11" viewBox="0 0 18 18" fill="none">
+        <path d="M9 1l1.8 5.4H17l-4.9 3.5 1.9 5.6L9 12l-5 3.5 1.9-5.6L1 6.4h6.2Z" fill="rgba(122,207,207,0.5)"/>
+      </svg>
+
+      <!-- Hearts -->
+      <svg class="doodle heart-1" width="18" height="16" viewBox="0 0 20 18" fill="none">
+        <path d="M10 16S2 11 2 5.5A4.5 4.5 0 0110 3a4.5 4.5 0 018 2.5C18 11 10 16 10 16Z" fill="rgba(224,126,184,0.45)"/>
+      </svg>
+      <svg class="doodle heart-2" width="14" height="12" viewBox="0 0 20 18" fill="none">
+        <path d="M10 16S2 11 2 5.5A4.5 4.5 0 0110 3a4.5 4.5 0 018 2.5C18 11 10 16 10 16Z" fill="rgba(181,127,212,0.4)"/>
+      </svg>
+      <svg class="doodle heart-3" width="13" height="11" viewBox="0 0 20 18" fill="none">
+        <path d="M10 16S2 11 2 5.5A4.5 4.5 0 0110 3a4.5 4.5 0 018 2.5C18 11 10 16 10 16Z" fill="rgba(122,207,207,0.4)"/>
+      </svg>
+      <svg class="doodle heart-4" width="16" height="14" viewBox="0 0 20 18" fill="none">
+        <path d="M10 16S2 11 2 5.5A4.5 4.5 0 0110 3a4.5 4.5 0 018 2.5C18 11 10 16 10 16Z" fill="rgba(224,126,184,0.38)"/>
+      </svg>
+
+      <!-- Flowers -->
+      <svg class="doodle flower-1" width="22" height="24" viewBox="0 0 22 24" fill="none">
+        <ellipse cx="11" cy="5" rx="4" ry="3" fill="rgba(224,126,184,0.38)"/>
+        <ellipse cx="17" cy="9" rx="3" ry="4" fill="rgba(181,127,212,0.35)"/>
+        <ellipse cx="14" cy="16" rx="4" ry="3" fill="rgba(224,126,184,0.32)"/>
+        <ellipse cx="8" cy="16" rx="4" ry="3" fill="rgba(181,127,212,0.32)"/>
+        <ellipse cx="5" cy="9" rx="3" ry="4" fill="rgba(224,126,184,0.35)"/>
+        <circle cx="11" cy="11" r="4" fill="rgba(255,220,240,0.85)"/>
+        <line x1="11" y1="20" x2="11" y2="24" stroke="rgba(181,127,212,0.5)" stroke-width="1.5" stroke-linecap="round"/>
+      </svg>
+      <svg class="doodle flower-2" width="18" height="20" viewBox="0 0 22 24" fill="none">
+        <ellipse cx="11" cy="5" rx="4" ry="3" fill="rgba(122,207,207,0.38)"/>
+        <ellipse cx="17" cy="9" rx="3" ry="4" fill="rgba(181,127,212,0.35)"/>
+        <ellipse cx="14" cy="16" rx="4" ry="3" fill="rgba(122,207,207,0.32)"/>
+        <ellipse cx="8" cy="16" rx="4" ry="3" fill="rgba(181,127,212,0.32)"/>
+        <ellipse cx="5" cy="9" rx="3" ry="4" fill="rgba(122,207,207,0.35)"/>
+        <circle cx="11" cy="11" r="4" fill="rgba(200,238,248,0.85)"/>
+        <line x1="11" y1="20" x2="11" y2="24" stroke="rgba(122,207,207,0.5)" stroke-width="1.5" stroke-linecap="round"/>
+      </svg>
+
+      <!-- Dotted arcs -->
+      <svg class="doodle arc-1" width="80" height="40" viewBox="0 0 80 40" fill="none">
+        <path d="M4 36C20 10 60 10 76 36" stroke="#b57fd4" stroke-width="1.5" stroke-linecap="round" stroke-dasharray="4 5"/>
+      </svg>
+      <svg class="doodle arc-2" width="60" height="50" viewBox="0 0 60 50" fill="none">
+        <path d="M4 46C15 10 45 10 56 46" stroke="#e07eb8" stroke-width="1.5" stroke-linecap="round" stroke-dasharray="3 4"/>
+      </svg>
+      <svg class="doodle arc-3" width="50" height="40" viewBox="0 0 50 40" fill="none">
+        <path d="M4 36C12 8 38 8 46 36" stroke="#7acfcf" stroke-width="1.5" stroke-linecap="round" stroke-dasharray="3 4"/>
+      </svg>
+
+      <!-- Baby bottle -->
+      <svg class="doodle bottle" width="18" height="26" viewBox="0 0 18 28" fill="none">
+        <rect x="6" y="0" width="6" height="4" rx="2" fill="rgba(224,126,184,0.5)"/>
+        <rect x="3" y="4" width="12" height="18" rx="5" fill="rgba(255,220,240,0.7)" stroke="rgba(224,126,184,0.4)" stroke-width="1.2"/>
+        <line x1="3" y1="13" x2="15" y2="13" stroke="rgba(224,126,184,0.3)" stroke-width="1"/>
+        <circle cx="9" cy="26" r="2" fill="rgba(181,127,212,0.4)"/>
+      </svg>
+
+      <!-- Pacifier -->
+      <svg class="doodle pacifier" width="22" height="22" viewBox="0 0 24 24" fill="none">
+        <circle cx="12" cy="12" r="8" stroke="rgba(181,127,212,0.45)" stroke-width="1.4" fill="rgba(240,225,255,0.5)"/>
+        <circle cx="12" cy="12" r="3.5" fill="rgba(224,126,184,0.55)"/>
+        <line x1="12" y1="4" x2="12" y2="1" stroke="rgba(181,127,212,0.5)" stroke-width="1.4" stroke-linecap="round"/>
+        <line x1="11" y1="1" x2="13" y2="1" stroke="rgba(181,127,212,0.5)" stroke-width="1.4" stroke-linecap="round"/>
+      </svg>
+
+      <!-- Clouds -->
+      <svg class="doodle cloud-1" width="38" height="22" viewBox="0 0 38 22" fill="none">
+        <ellipse cx="19" cy="14" rx="16" ry="8" fill="rgba(255,220,240,0.7)"/>
+        <ellipse cx="13" cy="12" rx="9" ry="7" fill="rgba(255,220,240,0.7)"/>
+        <ellipse cx="25" cy="11" rx="9" ry="7" fill="rgba(255,220,240,0.7)"/>
+        <ellipse cx="19" cy="8" rx="8" ry="7" fill="rgba(255,220,240,0.82)"/>
+      </svg>
+      <svg class="doodle cloud-2" width="30" height="18" viewBox="0 0 38 22" fill="none">
+        <ellipse cx="19" cy="14" rx="16" ry="8" fill="rgba(200,238,248,0.7)"/>
+        <ellipse cx="13" cy="12" rx="9" ry="7" fill="rgba(200,238,248,0.7)"/>
+        <ellipse cx="25" cy="11" rx="9" ry="7" fill="rgba(200,238,248,0.7)"/>
+        <ellipse cx="19" cy="8" rx="8" ry="7" fill="rgba(200,238,248,0.82)"/>
+      </svg>
+
+      <!-- Corner leaves -->
+      <svg class="doodle leaf-bl" width="70" height="70" viewBox="0 0 70 70" fill="none">
+        <path d="M0 70 Q10 40 35 30 Q20 55 0 70Z" fill="rgba(122,207,207,0.5)"/>
+        <path d="M0 70 Q25 50 50 20 Q30 60 0 70Z" fill="rgba(181,127,212,0.35)"/>
+      </svg>
+      <svg class="doodle leaf-tr" width="65" height="65" viewBox="0 0 70 70" fill="none">
+        <path d="M70 0 Q60 30 35 40 Q50 15 70 0Z" fill="rgba(224,126,184,0.45)"/>
+        <path d="M70 0 Q45 20 20 50 Q40 10 70 0Z" fill="rgba(122,207,207,0.32)"/>
+      </svg>
+
+    </div><!-- end doodle-layer -->
+
+    <!-- ── Logo ── -->
+    <div class="logo-area">
+      <div class="logo-ring">
+        <div class="logo-inner">
+          <!-- Mother carrying child icon -->
+          <img
+            src="assets/icon/dailymom_icon.png"
+            alt="DailyMom Icon"
+            class="brand-icon"
+          />
+        </div>
+      </div>
+
+      <div class="brand-text">
+        <h1 class="app-name">
+          <span class="daily">Moms</span><span class="mom">Care</span>
+        </h1>
+        <p class="tagline">Your pregnancy companion</p>
+      </div>
+    </div>
+
+    <!-- Loader -->
+    <div class="loader-area">
+      <div class="loader-track">
+        <div class="loader-fill"></div>
+      </div>
+      <p class="loader-text">Loading your journey…</p>
+    </div>
+
+  </div>
+</ion-content>

@@ -3,89 +3,68 @@
 
   <div class="insights-wrap">
 
-    <!-- Ambient blobs -->
     <div class="blob blob-top"></div>
+    <div class="blob blob-mid"></div>
     <div class="blob blob-bottom"></div>
 
     <!-- ── Top Bar ── -->
     <div class="insights-top-bar">
-      <div>
-        <h1 class="insights-title">Insights</h1>
-        <p class="insights-sub">Week {{ pregnancyWeek }} · {{ trimester }}</p>
+      <div class="top-bar-inner">
+        <div>
+          <h1 class="insights-title">Insights</h1>
+          <p class="insights-sub">Week {{ pregnancyWeek }} · {{ trimester }}</p>
+        </div>
       </div>
     </div>
 
-    <!-- ── Featured Article (Hero) ── -->
-<div class="hero-card" [class.visible]="animReady">
-  
-  <!-- REPLACE the old placeholder div with this img tag -->
-  <img 
-    src="assets/icon/yourchangingbody.jpg" 
-    class="hero-image" 
-    alt="What's happening inside you"
-  />
 
-    <div class="hero-body">
+
+    <!-- ── Featured Article (Hero) ── -->
+    <div class="hero-card" [class.visible]="animReady" (click)="openArticle('body')">
+      <img src="assets/icon/yourchangingbody.jpg" class="hero-image" alt="What's happening inside you"/>
+      <div class="hero-overlay"></div>
+      <div class="hero-body">
         <span class="hero-tag">This Week</span>
         <h2 class="hero-title">What's happening inside you at Week {{ pregnancyWeek }}</h2>
         <p class="hero-excerpt">Your baby is the size of a {{ babySize.fruit }} and developing rapidly. Here's everything your body is doing right now.</p>
         <div class="hero-meta">
-          <span class="hero-read-time">5 min read</span>
+          <span class="hero-read-time">
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><circle cx="6" cy="6" r="5" stroke="currentColor" stroke-width="1.3"/><path d="M6 3v3l2 1.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+            5 min read
+          </span>
           <span class="hero-dot">·</span>
           <span class="hero-category">Body Changes</span>
         </div>
       </div>
     </div>
 
-        <!-- ── Section: Most Popular ── -->
+    <!-- ── Most Popular ── -->
     <div class="section-block" [class.visible]="animReady">
       <div class="section-header-row">
-        <h3 class="section-heading">Most popular this trimester</h3>
-        <button class="see-all-btn">See all</button>
-      </div>
-
-      <div class="card-scroll">
-        <div
-          class="article-card"
-          *ngFor="let article of popularArticles; let i = index"
-          (click)="i === 0 ? openArticle('body') : i === 1 ? openArticle('checkups') : null"
-        >
-          <!-- Show real image if available, else show placeholder -->
-          <img
-            *ngIf="article.image"
-            [src]="article.image"
-            class="article-image"
-            [alt]="article.title"
-          />
-          <div
-            *ngIf="!article.image"
-            class="article-image-placeholder"
-            [style.background]="article.bgColor"
-          ></div>
-
-          <div class="article-body">
-            <span class="article-tag">{{ article.tag }}</span>
-            <h4 class="article-title">{{ article.title }}</h4>
-            <p class="article-read-time">{{ article.readTime }} min read</p>
-          </div>
+        <div>
+          <h3 class="section-heading">Most popular this trimester</h3>
+          <p class="section-sub">What mums at {{ pregnancyWeek }} weeks are reading</p>
         </div>
-      </div>
-    </div>
-
-    <!-- ── Section: Understanding Your Body ── -->
-    <div class="section-block" [class.visible]="animReady">
-      <div class="section-header-row">
-        <h3 class="section-heading">Understanding your body</h3>
         <button class="see-all-btn">See all</button>
       </div>
-
       <div class="card-scroll">
-        <div class="article-card" *ngFor="let article of bodyArticles">
-          <div class="article-image-placeholder" [style.background]="article.bgColor"></div>
+        <div class="article-card" *ngFor="let article of popularArticles; let i = index"
+             (click)="openArticle(article.articleKey)">
+          <div class="card-image-wrap">
+            <img *ngIf="article.image" [src]="article.image" class="article-image" [alt]="article.title"/>
+            <div *ngIf="!article.image" class="article-image-placeholder" [style.background]="article.bgColor"></div>
+          </div>
           <div class="article-body">
             <span class="article-tag">{{ article.tag }}</span>
             <h4 class="article-title">{{ article.title }}</h4>
-            <p class="article-read-time">{{ article.readTime }} min read</p>
+            <p class="article-excerpt" *ngIf="article.excerpt">{{ article.excerpt }}</p>
+            <div class="article-footer">
+              <p class="article-read-time">
+                <svg width="10" height="10" viewBox="0 0 12 12" fill="none"><circle cx="6" cy="6" r="5" stroke="currentColor" stroke-width="1.4"/><path d="M6 3v3l2 1.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+                {{ article.readTime }} min read
+              </p>
+              <span class="read-arrow">→</span>
+            </div>
           </div>
         </div>
       </div>
@@ -93,82 +72,166 @@
 
     <!-- ── Daily Insight Banner ── -->
     <div class="insight-banner" [class.visible]="animReady">
-      <div class="banner-label">Today's Insight</div>
-      <p class="banner-text">{{ todayInsight.text }}</p>
-      <span class="banner-source">{{ todayInsight.source }}</span>
+      <div class="banner-icon-wrap">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+          <circle cx="9" cy="9" r="8" stroke="#e07eb8" stroke-width="1.5"/>
+          <path d="M9 5v5M9 12v1" stroke="#e07eb8" stroke-width="1.6" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <div class="banner-content">
+        <div class="banner-label">Today's Insight</div>
+        <p class="banner-text">{{ todayInsight.text }}</p>
+        <span class="banner-source">{{ todayInsight.source }}</span>
+      </div>
     </div>
 
-    <!-- ── Section: Baby Development ── -->
+    <!-- ── Understanding Your Body ── -->
     <div class="section-block" [class.visible]="animReady">
       <div class="section-header-row">
-        <h3 class="section-heading">Baby development</h3>
+        <div>
+          <h3 class="section-heading">Understanding your body</h3>
+          <p class="section-sub">Physical changes explained clearly</p>
+        </div>
         <button class="see-all-btn">See all</button>
       </div>
-
       <div class="card-scroll">
-        <div class="article-card" *ngFor="let article of babyArticles">
-          <div class="article-image-placeholder" [style.background]="article.bgColor"></div>
+        <div class="article-card" *ngFor="let article of bodyArticles"
+             (click)="openArticle(article.articleKey)">
+          <div class="card-image-wrap">
+            <div class="article-image-placeholder" [style.background]="article.bgColor"></div>
+          </div>
           <div class="article-body">
             <span class="article-tag">{{ article.tag }}</span>
             <h4 class="article-title">{{ article.title }}</h4>
-            <p class="article-read-time">{{ article.readTime }} min read</p>
+            <p class="article-excerpt" *ngIf="article.excerpt">{{ article.excerpt }}</p>
+            <p class="article-read-time">
+              <svg width="10" height="10" viewBox="0 0 12 12" fill="none"><circle cx="6" cy="6" r="5" stroke="currentColor" stroke-width="1.4"/><path d="M6 3v3l2 1.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+              {{ article.readTime }} min read
+            </p>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- ── Section: Nutrition & Wellness ── -->
+    <!-- ── Baby Development ── -->
     <div class="section-block" [class.visible]="animReady">
       <div class="section-header-row">
-        <h3 class="section-heading">Nutrition &amp; wellness</h3>
+        <div>
+          <h3 class="section-heading">Baby development</h3>
+          <p class="section-sub">What's growing and changing inside</p>
+        </div>
         <button class="see-all-btn">See all</button>
       </div>
-
       <div class="card-scroll">
-        <div class="article-card" *ngFor="let article of nutritionArticles">
-          <div class="article-image-placeholder" [style.background]="article.bgColor"></div>
+        <div class="article-card" *ngFor="let article of babyArticles"
+             (click)="openArticle(article.articleKey)">
+          <div class="card-image-wrap">
+            <div class="article-image-placeholder" [style.background]="article.bgColor"></div>
+          </div>
           <div class="article-body">
             <span class="article-tag">{{ article.tag }}</span>
             <h4 class="article-title">{{ article.title }}</h4>
-            <p class="article-read-time">{{ article.readTime }} min read</p>
+            <p class="article-excerpt" *ngIf="article.excerpt">{{ article.excerpt }}</p>
+            <p class="article-read-time">
+              <svg width="10" height="10" viewBox="0 0 12 12" fill="none"><circle cx="6" cy="6" r="5" stroke="currentColor" stroke-width="1.4"/><path d="M6 3v3l2 1.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+              {{ article.readTime }} min read
+            </p>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- ── Section: Mind & Emotions ── -->
+    <!-- ── Quick Tips ── -->
+    <div class="tips-strip" [class.visible]="animReady">
+      <div class="tips-strip-header">
+        <h3 class="section-heading">Quick tips for week {{ pregnancyWeek }}</h3>
+      </div>
+      <div class="tips-grid">
+        <div class="tip-chip" *ngFor="let tip of weeklyTips">
+          <span class="tip-chip-text">{{ tip }}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Nutrition & Wellness ── -->
     <div class="section-block" [class.visible]="animReady">
       <div class="section-header-row">
-        <h3 class="section-heading">Mind &amp; emotions</h3>
+        <div>
+          <h3 class="section-heading">Nutrition &amp; wellness</h3>
+          <p class="section-sub">Fuel your body and your growing baby</p>
+        </div>
         <button class="see-all-btn">See all</button>
       </div>
-
       <div class="card-scroll">
-        <div class="article-card" *ngFor="let article of mindArticles">
-          <div class="article-image-placeholder" [style.background]="article.bgColor"></div>
+        <div class="article-card" *ngFor="let article of nutritionArticles"
+             (click)="openArticle(article.articleKey)">
+          <div class="card-image-wrap">
+            <div class="article-image-placeholder" [style.background]="article.bgColor"></div>
+          </div>
           <div class="article-body">
             <span class="article-tag">{{ article.tag }}</span>
             <h4 class="article-title">{{ article.title }}</h4>
-            <p class="article-read-time">{{ article.readTime }} min read</p>
+            <p class="article-excerpt" *ngIf="article.excerpt">{{ article.excerpt }}</p>
+            <p class="article-read-time">
+              <svg width="10" height="10" viewBox="0 0 12 12" fill="none"><circle cx="6" cy="6" r="5" stroke="currentColor" stroke-width="1.4"/><path d="M6 3v3l2 1.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+              {{ article.readTime }} min read
+            </p>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- ── Section: Preparing for Birth ── -->
+    <!-- ── Mind & Emotions ── -->
     <div class="section-block" [class.visible]="animReady">
       <div class="section-header-row">
-        <h3 class="section-heading">Preparing for birth</h3>
+        <div>
+          <h3 class="section-heading">Mind &amp; emotions</h3>
+          <p class="section-sub">Taking care of your mental wellbeing</p>
+        </div>
         <button class="see-all-btn">See all</button>
       </div>
-
       <div class="card-scroll">
-        <div class="article-card" *ngFor="let article of birthArticles">
-          <div class="article-image-placeholder" [style.background]="article.bgColor"></div>
+        <div class="article-card" *ngFor="let article of mindArticles"
+             (click)="openArticle(article.articleKey)">
+          <div class="card-image-wrap">
+            <div class="article-image-placeholder" [style.background]="article.bgColor"></div>
+          </div>
           <div class="article-body">
             <span class="article-tag">{{ article.tag }}</span>
             <h4 class="article-title">{{ article.title }}</h4>
-            <p class="article-read-time">{{ article.readTime }} min read</p>
+            <p class="article-excerpt" *ngIf="article.excerpt">{{ article.excerpt }}</p>
+            <p class="article-read-time">
+              <svg width="10" height="10" viewBox="0 0 12 12" fill="none"><circle cx="6" cy="6" r="5" stroke="currentColor" stroke-width="1.4"/><path d="M6 3v3l2 1.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+              {{ article.readTime }} min read
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Preparing for Birth ── -->
+    <div class="section-block" [class.visible]="animReady">
+      <div class="section-header-row">
+        <div>
+          <h3 class="section-heading">Preparing for birth</h3>
+          <p class="section-sub">Knowledge is your best preparation</p>
+        </div>
+        <button class="see-all-btn">See all</button>
+      </div>
+      <div class="card-scroll">
+        <div class="article-card" *ngFor="let article of birthArticles"
+             (click)="openArticle(article.articleKey)">
+          <div class="card-image-wrap">
+            <div class="article-image-placeholder" [style.background]="article.bgColor"></div>
+          </div>
+          <div class="article-body">
+            <span class="article-tag">{{ article.tag }}</span>
+            <h4 class="article-title">{{ article.title }}</h4>
+            <p class="article-excerpt" *ngIf="article.excerpt">{{ article.excerpt }}</p>
+            <p class="article-read-time">
+              <svg width="10" height="10" viewBox="0 0 12 12" fill="none"><circle cx="6" cy="6" r="5" stroke="currentColor" stroke-width="1.4"/><path d="M6 3v3l2 1.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+              {{ article.readTime }} min read
+            </p>
           </div>
         </div>
       </div>
@@ -179,7 +242,7 @@
 
   <!-- ── Bottom Navigation ── -->
   <div class="bottom-nav">
-    <button class="nav-item" (click)="navigate('/home', 'home')">
+    <button class="nav-item" (click)="navigate('/home')">
       <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
         <path d="M3 9.5L11 3L19 9.5V19a1 1 0 01-1 1H4a1 1 0 01-1-1V9.5Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>
         <path d="M8 20v-6h6v6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
@@ -203,149 +266,139 @@
       </svg>
       <span>Appointments</span>
     </button>
-    <button class="nav-item" (click)="navigate('/profile')">
+    <button class="nav-item" (click)="navigate('/snapshot')">
       <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
-        <circle cx="11" cy="8" r="4" stroke="currentColor" stroke-width="1.7"/>
-        <path d="M4 19c0-3.9 3.1-7 7-7s7 3.1 7 7" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+        <circle cx="11" cy="11" r="4" stroke="currentColor" stroke-width="1.7"/>
+        <path d="M2 9V7a2 2 0 012-2h1.5l1.5-2h8l1.5 2H18a2 2 0 012 2v9a2 2 0 01-2 2H4a2 2 0 01-2-2v-7z"
+              stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>
       </svg>
-      <span>Profile</span>
+      <span>Snapshot</span>
     </button>
   </div>
 
-  <!-- ══════════════════════════════════════════ -->
-  <!-- ARTICLE READER OVERLAY                     -->
-  <!-- ══════════════════════════════════════════ -->
-  <div
-    class="article-reader-overlay"
-    *ngIf="articleOpen"
-    [class.slide-in]="articleAnimIn"
-    [attr.data-theme]="darkMode ? 'dark' : 'light'"
-  >
+  <!-- ══════════════════════════════════════════
+       ARTICLE READER OVERLAY
+  ══════════════════════════════════════════ -->
+  <div class="article-reader-overlay"
+       *ngIf="articleOpen"
+       [class.slide-in]="articleAnimIn"
+       [attr.data-theme]="darkMode ? 'dark' : 'light'">
 
-    <!-- ── BODY CHANGES ARTICLE ── -->
-    <ng-container *ngIf="currentArticle === 'body'">
-      <div class="ar-hero">
-        <button class="ar-back-btn" (click)="closeArticle()">
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+    <ng-container *ngIf="activeArticleData">
+
+      <!-- Hero -->
+      <div class="ar-hero" [style.background]="activeArticleData.heroBg">
+        <button class="ar-back-btn" (click)="closeArticle()" aria-label="Back">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none"
+               stroke="currentColor" stroke-width="2" stroke-linecap="round">
             <path d="M10 3L5 8l5 5"/>
           </svg>
         </button>
-        <img src="assets/icon/yourchangingbody.jpg" class="ar-hero-img" alt="Your changing body" />
+        <img *ngIf="activeArticleData.heroImage"
+             [src]="activeArticleData.heroImage"
+             class="ar-hero-img" [alt]="activeArticleData.title"/>
+        <div class="ar-hero-gradient"></div>
         <div class="ar-hero-label">
-          <span class="ar-hero-tag">Body Changes</span>
+          <span class="ar-hero-tag" [style.color]="activeArticleData.accentColor">
+            {{ activeArticleData.heroTag }}
+          </span>
         </div>
       </div>
 
+      <!-- Scrollable content -->
       <div class="ar-scroll">
         <div class="ar-title-block">
-          <h1 class="ar-title">Your changing body: up to 42 weeks</h1>
+          <h1 class="ar-title">{{ activeArticleData.title }}</h1>
           <div class="ar-meta-row">
-            <span class="ar-meta">6 min read</span>
+            <span class="ar-meta">{{ activeArticleData.readTime }} min read</span>
             <span class="ar-meta-dot">·</span>
-            <span class="ar-meta">DailyMom Health</span>
+            <span class="ar-meta">MomsCare Health</span>
           </div>
         </div>
 
-        <div class="ar-week-tabs">
-          <button
-            class="ar-week-btn"
-            *ngFor="let tab of articleWeekTabs"
-            [class.active]="activeWeekTab === tab.id"
-            (click)="setWeekTab(tab.id)"
-          >{{ tab.label }}</button>
+        <!-- Tab selector -->
+        <div class="ar-week-tabs" *ngIf="activeArticleData.tabs && activeArticleData.tabs.length > 1">
+          <button class="ar-week-btn"
+                  *ngFor="let tab of activeArticleData.tabs"
+                  [class.active]="activeTabId === tab.id"
+                  [style.--accent]="activeArticleData.accentColor"
+                  (click)="setTab(tab.id)">
+            {{ tab.label }}
+          </button>
         </div>
 
-        <div class="ar-panel" *ngIf="activePanel">
+        <!-- Active panel -->
+        <div class="ar-panel" *ngIf="activePanelData">
           <div class="ar-section">
-            <div class="ar-trimester-tag">{{ activePanel.tag }}</div>
-            <h2 class="ar-section-title">{{ activePanel.title }}</h2>
-            <p class="ar-body-text">{{ activePanel.intro }}</p>
-            <div class="ar-highlight-card">
-              <div class="ar-highlight-label">{{ activePanel.highlight.label }}</div>
-              <div class="ar-highlight-text">{{ activePanel.highlight.text }}</div>
+            <div class="ar-trimester-tag"
+                 [style.color]="activeArticleData.accentColor"
+                 [style.background]="activeArticleData.accentBg">
+              {{ activePanelData.tag }}
             </div>
-          </div>
-          <div class="ar-change-list">
-            <div class="ar-change-item" *ngFor="let change of activePanel.changes">
-              <div class="ar-change-icon" [style.background]="change.iconBg">{{ change.icon }}</div>
-              <div class="ar-change-info">
-                <div class="ar-change-label">{{ change.label }}</div>
-                <div class="ar-change-desc">{{ change.desc }}</div>
+            <h2 class="ar-section-title">{{ activePanelData.title }}</h2>
+            <p class="ar-body-text">{{ activePanelData.intro }}</p>
+            <div class="ar-highlight-card"
+                 [style.background]="activeArticleData.highlightBg"
+                 [style.border-color]="activeArticleData.highlightBorder">
+              <div class="ar-highlight-label"
+                   [style.color]="activeArticleData.accentColor">
+                {{ activePanelData.highlight.label }}
               </div>
+              <div class="ar-highlight-text">{{ activePanelData.highlight.text }}</div>
             </div>
           </div>
-          <div class="ar-tip-banner">
-            <span class="ar-tip-icon">💡</span>
-            <div>
-              <div class="ar-tip-text">{{ activePanel.tip.text }}</div>
-              <div class="ar-tip-source">{{ activePanel.tip.source }}</div>
-            </div>
-          </div>
-        </div>
 
-        <div class="ar-divider"></div>
-        <p class="ar-disclaimer">Always discuss any concerns with your midwife or OB-GYN. Every pregnancy is unique.</p>
-        <div style="height: 40px;"></div>
-      </div>
-    </ng-container>
-
-    <!-- ── CHECKUPS ARTICLE ── -->
-    <ng-container *ngIf="currentArticle === 'checkups'">
-      <div class="ar-hero ar-hero--checkups">
-        <button class="ar-back-btn" (click)="closeArticle()">
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-            <path d="M10 3L5 8l5 5"/>
-          </svg>
-        </button>
-        <img src="assets/icon/checkupswhenhowandwhy.jpg" class="ar-hero-img" alt="Checkups" />
-        <div class="ar-hero-label">
-          <span class="ar-hero-tag ar-hero-tag--medical">Medical</span>
-        </div>
-      </div>
-
-      <div class="ar-scroll">
-        <div class="ar-title-block">
-          <h1 class="ar-title">Checkups: when, how, and why</h1>
-          <div class="ar-meta-row">
-            <span class="ar-meta">4 min read</span>
-            <span class="ar-meta-dot">·</span>
-            <span class="ar-meta">DailyMom Health</span>
-          </div>
-        </div>
-
-        <div class="ar-week-tabs">
-          <button
-            class="ar-week-btn"
-            *ngFor="let tab of checkupTabs"
-            [class.active]="activeCheckupTab === tab.id"
-            (click)="setCheckupTab(tab.id)"
-          >{{ tab.label }}</button>
-        </div>
-
-        <div class="ar-panel" *ngIf="activeCheckupPanel">
-          <div class="ar-section">
-            <div class="ar-trimester-tag ar-trimester-tag--medical">{{ activeCheckupPanel.tag }}</div>
-            <h2 class="ar-section-title">{{ activeCheckupPanel.title }}</h2>
-            <p class="ar-body-text">{{ activeCheckupPanel.intro }}</p>
-            <div class="ar-highlight-card ar-highlight-card--medical">
-              <div class="ar-highlight-label ar-highlight-label--medical">{{ activeCheckupPanel.highlight.label }}</div>
-              <div class="ar-highlight-text">{{ activeCheckupPanel.highlight.text }}</div>
-            </div>
-          </div>
           <div class="ar-change-list">
-            <div class="ar-change-item" *ngFor="let item of activeCheckupPanel.items">
-              <div class="ar-change-icon" [style.background]="item.iconBg">{{ item.icon }}</div>
+            <div class="ar-change-item" *ngFor="let item of activePanelData.items">
+              <div class="ar-change-icon" [style.background]="item.iconBg">
+                <svg *ngIf="item.svgKey === 'heart'" width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 13s-5-3.5-5-7a3 3 0 016 0 3 3 0 016 0c0 3.5-5 7-5 7z" fill="rgba(224,126,184,0.7)"/></svg>
+                <svg *ngIf="item.svgKey === 'brain'" width="16" height="16" viewBox="0 0 16 16" fill="none"><ellipse cx="8" cy="8" rx="5" ry="4" stroke="#b57fd4" stroke-width="1.3"/><path d="M5 8c0-1.5 1.3-2 3-2s3 .5 3 2" stroke="#b57fd4" stroke-width="1.2"/></svg>
+                <svg *ngIf="item.svgKey === 'moon'" width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M13 9A6 6 0 017 3a6 6 0 100 10 6 6 0 006-4z" fill="rgba(181,127,212,0.6)"/></svg>
+                <svg *ngIf="item.svgKey === 'leaf'" width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 14C4 14 2 10 2 7c0-3 3-5 6-5 3 0 6 2 6 5s-3 7-6 7z" fill="rgba(109,191,191,0.65)"/></svg>
+                <svg *ngIf="item.svgKey === 'drop'" width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 2C8 2 3 7.5 3 10.5a5 5 0 0010 0C13 7.5 8 2 8 2z" fill="rgba(107,190,190,0.6)"/></svg>
+                <svg *ngIf="item.svgKey === 'doc'" width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="3" y="2" width="10" height="13" rx="1.5" stroke="#6dbfbf" stroke-width="1.3"/><path d="M5 6h6M5 9h4" stroke="#6dbfbf" stroke-width="1.2" stroke-linecap="round"/></svg>
+                <svg *ngIf="item.svgKey === 'scan'" width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="2" y="3" width="12" height="10" rx="1.5" stroke="#5b8fd4" stroke-width="1.3"/><path d="M2 7h12" stroke="#5b8fd4" stroke-width="1.2"/></svg>
+                <svg *ngIf="item.svgKey === 'pill'" width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="3" y="6" width="10" height="5" rx="2.5" stroke="#b57fd4" stroke-width="1.3"/><path d="M8 6v5" stroke="#b57fd4" stroke-width="1.2"/></svg>
+                <svg *ngIf="item.svgKey === 'star'" width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 2l1.5 3.5H13l-2.8 2 1 3.5L8 9l-3.2 2 1-3.5L3 5.5h3.5z" fill="rgba(224,126,184,0.65)"/></svg>
+                <svg *ngIf="item.svgKey === 'clock'" width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="#9b6fc4" stroke-width="1.3"/><path d="M8 5v3.5L10 10" stroke="#9b6fc4" stroke-width="1.3" stroke-linecap="round"/></svg>
+                <svg *ngIf="item.svgKey === 'shield'" width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 2l5 2v4c0 3-5 6-5 6S3 11 3 8V4l5-2z" fill="rgba(91,143,212,0.5)"/></svg>
+                <svg *ngIf="item.svgKey === 'wave'" width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2 8c1-2 2-3 3-3s2 2 3 2 2-2 3-2 2 1 3 3" stroke="#e07eb8" stroke-width="1.4" stroke-linecap="round"/></svg>
+                <svg *ngIf="item.svgKey === 'bag'" width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="3" y="5" width="10" height="9" rx="1.5" stroke="#b57fd4" stroke-width="1.3"/><path d="M5 5V4a3 3 0 016 0v1" stroke="#b57fd4" stroke-width="1.3"/></svg>
+                <svg *ngIf="item.svgKey === 'check'" width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="#6dbfbf" stroke-width="1.3"/><path d="M5 8l2 2 4-4" stroke="#6dbfbf" stroke-width="1.4" stroke-linecap="round"/></svg>
+                <svg *ngIf="item.svgKey === 'chart'" width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 12l3-4 3 2 4-5" stroke="#5b8fd4" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                <svg *ngIf="item.svgKey === 'sun'" width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="3" stroke="#f0a050" stroke-width="1.3"/><path d="M8 2v1M8 13v1M2 8h1M13 8h1M3.5 3.5l.7.7M11.8 11.8l.7.7M3.5 12.5l.7-.7M11.8 4.2l.7-.7" stroke="#f0a050" stroke-width="1.3" stroke-linecap="round"/></svg>
+                <svg *ngIf="item.svgKey === 'person'" width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="5" r="3" stroke="#b57fd4" stroke-width="1.3"/><path d="M3 14c0-2.8 2.2-5 5-5s5 2.2 5 5" stroke="#b57fd4" stroke-width="1.3" stroke-linecap="round"/></svg>
+                <svg *ngIf="item.svgKey === 'hand'" width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 3v6M6 4v5M10 4v5M4 7v2a4 4 0 008 0V7" stroke="#e07eb8" stroke-width="1.3" stroke-linecap="round"/></svg>
+                <svg *ngIf="item.svgKey === 'eye'" width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2 8s2-4 6-4 6 4 6 4-2 4-6 4-6-4-6-4z" stroke="#9b6fc4" stroke-width="1.3"/><circle cx="8" cy="8" r="2" fill="rgba(155,111,196,0.5)"/></svg>
+                <svg *ngIf="item.svgKey === 'ear'" width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M11 7a3 3 0 10-6 0c0 2 1.5 3 1.5 5H8c0-2 3-3 3-5z" stroke="#6dbfbf" stroke-width="1.3"/></svg>
+                <svg *ngIf="item.svgKey === 'bone'" width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 4c0-1.1.9-2 2-2h4a2 2 0 010 4H6A2 2 0 014 4zM4 12c0 1.1.9 2 2 2h4a2 2 0 000-4H6a2 2 0 00-2 2z" fill="rgba(181,127,212,0.45)"/><path d="M7 6v4M9 6v4" stroke="rgba(181,127,212,0.6)" stroke-width="1.2"/></svg>
+                <svg *ngIf="item.svgKey === 'lunch'" width="16" height="16" viewBox="0 0 16 16" fill="none"><ellipse cx="8" cy="10" rx="5" ry="3.5" stroke="#5bba8a" stroke-width="1.3"/><path d="M5 10V7a3 3 0 016 0v3" stroke="#5bba8a" stroke-width="1.3"/></svg>
+                <svg *ngIf="item.svgKey === 'vitamin'" width="16" height="16" viewBox="0 0 16 16" fill="none"><ellipse cx="8" cy="8" rx="4" ry="6" stroke="#f0a050" stroke-width="1.3"/><path d="M8 2v12" stroke="#f0a050" stroke-width="1.2"/></svg>
+                <svg *ngIf="item.svgKey === 'fish'" width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 8c2-3 5-4 7-3l1-2 1 3-2 1c1 2 0 4-2 5C6 13 3 11 3 8z" fill="rgba(107,190,190,0.55)"/></svg>
+                <svg *ngIf="item.svgKey === 'talk'" width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 3h10a1 1 0 011 1v6a1 1 0 01-1 1H6l-3 2V4a1 1 0 011-1z" stroke="#b57fd4" stroke-width="1.3"/></svg>
+                <svg *ngIf="item.svgKey === 'couple'" width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="5" cy="5" r="2.5" stroke="#e07eb8" stroke-width="1.2"/><path d="M1 13c0-2 1.8-3.5 4-3.5s4 1.5 4 3.5" stroke="#e07eb8" stroke-width="1.2" stroke-linecap="round"/><circle cx="11" cy="5" r="2.5" stroke="#b57fd4" stroke-width="1.2"/><path d="M9 13c0-2 .9-3.5 2-3.5" stroke="#b57fd4" stroke-width="1.2" stroke-linecap="round"/></svg>
+                <svg *ngIf="item.svgKey === 'breath'" width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 8c0-2 1.5-4 4-4s4 2 4 4-1.5 4-4 4" stroke="#6dbfbf" stroke-width="1.3" stroke-linecap="round"/><path d="M8 12v2M6 13h4" stroke="#6dbfbf" stroke-width="1.2" stroke-linecap="round"/></svg>
+                <svg *ngIf="item.svgKey === 'bed'" width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2 10V6a2 2 0 012-2h8a2 2 0 012 2v4" stroke="#9b6fc4" stroke-width="1.3"/><path d="M1 10h14v3H1z" fill="rgba(155,111,196,0.3)"/></svg>
+                <svg *ngIf="item.svgKey === 'labor'" width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 2a5 5 0 00-5 5c0 3 2 5 5 7 3-2 5-4 5-7a5 5 0 00-5-5z" stroke="#e07eb8" stroke-width="1.3"/><path d="M8 6v3l2 1" stroke="#e07eb8" stroke-width="1.2" stroke-linecap="round"/></svg>
+                <svg *ngIf="item.svgKey === 'list'" width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M5 5h7M5 8h7M5 11h4" stroke="#5b8fd4" stroke-width="1.3" stroke-linecap="round"/><rect x="2" y="3" width="12" height="11" rx="1.5" stroke="#5b8fd4" stroke-width="1.2"/></svg>
+              </div>
               <div class="ar-change-info">
-                <div class="ar-change-label ar-change-label--medical">{{ item.label }}</div>
+                <div class="ar-change-label" [style.color]="activeArticleData.accentColor">{{ item.label }}</div>
                 <div class="ar-change-desc">{{ item.desc }}</div>
               </div>
             </div>
           </div>
-          <div class="ar-tip-banner ar-tip-banner--medical">
-            <span class="ar-tip-icon">💡</span>
+
+          <div class="ar-tip-banner"
+               [style.background]="activeArticleData.tipBg"
+               [style.border-color]="activeArticleData.tipBorder">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <circle cx="8" cy="8" r="6" [attr.stroke]="activeArticleData.accentColor" stroke-width="1.3"/>
+              <path d="M8 5v4M8 11v1" [attr.stroke]="activeArticleData.accentColor" stroke-width="1.4" stroke-linecap="round"/>
+            </svg>
             <div>
-              <div class="ar-tip-text">{{ activeCheckupPanel.tip.text }}</div>
-              <div class="ar-tip-source">{{ activeCheckupPanel.tip.source }}</div>
+              <div class="ar-tip-text">{{ activePanelData.tip.text }}</div>
+              <div class="ar-tip-source">{{ activePanelData.tip.source }}</div>
             </div>
           </div>
         </div>
@@ -355,7 +408,6 @@
         <div style="height: 40px;"></div>
       </div>
     </ng-container>
-
   </div>
 
 </ion-content>

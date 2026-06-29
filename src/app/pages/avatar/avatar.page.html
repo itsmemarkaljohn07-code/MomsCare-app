@@ -1,0 +1,64 @@
+<!-- avatar.page.html -->
+<ion-content [fullscreen]="true" class="avatar-content">
+
+  <div class="avatar-wrap">
+
+    <!-- Blobs -->
+    <div class="blob blob-top"></div>
+    <div class="blob blob-bottom"></div>
+
+    <!-- ── Header ── -->
+    <div class="avatar-header">
+      <button class="back-btn" (click)="goBack()" aria-label="Back">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+          <path d="M11 4L6 9l5 5" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
+      <h1 class="header-title">Your Avatar</h1>
+      <button class="save-btn" (click)="saveAndGoBack()">Save</button>
+    </div>
+
+    <!-- ── Preview ── -->
+    <div class="preview-area" [class.visible]="animReady">
+      <div class="preview-circle" [style.background]="selectedColor">
+        <span class="preview-emoji">{{ selectedAnimal.emoji }}</span>
+      </div>
+      <p class="preview-name">{{ currentUser.firstName }}</p>
+      <p class="preview-sub">Tap an animal and color to customize</p>
+    </div>
+
+    <!-- ── Color Picker ── -->
+    <div class="section-label" [class.visible]="animReady">Background Color</div>
+    <div class="color-row" [class.visible]="animReady">
+      <button class="color-dot"
+              *ngFor="let c of colors"
+              [style.background]="c"
+              [class.selected]="selectedColor === c"
+              (click)="selectColor(c)"
+              [attr.aria-label]="'Color ' + c">
+        <svg *ngIf="selectedColor === c" width="12" height="12" viewBox="0 0 12 12" fill="none">
+          <path d="M2 6l3 3 5-5" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
+    </div>
+
+    <!-- ── Animal Grid ── -->
+    <div class="section-label" [class.visible]="animReady">Choose Your Avatar</div>
+    <div class="animal-grid" [class.visible]="animReady">
+      <button class="animal-card"
+              *ngFor="let animal of animals"
+              [class.selected]="selectedAnimal.id === animal.id"
+              (click)="selectAnimal(animal)"
+              [attr.aria-label]="animal.name">
+        <div class="animal-inner" [style.background]="selectedAnimal.id === animal.id ? selectedColor : 'rgba(181,127,212,0.08)'">
+          <span class="animal-emoji">{{ animal.emoji }}</span>
+        </div>
+        <span class="animal-name">{{ animal.name }}</span>
+      </button>
+    </div>
+
+    <div style="height: 40px;"></div>
+  </div>
+
+</ion-content>

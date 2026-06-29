@@ -1,6 +1,6 @@
-<!-- splash.page.html -->
-<ion-content [fullscreen]="true" [scrollY]="false" class="splash-content">
-  <div class="splash-container" [class.fade-out]="splashDone">
+<!-- welcome.page.html -->
+<ion-content [fullscreen]="true" class="welcome-content">
+  <div class="welcome-wrap">
 
     <!-- Ambient blobs -->
     <div class="blob blob-1"></div>
@@ -117,29 +117,40 @@
 
     </div><!-- end doodle-layer -->
 
-    <!-- ── Logo ── -->
-    <div class="logo-area">
+    <!-- Top section: branding + illustration -->
+    <div class="welcome-top" [class.visible]="animReady">
+      <div class="brand">
+        <span class="brand-moms">Moms</span><span class="brand-care">Care</span>
+      </div>
+      <p class="brand-tagline">Your pregnancy companion</p>
 
-      <img
-        src="assets/icon/momscares_icon.png"
-        alt="MomsCare Icon"
-        class="brand-icon"
-      />
-
-      <div class="brand-text">
-        <h1 class="app-name">
-          <span class="daily">Moms</span><span class="mom">Care</span>
-        </h1>
-        <p class="tagline">Your pregnancy companion</p>
+      <div class="illustration">
+        <img
+          src="assets/icon/mommy_sketch.png"
+          alt="Pregnant mother illustration"
+          class="illustration-img"
+        />
       </div>
     </div>
 
-    <!-- Loader -->
-    <div class="loader-area">
-      <div class="loader-track">
-        <div class="loader-fill"></div>
-      </div>
-      <p class="loader-text">Loading your journey…</p>
+    <!-- Bottom card -->
+    <div class="welcome-card" [class.visible]="animReady">
+      <h1 class="welcome-heading">Get Started</h1>
+      <p class="welcome-sub">Join thousands of moms on their beautiful journey</p>
+
+      <button class="btn-primary" (click)="onCreateAccount()">
+        Create Account
+      </button>
+
+      <button class="btn-outline" (click)="onLogin()">
+        Log In
+      </button>
+
+      <p class="terms-text">
+        By continuing, you agree to our
+        <a class="terms-link" (click)="onTerms()">Terms</a> &amp;
+        <a class="terms-link" (click)="onPrivacy()">Privacy Policy</a>
+      </p>
     </div>
 
   </div>

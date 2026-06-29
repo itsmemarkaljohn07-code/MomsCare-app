@@ -1,10 +1,9 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
+// profile.page.ts
+import { Component, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { IonicModule } from '@ionic/angular';
-import { ThemeService } from '../../services/theme';
-import { Subscription } from 'rxjs';
 
 @Component({
   selector: 'app-profile',
@@ -13,17 +12,26 @@ import { Subscription } from 'rxjs';
   standalone: true,
   imports: [IonicModule, CommonModule, FormsModule],
 })
-export class ProfilePage implements OnInit, OnDestroy {
+export class ProfilePage implements OnInit {
 
-  darkMode = false;
-  private themeSub!: Subscription;
+  darkMode      = false;
+  pregnancyWeek = 20;
+  dueDate       = new Date('2025-09-15');
 
-  toggleDarkMode(): void {
-    this.theme.toggle();
+  // ── Selected avatar (reads from localStorage) ──
+  get selectedAvatar() {
+    try {
+      const saved = localStorage.getItem('momscare_avatar');
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return { emoji: '🐻', bgColor: '#e07eb8' };
   }
 
-  pregnancyWeek = 20;
-  dueDate = new Date('2025-09-15');
+  // ── Days until due ──
+  get daysUntilDue(): number {
+    const diff = this.dueDate.getTime() - Date.now();
+    return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
+  }
 
   babySizes: Record<number, { emoji: string; fruit: string }> = {
     8:  { emoji: '🫐', fruit: 'blueberry' },
@@ -62,36 +70,13 @@ export class ProfilePage implements OnInit, OnDestroy {
     return '3rd Trimester';
   }
 
-  settingsItems = [
-    { label: 'My Profile',          icon: 'person',   svgPath: null, route: '/profile-edit' },
-    { label: 'Pregnancy Settings',  icon: 'baby',     svgPath: null, route: '/pregnancy-settings' },
-    { label: 'Medical Records',     icon: 'document', svgPath: null, route: '/records' },
-    { label: 'Baby Development',    icon: 'baby',     svgPath: null, route: '/development' },
-    { label: 'Appointments',        icon: 'calendar', svgPath: null, route: '/appointments' },
-    { label: 'App Settings',        icon: 'settings', svgPath: null, route: '/settings' },
-    { label: 'Reminders',           icon: 'bell',     svgPath: null, route: '/reminders' },
-    { label: 'Graphs & Reports',    icon: 'chart',    svgPath: null, route: '/reports' },
-    { label: 'Claim Your Referral', icon: 'gift',     svgPath: null, route: '/referral' },
-    { label: 'About DailyMom',      icon: 'info',     svgPath: null, route: '/about' },
-  ];
+  toggleDarkMode(): void { this.darkMode = !this.darkMode; }
 
-  constructor(private router: Router, private theme: ThemeService) {}
+  constructor(private router: Router) {}
 
-  ngOnInit(): void {
-    this.themeSub = this.theme.isDark$.subscribe((val: boolean) => this.darkMode = val);
-  }
+  ngOnInit(): void {}
 
-  ngOnDestroy(): void {
-    this.themeSub.unsubscribe();
-  }
-
-  navigate(route: string, tab?: string): void {
-    this.router.navigate([route], {
-      queryParams: tab ? { tab } : {}
-    });
-  }
-
-  goBack(): void {
-    console.log('Go back');
+  navigate(route: string): void {
+    this.router.navigate([route]);
   }
 }

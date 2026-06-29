@@ -17,10 +17,12 @@ export class SplashPage implements OnInit {
   constructor(private router: Router) {}
 
   ngOnInit(): void {
-    // Trigger fade-out after 3 s, then navigate to login
+    // Trigger fade-out after 3s, then navigate to welcome
     setTimeout(() => {
       this.splashDone = true;
-      setTimeout(() => this.router.navigate(['/login'], { replaceUrl: true }), 700);
-    }, 3000);
+      setTimeout(() => {
+        this.router.navigate(['/welcome'], { replaceUrl: true });
+      }, 700); // 700ms fade-out animation before navigating
+    }, 3000); // 3s splash display time
   }
 }

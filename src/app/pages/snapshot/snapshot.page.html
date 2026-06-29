@@ -1,0 +1,137 @@
+<!-- snapshot.page.html -->
+<ion-content [fullscreen]="true" class="snapshot-content">
+
+  <div class="snapshot-wrap">
+    <div class="blob blob-top"></div>
+    <div class="blob blob-bottom"></div>
+
+    <!-- Header -->
+    <div class="snap-header">
+      <h1 class="snap-title">Pregnancy Snapshot</h1>
+      <p class="snap-sub">Week {{ pregnancyWeek }} · Your journey in photos</p>
+    </div>
+
+    <!-- Hero illustration -->
+    <div class="snap-hero" [class.visible]="animReady">
+      <div class="snap-hero-circle">
+        <svg width="80" height="80" viewBox="0 0 80 80" fill="none">
+          <circle cx="40" cy="40" r="38" stroke="rgba(224,126,184,0.2)" stroke-width="2" stroke-dasharray="6 4"/>
+          <circle cx="40" cy="32" r="12" fill="rgba(224,126,184,0.15)" stroke="#e07eb8" stroke-width="1.5"/>
+          <rect x="18" y="28" width="44" height="32" rx="6" fill="rgba(181,127,212,0.10)" stroke="#b57fd4" stroke-width="1.5"/>
+          <circle cx="40" cy="44" r="10" fill="rgba(224,126,184,0.12)" stroke="#e07eb8" stroke-width="1.3"/>
+          <path d="M32 48 Q40 38 48 48" stroke="#b57fd4" stroke-width="1.3" stroke-linecap="round" fill="none"/>
+          <circle cx="29" cy="36" r="2" fill="#e07eb8" opacity="0.5"/>
+          <path d="M24 60 Q40 54 56 60" stroke="#b57fd4" stroke-width="1.5" stroke-linecap="round" fill="none"/>
+        </svg>
+      </div>
+      <h2 class="snap-hero-title">Coming Soon 💕</h2>
+      <p class="snap-hero-desc">Capture your beautiful journey — bump selfies, ultrasound images, and pregnancy milestones — all in one place.</p>
+    </div>
+
+    <!-- Feature preview cards -->
+    <div class="snap-features" [class.visible]="animReady">
+
+      <div class="feature-card">
+        <div class="feature-icon" style="background: rgba(224,126,184,0.12);">
+          <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+            <circle cx="11" cy="11" r="4" stroke="#e07eb8" stroke-width="1.6"/>
+            <path d="M2 9V7a2 2 0 012-2h1.5L7 3h8l1.5 2H18a2 2 0 012 2v9a2 2 0 01-2 2H4a2 2 0 01-2-2V9z"
+                  stroke="#e07eb8" stroke-width="1.6" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <div class="feature-text">
+          <p class="feature-title">Bump Selfies</p>
+          <p class="feature-desc">Take and save weekly bump photos to track your beautiful journey</p>
+        </div>
+        <span class="feature-badge">Soon</span>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon" style="background: rgba(181,127,212,0.12);">
+          <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+            <rect x="3" y="5" width="16" height="13" rx="2" stroke="#b57fd4" stroke-width="1.6"/>
+            <path d="M8 5V4a1 1 0 011-1h4a1 1 0 011 1v1" stroke="#b57fd4" stroke-width="1.5"/>
+            <path d="M3 10h16" stroke="#b57fd4" stroke-width="1.4"/>
+            <path d="M8 14h2M12 14h2" stroke="#b57fd4" stroke-width="1.3" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <div class="feature-text">
+          <p class="feature-title">Upload from Gallery</p>
+          <p class="feature-desc">Import existing photos from your device's camera roll</p>
+        </div>
+        <span class="feature-badge">Soon</span>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon" style="background: rgba(109,191,191,0.12);">
+          <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+            <rect x="3" y="3" width="16" height="16" rx="2" stroke="#6dbfbf" stroke-width="1.6"/>
+            <circle cx="11" cy="10" r="3.5" stroke="#6dbfbf" stroke-width="1.4"/>
+            <path d="M6 17c0-2.8 2.2-5 5-5s5 2.2 5 5" stroke="#6dbfbf" stroke-width="1.4" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <div class="feature-text">
+          <p class="feature-title">Ultrasound Images</p>
+          <p class="feature-desc">Store and revisit your precious ultrasound scans</p>
+        </div>
+        <span class="feature-badge">Soon</span>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon" style="background: rgba(217,96,154,0.10);">
+          <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+            <path d="M11 2l2 6h6l-5 4 2 6-5-3.5L6 18l2-6-5-4h6l2-6z"
+                  stroke="#d9609a" stroke-width="1.5" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <div class="feature-text">
+          <p class="feature-title">Milestone Gallery</p>
+          <p class="feature-desc">Organise memories by week and milestone events</p>
+        </div>
+        <span class="feature-badge">Soon</span>
+      </div>
+
+    </div>
+
+    <div style="height: 90px;"></div>
+  </div>
+
+  <!-- Bottom Navigation -->
+  <div class="bottom-nav">
+    <button class="nav-item" (click)="navigate('/home')">
+      <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+        <path d="M3 9.5L11 3L19 9.5V19a1 1 0 01-1 1H4a1 1 0 01-1-1V9.5Z"
+              stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>
+        <path d="M8 20v-6h6v6" stroke="currentColor" stroke-width="1.7"
+              stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <span>Today</span>
+    </button>
+    <button class="nav-item" (click)="navigate('/insights')">
+      <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+        <rect x="3" y="3" width="7" height="7" rx="2" stroke="currentColor" stroke-width="1.7"/>
+        <rect x="12" y="3" width="7" height="7" rx="2" stroke="currentColor" stroke-width="1.7"/>
+        <rect x="3" y="12" width="7" height="7" rx="2" stroke="currentColor" stroke-width="1.7"/>
+        <rect x="12" y="12" width="7" height="7" rx="2" stroke="currentColor" stroke-width="1.7"/>
+      </svg>
+      <span>Insights</span>
+    </button>
+    <button class="nav-item" (click)="navigate('/appointments')">
+      <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+        <path d="M8 9h6M8 13h4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+        <rect x="3" y="4" width="16" height="15" rx="2" stroke="currentColor" stroke-width="1.7"/>
+        <path d="M8 2v3M14 2v3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+      </svg>
+      <span>Appointments</span>
+    </button>
+    <button class="nav-item active">
+      <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+        <circle cx="11" cy="11" r="4" stroke="currentColor" stroke-width="1.7"/>
+        <path d="M2 9V7a2 2 0 012-2h1.5l1.5-2h8l1.5 2H18a2 2 0 012 2v9a2 2 0 01-2 2H4a2 2 0 01-2-2v-7z"
+              stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>
+      </svg>
+      <span>Snapshot</span>
+    </button>
+  </div>
+
+</ion-content>

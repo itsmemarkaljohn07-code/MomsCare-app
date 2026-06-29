@@ -15,19 +15,18 @@ import { FormsModule } from '@angular/forms';
 export class LoginPage implements OnInit {
   animReady = false;
 
-  loginForm = { email: '', password: '' };
+  loginForm    = { email: '', password: '' };
   emailFocused = false;
   passFocused  = false;
   showPass     = false;
   isLoading    = false;
+  rememberMe   = false;
 
-  // ── Validation errors ──────────────────────
   errors = {
     email:    '',
     password: '',
   };
 
-  // ── Touched flags (show error only after user interacts) ──
   touched = {
     email:    false,
     password: false,
@@ -41,7 +40,7 @@ export class LoginPage implements OnInit {
     });
   }
 
-  // ── Validation helpers ─────────────────────
+  // ── Validation ─────────────────────────────
   validateEmail(): void {
     this.touched.email = true;
     if (!this.loginForm.email.trim()) {
@@ -65,7 +64,6 @@ export class LoginPage implements OnInit {
   }
 
   private isFormValid(): boolean {
-    // Mark all as touched so errors show on submit
     this.touched.email    = true;
     this.touched.password = true;
     this.validateEmail();
@@ -73,7 +71,7 @@ export class LoginPage implements OnInit {
     return !this.errors.email && !this.errors.password;
   }
 
-  // ── Sign In ────────────────────────────────
+  // ── Actions ────────────────────────────────
   async onSignIn(): Promise<void> {
     if (!this.isFormValid()) return;
 
@@ -84,8 +82,16 @@ export class LoginPage implements OnInit {
     this.router.navigate(['/home'], { replaceUrl: true });
   }
 
+  onBack(): void {
+    this.router.navigate(['/welcome']);
+  }
+
   onForgot(): void {
     this.router.navigate(['/forgot-password']);
+  }
+
+  onFacebook(): void {
+    console.log('Facebook sign-in');
   }
 
   onGoogle(): void {

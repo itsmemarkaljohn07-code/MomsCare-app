@@ -1,0 +1,274 @@
+<!-- privacy.page.html -->
+<ion-content [fullscreen]="true" class="legal-content">
+
+  <div class="legal-wrap">
+
+    <!-- Blobs -->
+    <div class="blob blob-top"></div>
+    <div class="blob blob-bottom"></div>
+
+    <!-- Header -->
+    <div class="legal-header">
+      <button class="back-btn" (click)="goBack()" aria-label="Back">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+          <path d="M11 4L6 9l5 5" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
+      <div class="header-center">
+        <div class="legal-icon">
+          <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+            <path d="M11 2L4 5v6c0 4.4 3.1 8.5 7 9.5C15 19.5 18 15.4 18 11V5l-7-3z"
+                  stroke="#b57fd4" stroke-width="1.7" stroke-linejoin="round"/>
+            <path d="M8 11l2 2 4-4" stroke="#b57fd4" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <h1 class="legal-title">Privacy Policy</h1>
+        <p class="legal-date">Effective date: June 26, 2026</p>
+      </div>
+    </div>
+
+    <!-- Content -->
+    <div class="legal-body" [class.visible]="animReady">
+
+      <div class="intro-card">
+        <p>At <strong>MomsCare</strong>, your privacy is our highest priority — especially given the sensitive
+        nature of pregnancy and maternal health information. This Privacy Policy explains how we collect,
+        use, store, and protect your personal data.</p>
+      </div>
+
+      <!-- 1 -->
+      <div class="section-block">
+        <div class="section-number">01</div>
+        <h2 class="section-heading">Information We Collect</h2>
+        <p class="section-body">We collect information you provide directly and information generated through your use of
+        the App:</p>
+        <div class="info-grid">
+          <div class="info-card">
+            <div class="info-icon pink">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                <circle cx="8" cy="5" r="3" stroke="#e07eb8" stroke-width="1.3"/>
+                <path d="M3 14c0-2.8 2.2-5 5-5s5 2.2 5 5" stroke="#e07eb8" stroke-width="1.3" stroke-linecap="round"/>
+              </svg>
+            </div>
+            <div>
+              <strong>Account Information</strong>
+              <p>Name, email address, phone number, and password you provide on registration.</p>
+            </div>
+          </div>
+          <div class="info-card">
+            <div class="info-icon purple">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                <path d="M8 2a5 5 0 00-5 5c0 3 2 5 5 7 3-2 5-4 5-7a5 5 0 00-5-5z"
+                      stroke="#b57fd4" stroke-width="1.3"/>
+              </svg>
+            </div>
+            <div>
+              <strong>Health Information</strong>
+              <p>Due date, pregnancy week, LMP date, first-time pregnancy status, and clinic details.</p>
+            </div>
+          </div>
+          <div class="info-card">
+            <div class="info-icon mint">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                <rect x="3" y="2" width="10" height="13" rx="1.5" stroke="#6dbfbf" stroke-width="1.3"/>
+                <path d="M5 6h6M5 9h4" stroke="#6dbfbf" stroke-width="1.2" stroke-linecap="round"/>
+              </svg>
+            </div>
+            <div>
+              <strong>Usage Data</strong>
+              <p>Pages visited, features used, time spent in the App, and interaction patterns.</p>
+            </div>
+          </div>
+          <div class="info-card">
+            <div class="info-icon pink">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                <rect x="2" y="3" width="12" height="10" rx="1.5" stroke="#e07eb8" stroke-width="1.3"/>
+                <path d="M2 7h12" stroke="#e07eb8" stroke-width="1.2"/>
+              </svg>
+            </div>
+            <div>
+              <strong>Device Information</strong>
+              <p>Device type, operating system, app version, and unique device identifiers.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2 -->
+      <div class="section-block">
+        <div class="section-number">02</div>
+        <h2 class="section-heading">How We Use Your Information</h2>
+        <p class="section-body">We use the information we collect to:</p>
+        <ul class="legal-list">
+          <li>Provide and personalise the MomsCare experience for your stage of pregnancy</li>
+          <li>Display accurate week-by-week pregnancy insights and baby development updates</li>
+          <li>Send you appointment reminders and health check notifications</li>
+          <li>Improve and develop new features based on how users interact with the App</li>
+          <li>Ensure the security of your account and detect fraudulent activity</li>
+          <li>Communicate important updates, changes to our policies, or service announcements</li>
+          <li>Comply with applicable legal obligations</li>
+        </ul>
+        <div class="highlight-box">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <circle cx="8" cy="8" r="7" stroke="#b57fd4" stroke-width="1.3"/>
+            <path d="M8 5v4M8 11v.5" stroke="#b57fd4" stroke-width="1.4" stroke-linecap="round"/>
+          </svg>
+          <p>We will <strong>never</strong> sell your personal health information to third parties for
+          advertising or marketing purposes.</p>
+        </div>
+      </div>
+
+      <!-- 3 -->
+      <div class="section-block">
+        <div class="section-number">03</div>
+        <h2 class="section-heading">Sensitive Health Data</h2>
+        <p class="section-body">MomsCare handles sensitive health information with the utmost care. All health-related data
+        you provide — including due dates, pregnancy details, and clinic information — is:</p>
+        <ul class="legal-list">
+          <li>Encrypted in transit using industry-standard TLS/SSL protocols</li>
+          <li>Stored in encrypted databases with access controls limited to essential personnel</li>
+          <li>Never shared with advertisers, data brokers, or marketing platforms</li>
+          <li>Retained only for as long as necessary to provide the service or as required by law</li>
+          <li>Accessible only to you via your authenticated account</li>
+        </ul>
+      </div>
+
+      <!-- 4 -->
+      <div class="section-block">
+        <div class="section-number">04</div>
+        <h2 class="section-heading">Data Sharing</h2>
+        <p class="section-body">We do not sell your personal data. We may share your information only in the following
+        limited circumstances:</p>
+        <ul class="legal-list">
+          <li><strong>Service Providers:</strong> Trusted third-party vendors who assist us in operating
+          the App (e.g., cloud hosting, analytics), bound by strict confidentiality agreements</li>
+          <li><strong>Legal Requirements:</strong> When required to comply with a legal obligation,
+          court order, or government request</li>
+          <li><strong>Safety:</strong> To protect the rights, property, or safety of MomsCare, our users,
+          or the public</li>
+          <li><strong>Business Transfers:</strong> In the event of a merger, acquisition, or sale of
+          assets, with notice provided to you</li>
+        </ul>
+      </div>
+
+      <!-- 5 -->
+      <div class="section-block">
+        <div class="section-number">05</div>
+        <h2 class="section-heading">Cookies and Tracking</h2>
+        <p class="section-body">We use limited analytics tools to understand how users interact with our App. This helps
+        us improve performance and user experience. We do not use third-party advertising cookies or
+        cross-site tracking technologies. You may opt out of analytics collection through your device
+        settings or by contacting us.</p>
+      </div>
+
+      <!-- 6 -->
+      <div class="section-block">
+        <div class="section-number">06</div>
+        <h2 class="section-heading">Data Retention</h2>
+        <p class="section-body">We retain your personal data for as long as your account is active or as needed to provide
+        you with services. If you delete your account:</p>
+        <ul class="legal-list">
+          <li>Your personal profile and health data will be permanently deleted within 30 days</li>
+          <li>Anonymised, aggregated usage data may be retained for service improvement purposes</li>
+          <li>Some data may be retained longer if required by applicable law</li>
+          <li>You may request data export before deletion by contacting support</li>
+        </ul>
+      </div>
+
+      <!-- 7 -->
+      <div class="section-block">
+        <div class="section-number">07</div>
+        <h2 class="section-heading">Your Rights</h2>
+        <p class="section-body">Depending on your jurisdiction, you may have the following rights regarding your
+        personal data:</p>
+        <ul class="legal-list">
+          <li><strong>Access:</strong> Request a copy of the personal data we hold about you</li>
+          <li><strong>Correction:</strong> Request correction of inaccurate or incomplete data</li>
+          <li><strong>Deletion:</strong> Request deletion of your personal data ("right to be forgotten")</li>
+          <li><strong>Portability:</strong> Request your data in a structured, machine-readable format</li>
+          <li><strong>Restriction:</strong> Request that we limit how we process your data</li>
+          <li><strong>Objection:</strong> Object to our processing of your data in certain circumstances</li>
+          <li><strong>Withdrawal of Consent:</strong> Withdraw consent at any time for consent-based processing</li>
+        </ul>
+        <p class="section-body">To exercise any of these rights, please contact us at <strong>support&#64;momscare.app</strong>.
+        We will respond within 30 days.</p>
+      </div>
+
+      <!-- 8 -->
+      <div class="section-block">
+        <div class="section-number">08</div>
+        <h2 class="section-heading">Children's Privacy</h2>
+        <p class="section-body">MomsCare is intended for adults aged 18 and older. We do not knowingly collect personal
+        information from anyone under the age of 18. If we become aware that we have collected data from
+        a minor without parental consent, we will take steps to delete that information promptly. If you
+        believe a minor has provided us with personal data, please contact us immediately.</p>
+      </div>
+
+      <!-- 9 -->
+      <div class="section-block">
+        <div class="section-number">09</div>
+        <h2 class="section-heading">Security</h2>
+        <p class="section-body">We implement industry-standard security measures to protect your data, including:</p>
+        <ul class="legal-list">
+          <li>End-to-end encryption for data in transit (TLS 1.3)</li>
+          <li>AES-256 encryption for data at rest</li>
+          <li>Regular security audits and penetration testing</li>
+          <li>Multi-factor authentication support for your account</li>
+          <li>Role-based access controls for our internal teams</li>
+        </ul>
+        <p class="section-body">While we take every precaution, no method of transmission over the internet is 100%
+        secure. We encourage you to use a strong, unique password and enable any available
+        security features on your account.</p>
+      </div>
+
+      <!-- 10 -->
+      <div class="section-block">
+        <div class="section-number">10</div>
+        <h2 class="section-heading">Changes to This Policy</h2>
+        <p class="section-body">We may update this Privacy Policy from time to time to reflect changes in our practices,
+        technology, or legal requirements. When we make significant changes, we will notify you through
+        the App or by email. The date at the top of this page reflects the most recent update. We
+        encourage you to review this Policy periodically.</p>
+      </div>
+
+      <!-- 11 -->
+      <div class="section-block">
+        <div class="section-number">11</div>
+        <h2 class="section-heading">Contact &amp; Data Controller</h2>
+        <p class="section-body">If you have any questions, concerns, or requests regarding this Privacy Policy or your
+        personal data, please contact us:</p>
+        <div class="contact-card">
+          <div class="contact-row">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+              <rect x="2" y="3" width="12" height="10" rx="1.5" stroke="#e07eb8" stroke-width="1.3"/>
+              <path d="M2 5l6 4 6-4" stroke="#e07eb8" stroke-width="1.2"/>
+            </svg>
+            <span>privacy&#64;momscare.app</span>
+          </div>
+          <div class="contact-row">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+              <circle cx="8" cy="7" r="4" stroke="#b57fd4" stroke-width="1.3"/>
+              <path d="M8 11v4" stroke="#b57fd4" stroke-width="1.3" stroke-linecap="round"/>
+            </svg>
+            <span>www.momscare.app/privacy</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="legal-footer">
+        <p>© 2026 MomsCare. All rights reserved.</p>
+        <p>This Privacy Policy was last updated on June 26, 2026.</p>
+      </div>
+
+    </div><!-- end legal-body -->
+
+    <!-- Agree button (when opened from signup) -->
+    <div class="bottom-action" *ngIf="fromSignup">
+      <button class="agree-btn agree-btn--purple" (click)="goBack()">
+        I Have Read &amp; Understood
+      </button>
+    </div>
+
+  </div>
+</ion-content>

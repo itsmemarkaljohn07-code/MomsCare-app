@@ -2,31 +2,30 @@
 <ion-content [fullscreen]="true" class="login-content">
   <div class="login-wrap">
 
+    <!-- Gradient blobs -->
     <div class="blob blob-top"></div>
     <div class="blob blob-bottom"></div>
 
-    <!-- Header -->
-    <div class="header-area" [class.visible]="animReady">
-      <div class="avatar-ring">
-        <div class="avatar-inner">
-          <img
-            src="/assets/icon/dailymom_icon.png"
-            alt="DailyMom Icon"
-            class="brand-icon"
-          />
-        </div>
+    <!-- Gradient hero area (replaces old icon + brand) -->
+    <div class="hero-area" [class.visible]="animReady">
+      <div class="back-btn" (click)="onBack()">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+          <path d="M12.5 15L7.5 10L12.5 5" stroke="white" stroke-width="1.8"
+                stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span>Back</span>
       </div>
 
-      <div class="brand">
-        <span class="brand-daily">Moms</span><span class="brand-mom">Care</span>
+      <div class="hero-text">
+        <h1 class="hero-title">Welcome Back 👋</h1>
+        <p class="hero-sub">Sign in to continue your journey</p>
       </div>
-      <p class="brand-sub">Your pregnancy companion</p>
     </div>
 
-    <!-- Card -->
+    <!-- Login card anchored to bottom -->
     <div class="card" [class.visible]="animReady">
-      <h2 class="card-title">Welcome back 👋</h2>
-      <p class="card-sub">Sign in to continue your journey</p>
+      <h2 class="card-title">Sign In</h2>
+      <p class="card-sub">Enter your credentials below</p>
 
       <!-- Email -->
       <div class="field-group"
@@ -54,7 +53,6 @@
             placeholder="your@email.com"
           />
         </div>
-        <!-- Error message -->
         <div class="field-error-row" *ngIf="touched.email && errors.email">
           <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
             <circle cx="6" cy="6" r="5.5" stroke="#e05580" stroke-width="1.2"/>
@@ -106,7 +104,6 @@
             </svg>
           </button>
         </div>
-        <!-- Error message -->
         <div class="field-error-row" *ngIf="touched.password && errors.password">
           <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
             <circle cx="6" cy="6" r="5.5" stroke="#e05580" stroke-width="1.2"/>
@@ -117,10 +114,21 @@
         </div>
       </div>
 
-      <div class="forgot-row">
+      <!-- Remember me + Forgot password -->
+      <div class="options-row">
+        <label class="remember-label">
+          <input
+            type="checkbox"
+            class="remember-checkbox"
+            [(ngModel)]="rememberMe"
+          />
+          <span class="remember-custom"></span>
+          <span class="remember-text">Remember me</span>
+        </label>
         <a class="forgot-link" (click)="onForgot()">Forgot password?</a>
       </div>
 
+      <!-- Sign In button -->
       <button
         class="btn-signin"
         [class.loading]="isLoading"
@@ -133,9 +141,17 @@
         </span>
       </button>
 
-      <div class="divider"><span>or continue with</span></div>
+      <!-- Divider -->
+      <div class="divider"><span>or sign in with</span></div>
 
+      <!-- Social login -->
       <div class="social-row">
+        <button class="social-btn" (click)="onFacebook()">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="#1877F2">
+            <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+          </svg>
+          Facebook
+        </button>
         <button class="social-btn" (click)="onGoogle()">
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
             <path d="M15.5 8.2c0-.6-.05-1.2-.16-1.7H8v3.2h4.2c-.18 1-.73 1.85-1.56 2.42v2h2.52c1.47-1.36 2.34-3.36 2.34-5.92Z" fill="#4285F4"/>
@@ -147,18 +163,19 @@
         </button>
         <button class="social-btn" (click)="onApple()">
           <svg width="14" height="17" viewBox="0 0 14 17" fill="none">
-            <path d="M11.8 9c0-2.4 2-3.6 2.1-3.7C12.5 3.4 11 3.2 10.4 3.2c-1.4-.1-2.7.8-3.4.8-.7 0-1.8-.8-3-.8C2.4 3.2.4 4.6.4 7.6c0 1.8.7 3.7 1.6 5 .8 1.1 1.5 2 2.6 2 1 0 1.4-.7 2.7-.7s1.7.7 2.7.7c1.1 0 1.8-1 2.5-2 .5-.6.8-1.3 1-2C10.1 9.7 11.8 7.6 11.8 9Z"
-                  fill="#3d2252"/>
+            <path d="M11.8 9c0-2.4 2-3.6 2.1-3.7C12.5 3.4 11 3.2 10.4 3.2c-1.4-.1-2.7.8-3.4.8-.7 0-1.8-.8-3-.8C2.4 3.2.4 4.6.4 7.6c0 1.8.7 3.7 1.6 5 .8 1.1 1.5 2 2.6 2 1 0 1.4-.7 2.7-.7s1.7.7 2.7.7c1.1 0 1.8-1 2.5-2 .5-.6.8-1.3 1-2C10.1 9.7 11.8 7.6 11.8 9Z" fill="#3d2252"/>
             <path d="M9.5 1.5C9.6.4 8.7-.7 7.5-1c-.1 1.1.8 2.2 2 2.5Z" fill="#3d2252"/>
           </svg>
           Apple
         </button>
       </div>
+
+      <!-- Register link -->
+      <p class="register-row">
+        New to MomsCare?
+        <a class="register-link" (click)="onRegister()">Create account</a>
+      </p>
     </div>
 
-    <p class="register-row" [class.visible]="animReady">
-      New to DailyMom?
-      <a class="register-link" (click)="onRegister()">Create account</a>
-    </p>
   </div>
 </ion-content>

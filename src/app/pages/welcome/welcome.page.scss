@@ -1,0 +1,297 @@
+/* welcome.page.scss */
+
+:host {
+  --bg-grad-start: #f0a8d0;
+  --bg-grad-mid:   #c9a8e8;
+  --bg-grad-end:   #aab8f0;
+  --pink:          #e07eb8;
+  --purple:        #b57fd4;
+  --mint:          #7acfcf;
+  --text-dark:     #3d2252;
+  --text-muted:    #9e7ab5;
+  --card-bg:       #ffffff;
+  --shadow-card:   0 -8px 40px rgba(181, 127, 212, 0.18);
+}
+
+.welcome-content {
+  --background: linear-gradient(160deg, var(--bg-grad-start) 0%, var(--bg-grad-mid) 50%, var(--bg-grad-end) 100%);
+}
+
+.welcome-wrap {
+  position: relative;
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  overflow: hidden;
+}
+
+/* ── Ambient blobs (match splash exactly) ── */
+.blob {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+}
+.blob-1 {
+  width: 300px; height: 300px;
+  background: rgba(216,155,210,.32); filter: blur(65px);
+  top: -90px; left: -80px;
+  animation: blobDrift 9s ease-in-out infinite alternate;
+}
+.blob-2 {
+  width: 250px; height: 250px;
+  background: rgba(177,213,230,.36); filter: blur(60px);
+  bottom: 40px; right: -70px;
+  animation: blobDrift 12s ease-in-out infinite alternate-reverse;
+}
+.blob-3 {
+  width: 200px; height: 200px;
+  background: rgba(255,190,210,.28); filter: blur(55px);
+  top: 50%; left: 55%;
+  animation: blobDrift 10s ease-in-out infinite alternate;
+}
+@keyframes blobDrift {
+  from { transform: translate(0, 0) scale(1); }
+  to   { transform: translate(20px, 24px) scale(1.1); }
+}
+
+/* ══════════════════════════════
+   DOODLE LAYER (identical to splash)
+══════════════════════════════ */
+.doodle-layer {
+  position: absolute; inset: 0;
+  pointer-events: none; overflow: hidden; z-index: 1;
+}
+
+.doodle {
+  position: absolute;
+  opacity: 0;
+  animation: doodlePop 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+.blob, .doodle {
+  transform: translateZ(0);
+  will-change: transform;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+@keyframes doodlePop {
+  from { opacity: 0; transform: scale(0) rotate(-15deg); }
+  to   { opacity: 1; transform: scale(1) rotate(0deg); }
+}
+@keyframes starTwinkle {
+  0%,100% { opacity: 0.6; transform: scale(1); }
+  50%      { opacity: 1;   transform: scale(1.25); }
+}
+@keyframes doodleFloat {
+  0%,100% { transform: translateY(0) rotate(0deg); }
+  50%      { transform: translateY(-7px) rotate(4deg); }
+}
+@keyframes doodleSway {
+  0%,100% { transform: rotate(-5deg); }
+  50%      { transform: rotate(5deg); }
+}
+@keyframes cloudDrift {
+  0%,100% { transform: translateX(0); }
+  50%      { transform: translateX(8px); }
+}
+
+.star-1 { top: 48px;     left: 28px;   animation: doodlePop .7s cubic-bezier(.34,1.56,.64,1) .3s forwards, starTwinkle 2.1s ease-in-out 1.2s infinite; }
+.star-2 { top: 62px;     right: 36px;  animation: doodlePop .7s cubic-bezier(.34,1.56,.64,1) .8s forwards, starTwinkle 2.8s ease-in-out 1.6s infinite; }
+.star-3 { bottom: 280px; left: 22px;   animation: doodlePop .7s cubic-bezier(.34,1.56,.64,1) 1.2s forwards, starTwinkle 3.1s ease-in-out 2s infinite; }
+.star-4 { bottom: 320px; right: 24px;  animation: doodlePop .7s cubic-bezier(.34,1.56,.64,1) .5s forwards, starTwinkle 2.4s ease-in-out 1.3s infinite; }
+.star-5 { top: 38%;      left: 14px;   animation: doodlePop .7s cubic-bezier(.34,1.56,.64,1) 1.6s forwards, starTwinkle 3.5s ease-in-out 2.4s infinite; }
+.star-6 { top: 35%;      right: 16px;  animation: doodlePop .7s cubic-bezier(.34,1.56,.64,1) .9s forwards, starTwinkle 2.7s ease-in-out 1.7s infinite; }
+
+.heart-1 { top: 110px;    left: 44px;   animation: doodlePop .7s cubic-bezier(.34,1.56,.64,1) .4s forwards, doodleFloat 3.4s ease-in-out 1.2s infinite; }
+.heart-2 { top: 95px;     right: 50px;  animation: doodlePop .7s cubic-bezier(.34,1.56,.64,1) 1s   forwards, doodleFloat 4.1s ease-in-out 1.8s infinite; }
+.heart-3 { bottom: 370px; left: 36px;   animation: doodlePop .7s cubic-bezier(.34,1.56,.64,1) .7s  forwards, doodleFloat 3.7s ease-in-out 1.5s infinite; }
+.heart-4 { bottom: 400px; right: 38px;  animation: doodlePop .7s cubic-bezier(.34,1.56,.64,1) 1.3s forwards, doodleFloat 4.4s ease-in-out 2.1s infinite; }
+
+.flower-1 {
+  top: 160px; left: 18px;
+  transform-origin: bottom center;
+  animation: doodlePop .7s cubic-bezier(.34,1.56,.64,1) .6s forwards, doodleSway 4s ease-in-out 1.4s infinite;
+}
+.flower-2 {
+  top: 140px; right: 20px;
+  transform-origin: bottom center;
+  animation: doodlePop .7s cubic-bezier(.34,1.56,.64,1) 1.4s forwards, doodleSway 5s ease-in-out 2.2s infinite;
+}
+
+.arc-1 { top: 24px;     left: 60px;   opacity: 0; animation: doodlePop .5s ease .9s forwards; }
+.arc-2 { bottom: 250px; right: 18px;  opacity: 0; animation: doodlePop .5s ease 1.1s forwards; }
+.arc-3 { bottom: 340px; left: 10px;   opacity: 0; animation: doodlePop .5s ease 1.3s forwards; }
+
+.bottle   { top: 290px; right: 18px; animation: doodlePop .7s cubic-bezier(.34,1.56,.64,1) 2s   forwards, doodleFloat 5s   ease-in-out 2.8s infinite; }
+.pacifier { top: 310px; left: 20px;  animation: doodlePop .7s cubic-bezier(.34,1.56,.64,1) 1.8s forwards, doodleFloat 4.6s ease-in-out 2.6s infinite; }
+
+.cloud-1 { top: 200px; left: 8px;    animation: doodlePop .7s cubic-bezier(.34,1.56,.64,1) 2.5s forwards, cloudDrift 6s ease-in-out 3.3s infinite; }
+.cloud-2 { top: 195px; right: 10px;  animation: doodlePop .7s cubic-bezier(.34,1.56,.64,1) 3s   forwards, cloudDrift 7s ease-in-out 3.8s infinite; }
+
+.leaf-bl { bottom: 0; left: 0;  animation: doodlePop .6s ease .2s forwards; }
+.leaf-tr { top: 0;    right: 0; animation: doodlePop .6s ease .2s forwards; }
+
+/* ── Top section ── */
+.welcome-top {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 72px;
+  flex: 1;
+  z-index: 2;
+  gap: 8px;
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity 0.7s ease 0.1s, transform 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) 0.1s;
+
+  &.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ── Brand title — SAME as splash: "Moms" white, "Care" gradient ── */
+.brand {
+  font-size: 2.7rem;
+  font-weight: 900;
+  font-family: 'Nunito', 'Poppins', sans-serif;
+  letter-spacing: -0.5px;
+  line-height: 1;
+  animation: logoReveal 0.95s cubic-bezier(0.34, 1.56, 0.64, 1) 0.4s both;
+}
+
+@keyframes logoReveal {
+  from { opacity: 0; transform: translateY(28px) scale(.87); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.brand-moms {
+  color: #ffffff;
+}
+
+.brand-care {
+  /* Gradient text — matches splash .mom exactly */
+  background: linear-gradient(135deg, #e07eb8, #b57fd4);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.brand-tagline {
+  font-size: 0.88rem;
+  color: rgba(255, 255, 255, 0.80);
+  font-family: 'Nunito', 'Poppins', sans-serif;
+  margin: 0;
+  letter-spacing: 0.4px;
+  animation: fadeUp .7s ease 1.2s both;
+}
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.illustration {
+  margin-top: 24px;
+  animation: floatAnim 4s ease-in-out infinite;
+  z-index: 2;
+}
+.illustration-img {
+  width: 260px;
+  height: 300px;
+  object-fit: contain;
+  filter: drop-shadow(0 8px 28px rgba(181, 127, 212, 0.35));
+}
+@keyframes floatAnim {
+  0%, 100% { transform: translateY(0); }
+  50%       { transform: translateY(-10px); }
+}
+
+/* ── Bottom card ── */
+.welcome-card {
+  width: 100%;
+  background: var(--card-bg);
+  border-radius: 32px 32px 0 0;
+  padding: 32px 24px 40px;
+  box-shadow: var(--shadow-card);
+  z-index: 2;
+  opacity: 0;
+  transform: translateY(40px);
+  transition: opacity 0.7s ease 0.25s, transform 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) 0.25s;
+
+  &.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.welcome-heading {
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: var(--text-dark);
+  font-family: 'Nunito', 'Poppins', sans-serif;
+  margin: 0 0 6px;
+}
+.welcome-sub {
+  font-size: 0.88rem;
+  color: var(--text-muted);
+  font-family: 'Nunito', 'Poppins', sans-serif;
+  margin: 0 0 28px;
+  line-height: 1.5;
+}
+
+/* ── Buttons ── */
+.btn-primary {
+  display: block; width: 100%; height: 54px;
+  border: none; border-radius: 16px;
+  background: linear-gradient(135deg, #e07eb8 0%, #b57fd4 60%, #7acfcf 100%);
+  background-size: 200% 200%;
+  color: white; font-size: 1rem; font-weight: 700;
+  font-family: 'Nunito', 'Poppins', sans-serif;
+  letter-spacing: 0.4px; cursor: pointer;
+  box-shadow: 0 8px 24px rgba(224, 126, 184, 0.38);
+  animation: gradientShift 4s ease infinite;
+  transition: transform 0.18s, box-shadow 0.18s;
+  margin-bottom: 14px;
+
+  &:active { transform: scale(0.97); }
+  &:not(:disabled):hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 32px rgba(224, 126, 184, 0.50);
+  }
+}
+.btn-outline {
+  display: block; width: 100%; height: 54px;
+  border: 2px solid var(--purple); border-radius: 16px;
+  background: transparent; color: var(--purple);
+  font-size: 1rem; font-weight: 700;
+  font-family: 'Nunito', 'Poppins', sans-serif;
+  letter-spacing: 0.4px; cursor: pointer;
+  transition: background 0.2s, color 0.2s, transform 0.18s;
+  margin-bottom: 24px;
+
+  &:active { transform: scale(0.97); }
+  &:hover {
+    background: rgba(181, 127, 212, 0.08);
+    transform: translateY(-1px);
+  }
+}
+@keyframes gradientShift {
+  0%, 100% { background-position: 0% 50%; }
+  50%       { background-position: 100% 50%; }
+}
+
+/* ── Terms ── */
+.terms-text {
+  font-size: 0.75rem; color: var(--text-muted);
+  font-family: 'Nunito', 'Poppins', sans-serif;
+  text-align: center; line-height: 1.5; margin: 0;
+}
+.terms-link {
+  color: var(--pink); font-weight: 700;
+  cursor: pointer; text-decoration: none;
+  &:hover { text-decoration: underline; }
+}

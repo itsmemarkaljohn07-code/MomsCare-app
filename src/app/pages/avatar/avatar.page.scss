@@ -9,6 +9,21 @@
   --bg:     #fdf0f7;
 }
 
+/* ── Dark theme overrides ── */
+ion-content[data-theme="dark"] {
+  --bg:     #1a0f24;
+  --dark:   #f0e4fa;
+  --muted:  #a888c4;
+  --background: var(--bg);
+
+  .blob-top    { background: rgba(180, 80, 160, 0.16); }
+  .blob-bottom { background: rgba(80, 140, 180, 0.13); }
+  .avatar-header { background: rgba(26, 15, 36, 0.95); border-color: rgba(181,127,212,0.18); }
+  .back-btn       { background: rgba(45, 25, 65, 0.85); border-color: rgba(181,127,212,0.22); color: var(--dark); }
+  .preview-circle { box-shadow: 0 8px 30px rgba(0,0,0,0.4); }
+  .animal-inner   { background: rgba(255,255,255,0.06); }
+}
+
 .avatar-content { --background: var(--bg); }
 
 .avatar-wrap {

@@ -4,6 +4,7 @@ import { Router } from '@angular/router';
 import { IonicModule } from '@ionic/angular';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { AuthService } from '../../services/auth.service';
 
 @Component({
   selector: 'app-login',
@@ -25,6 +26,7 @@ export class LoginPage implements OnInit {
   errors = {
     email:    '',
     password: '',
+    general:  '',
   };
 
   touched = {
@@ -32,7 +34,10 @@ export class LoginPage implements OnInit {
     password: false,
   };
 
-  constructor(private router: Router) {}
+  constructor(
+    private router: Router,
+    private authService: AuthService
+  ) {}
 
   ngOnInit(): void {
     requestAnimationFrame(() => {
@@ -40,7 +45,7 @@ export class LoginPage implements OnInit {
     });
   }
 
-  // ── Validation ─────────────────────────────
+  // ── Validation ─────────────────────────────────
   validateEmail(): void {
     this.touched.email = true;
     if (!this.loginForm.email.trim()) {
@@ -71,38 +76,46 @@ export class LoginPage implements OnInit {
     return !this.errors.email && !this.errors.password;
   }
 
-  // ── Actions ────────────────────────────────
+  // ── Sign In with Firebase ──────────────────────
   async onSignIn(): Promise<void> {
     if (!this.isFormValid()) return;
 
-    this.isLoading = true;
-    // TODO: replace with real auth service call
-    await new Promise(r => setTimeout(r, 1800));
-    this.isLoading = false;
-    this.router.navigate(['/home'], { replaceUrl: true });
+    this.isLoading    = true;
+    this.errors.general = '';
+
+    try {
+      await this.authService.login(
+        this.loginForm.email.trim(),
+        this.loginForm.password
+      );
+      // Login successful — navigate to home
+      this.router.navigate(['/home'], { replaceUrl: true });
+    } catch (err: any) {
+      // Map Firebase error codes to friendly messages
+      switch (err.code) {
+        case 'auth/user-not-found':
+        case 'auth/wrong-password':
+        case 'auth/invalid-credential':
+          this.errors.general = 'Incorrect email or password. Please try again.';
+          break;
+        case 'auth/user-disabled':
+          this.errors.general = 'This account has been disabled.';
+          break;
+        case 'auth/too-many-requests':
+          this.errors.general = 'Too many attempts. Please try again later.';
+          break;
+        default:
+          this.errors.general = 'Login failed. Please check your connection and try again.';
+      }
+    } finally {
+      this.isLoading = false;
+    }
   }
 
-  onBack(): void {
-    this.router.navigate(['/welcome']);
-  }
-
-  onForgot(): void {
-    this.router.navigate(['/forgot-password']);
-  }
-
-  onFacebook(): void {
-    console.log('Facebook sign-in');
-  }
-
-  onGoogle(): void {
-    console.log('Google sign-in');
-  }
-
-  onApple(): void {
-    console.log('Apple sign-in');
-  }
-
-  onRegister(): void {
-    this.router.navigate(['/signup']);
-  }
+  onBack(): void    { this.router.navigate(['/welcome']); }
+  onForgot(): void  { this.router.navigate(['/forgot-password']); }
+  onRegister(): void { this.router.navigate(['/signup']); }
+  onFacebook(): void { console.log('Facebook sign-in'); }
+  onGoogle(): void   { console.log('Google sign-in'); }
+  onApple(): void    { console.log('Apple sign-in'); }
 }

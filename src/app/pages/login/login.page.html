@@ -128,6 +128,15 @@
         <a class="forgot-link" (click)="onForgot()">Forgot password?</a>
       </div>
 
+      <!-- Firebase general error -->
+      <div class="general-error" *ngIf="errors.general">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+          <circle cx="7" cy="7" r="6" stroke="#e05580" stroke-width="1.3"/>
+          <path d="M7 4v4M7 9.5v.5" stroke="#e05580" stroke-width="1.3" stroke-linecap="round"/>
+        </svg>
+        {{ errors.general }}
+      </div>
+
       <!-- Sign In button -->
       <button
         class="btn-signin"

@@ -1,0 +1,104 @@
+<!-- records.page.html -->
+<ion-content [fullscreen]="true" [attr.data-theme]="darkMode ? 'dark' : 'light'">
+  <div class="page-wrap">
+    <div class="blob blob-top"></div>
+    <div class="blob blob-bottom"></div>
+
+    <div class="page-header">
+      <button class="back-btn" (click)="goBack()">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+          <path d="M11 4L6 9l5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+      </button>
+      <div class="page-header-text">
+        <h1 class="page-title">Medical Records</h1>
+        <p class="page-sub">{{ records.length }} document{{ records.length !== 1 ? 's' : '' }} stored</p>
+      </div>
+      <button class="add-btn" (click)="openUpload()">+ Add</button>
+    </div>
+
+    <div class="content-body" [class.visible]="animReady">
+
+      <!-- Upload modal -->
+      <div class="modal-overlay" *ngIf="showUpload" (click)="closeUpload()">
+        <div class="modal-sheet" (click)="$event.stopPropagation()">
+          <div class="modal-handle"></div>
+          <h3 class="modal-title">Add Medical Record</h3>
+          <div class="field-group">
+            <label class="field-label">Document Type</label>
+            <select class="field-select" [(ngModel)]="draft.type">
+              <option *ngFor="let t of docTypes" [value]="t.value">{{ t.label }}</option>
+            </select>
+          </div>
+          <div class="field-group">
+            <label class="field-label">Document Name</label>
+            <input class="field-input" [(ngModel)]="draft.name" placeholder="e.g. Blood Test Results — June 2026"/>
+          </div>
+          <div class="field-group">
+            <label class="field-label">Date</label>
+            <input class="field-input" type="date" [(ngModel)]="draft.date"/>
+          </div>
+          <div class="field-group">
+            <label class="field-label">Notes (optional)</label>
+            <textarea class="field-textarea" [(ngModel)]="draft.notes" placeholder="Add any notes…" rows="3"></textarea>
+          </div>
+          <div class="upload-file-area" (click)="pickFile()">
+            <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+              <path d="M14 4v14M8 10l6-6 6 6" stroke="#b57fd4" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M4 20v2a2 2 0 002 2h16a2 2 0 002-2v-2" stroke="#b57fd4" stroke-width="1.8" stroke-linecap="round"/>
+            </svg>
+            <p>{{ draft.fileName || 'Tap to attach a file or image' }}</p>
+          </div>
+          <button class="btn-primary" (click)="addRecord()">Save Record</button>
+        </div>
+      </div>
+
+      <!-- Filter tabs -->
+      <div class="filter-row">
+        <button class="filter-chip" *ngFor="let f of filters"
+                [class.active]="activeFilter === f.value"
+                (click)="activeFilter = f.value">{{ f.label }}</button>
+      </div>
+
+      <!-- Empty state -->
+      <div class="empty-state" *ngIf="filteredRecords.length === 0">
+        <svg width="52" height="52" viewBox="0 0 52 52" fill="none">
+          <rect x="8" y="4" width="36" height="44" rx="4" stroke="rgba(181,127,212,0.3)" stroke-width="2"/>
+          <path d="M16 16h20M16 24h20M16 32h12" stroke="rgba(181,127,212,0.3)" stroke-width="1.8" stroke-linecap="round"/>
+        </svg>
+        <p class="empty-title">No records yet</p>
+        <p class="empty-sub">Tap "+ Add" to upload your first medical document</p>
+      </div>
+
+      <!-- Records list -->
+      <div class="records-list" *ngIf="filteredRecords.length > 0">
+        <div class="record-card" *ngFor="let r of filteredRecords">
+          <div class="record-icon-wrap" [class]="'type-' + r.type">
+            <span class="record-type-icon">{{ typeIcon(r.type) }}</span>
+          </div>
+          <div class="record-info">
+            <p class="record-name">{{ r.name }}</p>
+            <p class="record-meta">{{ r.date | date:'MMM d, yyyy' }} · <span class="tag pink">{{ typeLabel(r.type) }}</span></p>
+            <p class="record-notes" *ngIf="r.notes">{{ r.notes }}</p>
+          </div>
+          <button class="record-delete" (click)="deleteRecord(r.id)" aria-label="Delete">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <path d="M2 4h10M5 4V3a1 1 0 011-1h2a1 1 0 011 1v1M11 4l-.8 7.2A1 1 0 019.2 12H4.8a1 1 0 01-1-.8L3 4"
+                    stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Provider note -->
+      <div class="provider-note">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+          <path d="M9 2L3 5v5c0 4 2.7 7.7 6 9 3.3-1.3 6-5 6-9V5L9 2z" fill="rgba(109,191,191,0.15)" stroke="#6dbfbf" stroke-width="1.4"/>
+          <path d="M6 9l2 2 4-4" stroke="#6dbfbf" stroke-width="1.3" stroke-linecap="round"/>
+        </svg>
+        <p>Records will be securely shareable with your healthcare provider in a future update.</p>
+      </div>
+
+    </div>
+  </div>
+</ion-content>

@@ -1,94 +1,399 @@
 <!-- snapshot.page.html -->
-<ion-content [fullscreen]="true" class="snapshot-content">
+<ion-content [fullscreen]="true" class="snapshot-content" [attr.data-theme]="darkMode ? 'dark' : 'light'">
 
+  <!-- ══════════════════════════════════════════
+       PHOTO VIEWER OVERLAY
+  ══════════════════════════════════════════ -->
+  <div class="photo-overlay" *ngIf="viewingPhoto" (click)="closePhoto()">
+    <div class="photo-overlay-inner" (click)="$event.stopPropagation()">
+      <button class="overlay-close" (click)="closePhoto()">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+          <path d="M3 3l10 10M13 3L3 13" stroke="white" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+      </button>
+      <img [src]="viewingPhoto.imageUrl" class="overlay-img" [alt]="viewingPhoto.caption"/>
+      <div class="overlay-meta">
+        <div class="overlay-tags">
+          <span class="overlay-week">Week {{ viewingPhoto.week }}</span>
+          <span class="overlay-type">{{ typeLabels[viewingPhoto.type] }}</span>
+        </div>
+        <p class="overlay-caption" *ngIf="viewingPhoto.caption">{{ viewingPhoto.caption }}</p>
+        <p class="overlay-date">{{ viewingPhoto.date | date:'MMMM d, yyyy · h:mm a' }}</p>
+        <button class="overlay-delete" (click)="deletePhoto(viewingPhoto.id)">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+            <path d="M2 4h10M5 4V3a1 1 0 011-1h2a1 1 0 011 1v1M11 4l-.8 7.2A1 1 0 019.2 12H4.8a1 1 0 01-1-.8L3 4"
+                  stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+          </svg>
+          Delete Photo
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       HEALTH LOG MODAL
+  ══════════════════════════════════════════ -->
+  <div class="modal-overlay" *ngIf="showHealthForm" (click)="closeHealthForm()">
+    <div class="modal-sheet" (click)="$event.stopPropagation()">
+      <div class="modal-handle"></div>
+      <div class="modal-header">
+        <h3 class="modal-title">Log Health Data</h3>
+        <p class="modal-sub">{{ today | date:'MMMM d, yyyy' }}</p>
+      </div>
+
+      <!-- Weight -->
+      <div class="input-group" [class.active]="activeField === 'weight'">
+        <div class="input-label-row">
+          <span class="input-ico">⚖️</span>
+          <label class="input-label">Weight</label>
+        </div>
+        <div class="input-row">
+          <input class="health-input" type="number" step="0.1"
+                 [(ngModel)]="healthDraft.weight"
+                 (focus)="activeField='weight'" (blur)="activeField=''"
+                 placeholder="e.g. 62.4"/>
+          <span class="input-unit">kg</span>
+        </div>
+      </div>
+
+      <!-- Blood Pressure -->
+      <div class="input-group" [class.active]="activeField === 'bp'">
+        <div class="input-label-row">
+          <span class="input-ico">❤️</span>
+          <label class="input-label">Blood Pressure</label>
+        </div>
+        <div class="input-row">
+          <input class="health-input bp-input" type="number"
+                 [(ngModel)]="healthDraft.bpSys"
+                 (focus)="activeField='bp'" (blur)="activeField=''"
+                 placeholder="120" maxlength="3"/>
+          <span class="bp-slash">/</span>
+          <input class="health-input bp-input" type="number"
+                 [(ngModel)]="healthDraft.bpDia"
+                 (focus)="activeField='bp'" (blur)="activeField=''"
+                 placeholder="80" maxlength="3"/>
+          <span class="input-unit">mmHg</span>
+        </div>
+        <p class="input-hint">Systolic / Diastolic</p>
+      </div>
+
+      <!-- Fetal Kicks -->
+      <div class="input-group" [class.active]="activeField === 'kicks'">
+        <div class="input-label-row">
+          <span class="input-ico">👣</span>
+          <label class="input-label">Fetal Kicks Today</label>
+        </div>
+        <div class="kick-counter">
+          <button class="kick-btn minus" (click)="adjustKicks(-1)">−</button>
+          <div class="kick-display">
+            <span class="kick-num">{{ healthDraft.kicks }}</span>
+            <span class="kick-unit">kicks</span>
+          </div>
+          <button class="kick-btn plus" (click)="adjustKicks(1)">+</button>
+        </div>
+        <p class="input-hint">Tap + each time you feel a movement</p>
+      </div>
+
+      <!-- Mood -->
+      <div class="input-group">
+        <div class="input-label-row">
+          <span class="input-ico">🌟</span>
+          <label class="input-label">How are you feeling?</label>
+        </div>
+        <div class="mood-row">
+          <button class="mood-btn"
+                  *ngFor="let m of moodLabels; let i = index"
+                  [class.selected]="healthDraft.mood === i"
+                  (click)="setMood(i)">
+            <span class="mood-emoji">{{ m }}</span>
+            <span class="mood-name">{{ moodNames[i] }}</span>
+          </button>
+        </div>
+      </div>
+
+      <button class="modal-save-btn" (click)="saveHealth()">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+          <path d="M3 8h10M9 4l4 4-4 4" stroke="white" stroke-width="1.8"
+                stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        Save Health Data
+      </button>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       MAIN CONTENT
+  ══════════════════════════════════════════ -->
   <div class="snapshot-wrap">
+
     <div class="blob blob-top"></div>
     <div class="blob blob-bottom"></div>
 
-    <!-- Header -->
-    <div class="snap-header">
-      <h1 class="snap-title">Pregnancy Snapshot</h1>
-      <p class="snap-sub">Week {{ pregnancyWeek }} · Your journey in photos</p>
+    <!-- ── Header ── -->
+    <div class="snap-header" [class.visible]="animReady">
+      <div class="snap-header-text">
+        <h1 class="snap-title">Pregnancy Snapshot</h1>
+        <p class="snap-sub">Week {{ pregnancyWeek }} · Your journey in photos &amp; health</p>
+      </div>
     </div>
 
-    <!-- Hero illustration -->
-    <div class="snap-hero" [class.visible]="animReady">
-      <div class="snap-hero-circle">
-        <svg width="80" height="80" viewBox="0 0 80 80" fill="none">
-          <circle cx="40" cy="40" r="38" stroke="rgba(224,126,184,0.2)" stroke-width="2" stroke-dasharray="6 4"/>
-          <circle cx="40" cy="32" r="12" fill="rgba(224,126,184,0.15)" stroke="#e07eb8" stroke-width="1.5"/>
-          <rect x="18" y="28" width="44" height="32" rx="6" fill="rgba(181,127,212,0.10)" stroke="#b57fd4" stroke-width="1.5"/>
-          <circle cx="40" cy="44" r="10" fill="rgba(224,126,184,0.12)" stroke="#e07eb8" stroke-width="1.3"/>
-          <path d="M32 48 Q40 38 48 48" stroke="#b57fd4" stroke-width="1.3" stroke-linecap="round" fill="none"/>
-          <circle cx="29" cy="36" r="2" fill="#e07eb8" opacity="0.5"/>
-          <path d="M24 60 Q40 54 56 60" stroke="#b57fd4" stroke-width="1.5" stroke-linecap="round" fill="none"/>
+    <!-- ── Tab Switcher ── -->
+    <div class="tab-row" [class.visible]="animReady">
+      <button class="tab-btn" [class.active]="activeTab === 'gallery'"
+              (click)="activeTab = 'gallery'">
+        <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
+          <rect x="1" y="1" width="6" height="6" rx="1.5" stroke="currentColor" stroke-width="1.4"/>
+          <rect x="9" y="1" width="6" height="6" rx="1.5" stroke="currentColor" stroke-width="1.4"/>
+          <rect x="1" y="9" width="6" height="6" rx="1.5" stroke="currentColor" stroke-width="1.4"/>
+          <rect x="9" y="9" width="6" height="6" rx="1.5" stroke="currentColor" stroke-width="1.4"/>
         </svg>
-      </div>
-      <h2 class="snap-hero-title">Coming Soon 💕</h2>
-      <p class="snap-hero-desc">Capture your beautiful journey — bump selfies, ultrasound images, and pregnancy milestones — all in one place.</p>
+        Photo Gallery
+      </button>
+      <button class="tab-btn" [class.active]="activeTab === 'health'"
+              (click)="activeTab = 'health'">
+        <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
+          <path d="M8 13s-5-3.5-5-7a3 3 0 016 0 3 3 0 016 0c0 3.5-5 7-5 7z"
+                stroke="currentColor" stroke-width="1.4"/>
+        </svg>
+        Health Tracker
+      </button>
     </div>
 
-    <!-- Feature preview cards -->
-    <div class="snap-features" [class.visible]="animReady">
+    <!-- ════════════════════════════════════════
+         GALLERY TAB
+    ════════════════════════════════════════ -->
+    <div *ngIf="activeTab === 'gallery'" class="tab-content">
 
-      <div class="feature-card">
-        <div class="feature-icon" style="background: rgba(224,126,184,0.12);">
-          <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
-            <circle cx="11" cy="11" r="4" stroke="#e07eb8" stroke-width="1.6"/>
-            <path d="M2 9V7a2 2 0 012-2h1.5L7 3h8l1.5 2H18a2 2 0 012 2v9a2 2 0 01-2 2H4a2 2 0 01-2-2V9z"
-                  stroke="#e07eb8" stroke-width="1.6" stroke-linejoin="round"/>
-          </svg>
+      <!-- Upload card -->
+      <div class="upload-card" [class.visible]="animReady">
+        <p class="upload-label">Add a New Photo</p>
+
+        <!-- Photo type selector -->
+        <div class="type-row">
+          <button class="type-chip"
+                  *ngFor="let t of photoTypes"
+                  [class.selected]="selectedType === t"
+                  (click)="selectedType = t">
+            {{ typeLabels[t] }}
+          </button>
         </div>
-        <div class="feature-text">
-          <p class="feature-title">Bump Selfies</p>
-          <p class="feature-desc">Take and save weekly bump photos to track your beautiful journey</p>
+
+        <!-- Caption -->
+        <div class="caption-wrap">
+          <input class="caption-input"
+                 [(ngModel)]="captionDraft"
+                 placeholder="Add a caption (optional)…"
+                 maxlength="80"/>
         </div>
-        <span class="feature-badge">Soon</span>
+
+        <!-- Upload buttons -->
+        <div class="upload-btns">
+          <button class="upload-btn upload-btn--camera" (click)="openCamera()" [disabled]="isUploadingPhoto">
+            <svg width="18" height="18" viewBox="0 0 22 22" fill="none">
+              <circle cx="11" cy="12" r="4" stroke="currentColor" stroke-width="1.7"/>
+              <path d="M2 9V8a2 2 0 012-2h1.5L7 4h8l1.5 2H18a2 2 0 012 2v10a2 2 0 01-2 2H4a2 2 0 01-2-2V9z"
+                    stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>
+            </svg>
+            Take Photo
+          </button>
+          <button class="upload-btn upload-btn--gallery" (click)="openFilePicker()" [disabled]="isUploadingPhoto">
+            <svg width="18" height="18" viewBox="0 0 22 22" fill="none">
+              <rect x="3" y="3" width="16" height="16" rx="2" stroke="currentColor" stroke-width="1.7"/>
+              <circle cx="8" cy="8" r="2" stroke="currentColor" stroke-width="1.5"/>
+              <path d="M3 15l4-4 3 3 3-3 4 5" stroke="currentColor" stroke-width="1.5"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            From Gallery
+          </button>
+        </div>
+
+        <!-- Upload status -->
+        <p class="upload-status" *ngIf="isUploadingPhoto">Uploading photo…</p>
+        <p class="upload-status upload-status--error" *ngIf="uploadError">{{ uploadError }}</p>
       </div>
 
-      <div class="feature-card">
-        <div class="feature-icon" style="background: rgba(181,127,212,0.12);">
-          <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
-            <rect x="3" y="5" width="16" height="13" rx="2" stroke="#b57fd4" stroke-width="1.6"/>
-            <path d="M8 5V4a1 1 0 011-1h4a1 1 0 011 1v1" stroke="#b57fd4" stroke-width="1.5"/>
-            <path d="M3 10h16" stroke="#b57fd4" stroke-width="1.4"/>
-            <path d="M8 14h2M12 14h2" stroke="#b57fd4" stroke-width="1.3" stroke-linecap="round"/>
+      <!-- Empty state -->
+      <div class="gallery-empty" *ngIf="photos.length === 0" [class.visible]="animReady">
+        <div class="gallery-empty-icon">
+          <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+            <rect x="4" y="8" width="40" height="32" rx="5" stroke="rgba(181,127,212,0.35)" stroke-width="2"/>
+            <circle cx="16" cy="18" r="4" stroke="rgba(224,126,184,0.4)" stroke-width="1.8"/>
+            <path d="M4 32l10-10 8 8 6-6 10 12" stroke="rgba(181,127,212,0.3)" stroke-width="1.8"
+                  stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
         </div>
-        <div class="feature-text">
-          <p class="feature-title">Upload from Gallery</p>
-          <p class="feature-desc">Import existing photos from your device's camera roll</p>
-        </div>
-        <span class="feature-badge">Soon</span>
+        <p class="gallery-empty-title">No photos yet</p>
+        <p class="gallery-empty-sub">Take your first bump photo or upload from your gallery to start your pregnancy timeline</p>
       </div>
 
-      <div class="feature-card">
-        <div class="feature-icon" style="background: rgba(109,191,191,0.12);">
-          <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
-            <rect x="3" y="3" width="16" height="16" rx="2" stroke="#6dbfbf" stroke-width="1.6"/>
-            <circle cx="11" cy="10" r="3.5" stroke="#6dbfbf" stroke-width="1.4"/>
-            <path d="M6 17c0-2.8 2.2-5 5-5s5 2.2 5 5" stroke="#6dbfbf" stroke-width="1.4" stroke-linecap="round"/>
-          </svg>
+      <!-- Photo timeline grouped by week -->
+      <div class="timeline" *ngIf="photos.length > 0" [class.visible]="animReady">
+        <div class="timeline-group" *ngFor="let group of groupedPhotos">
+          <div class="timeline-week-label">
+            <div class="week-pill">Week {{ group.week }}</div>
+            <div class="week-line"></div>
+          </div>
+          <div class="photo-grid">
+            <div class="photo-thumb" *ngFor="let photo of group.items"
+                 (click)="openPhoto(photo)">
+              <img [src]="photo.imageUrl" [alt]="photo.caption || 'Snapshot'" class="thumb-img"/>
+              <div class="thumb-overlay">
+                <span class="thumb-type">{{ typeLabels[photo.type] }}</span>
+              </div>
+              <div class="thumb-caption" *ngIf="photo.caption">{{ photo.caption }}</div>
+            </div>
+          </div>
         </div>
-        <div class="feature-text">
-          <p class="feature-title">Ultrasound Images</p>
-          <p class="feature-desc">Store and revisit your precious ultrasound scans</p>
-        </div>
-        <span class="feature-badge">Soon</span>
       </div>
 
-      <div class="feature-card">
-        <div class="feature-icon" style="background: rgba(217,96,154,0.10);">
-          <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
-            <path d="M11 2l2 6h6l-5 4 2 6-5-3.5L6 18l2-6-5-4h6l2-6z"
-                  stroke="#d9609a" stroke-width="1.5" stroke-linejoin="round"/>
+    </div>
+
+    <!-- ════════════════════════════════════════
+         HEALTH TRACKER TAB
+    ════════════════════════════════════════ -->
+    <div *ngIf="activeTab === 'health'" class="tab-content">
+
+      <!-- Log button -->
+      <div class="health-log-header" [class.visible]="animReady">
+        <div>
+          <p class="health-log-title">Today's Health</p>
+          <p class="health-log-sub">Last updated {{ health.date | date:'MMM d · h:mm a' }}</p>
+        </div>
+        <button class="log-btn" (click)="openHealthForm()">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+            <path d="M7 2v10M2 7h10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+          Update
+        </button>
+      </div>
+
+      <!-- Health metric cards -->
+      <div class="health-cards" [class.visible]="animReady">
+
+        <!-- Blood Pressure -->
+        <div class="hcard hcard--bp">
+          <div class="hcard-top">
+            <div class="hcard-icon-wrap">
+              <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                <path d="M9 15s-6-4-6-8a4 4 0 018 0 4 4 0 018 0c0 4-6 8-6 8z"
+                      fill="rgba(224,126,184,0.2)" stroke="#e07eb8" stroke-width="1.4"/>
+              </svg>
+            </div>
+            <span class="hcard-label">Blood Pressure</span>
+          </div>
+          <p class="hcard-val">{{ bpDisplay }}</p>
+          <p class="hcard-unit">mmHg · Systolic / Diastolic</p>
+          <div class="hcard-status" [class.normal]="health.bpSys < 130">
+            {{ health.bpSys < 130 ? '✓ Normal range' : '⚠ Check with midwife' }}
+          </div>
+        </div>
+
+        <!-- Weight -->
+        <div class="hcard hcard--weight">
+          <div class="hcard-top">
+            <div class="hcard-icon-wrap purple">
+              <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                <rect x="2" y="6" width="14" height="10" rx="2" stroke="#b57fd4" stroke-width="1.4"/>
+                <path d="M6 6V5a3 3 0 016 0v1" stroke="#b57fd4" stroke-width="1.4"/>
+                <path d="M9 10v2M8 11h2" stroke="#b57fd4" stroke-width="1.3" stroke-linecap="round"/>
+              </svg>
+            </div>
+            <span class="hcard-label">Weight</span>
+          </div>
+          <p class="hcard-val">{{ health.weight }}<span class="hcard-val-unit">kg</span></p>
+          <div class="hcard-bar-wrap">
+            <div class="hcard-bar-track">
+              <div class="hcard-bar-fill"
+                   [style.width.%]="Math.min(100, (health.weight / 100) * 100)"></div>
+            </div>
+          </div>
+          <p class="hcard-unit">Tap update to log new weight</p>
+        </div>
+
+        <!-- Fetal Kicks -->
+        <div class="hcard hcard--kicks">
+          <div class="hcard-top">
+            <div class="hcard-icon-wrap mint">
+              <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                <ellipse cx="9" cy="10" rx="5" ry="6" stroke="#6dbfbf" stroke-width="1.4"/>
+                <circle cx="9" cy="6" r="2" stroke="#6dbfbf" stroke-width="1.3"/>
+                <path d="M6 13l1.5-2M12 13l-1.5-2" stroke="#6dbfbf" stroke-width="1.2"
+                      stroke-linecap="round"/>
+              </svg>
+            </div>
+            <span class="hcard-label">Fetal Kicks</span>
+          </div>
+          <p class="hcard-val">{{ health.kicks }}<span class="hcard-val-unit">today</span></p>
+          <div class="kick-dots-wrap">
+            <span class="kick-dot-sm"
+                  *ngFor="let k of kickDots; let i = index"
+                  [class.filled]="i < health.kicks"></span>
+          </div>
+          <p class="hcard-unit">{{ health.kicks >= 10 ? '✓ Good movement today' : 'Keep counting movements' }}</p>
+        </div>
+
+        <!-- Mood -->
+        <div class="hcard hcard--mood">
+          <div class="hcard-top">
+            <div class="hcard-icon-wrap rose">
+              <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                <circle cx="9" cy="9" r="7" stroke="#d9609a" stroke-width="1.4"/>
+                <path d="M6 10.5c0 1.7 1.3 3 3 3s3-1.3 3-3" stroke="#d9609a" stroke-width="1.3"
+                      stroke-linecap="round"/>
+                <circle cx="6.5" cy="7.5" r="1" fill="#d9609a"/>
+                <circle cx="11.5" cy="7.5" r="1" fill="#d9609a"/>
+              </svg>
+            </div>
+            <span class="hcard-label">Mood</span>
+          </div>
+          <p class="hcard-mood-emoji">{{ moodEmoji }}</p>
+          <p class="hcard-mood-name">{{ moodName }}</p>
+          <div class="mood-dots">
+            <span class="mood-dot"
+                  *ngFor="let m of moodLabels; let i = index"
+                  [class.active]="i === health.mood"
+                  (click)="health.mood = i; saveHealth()"></span>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Health history -->
+      <div class="history-section" [class.visible]="animReady" *ngIf="healthHistory.length > 1">
+        <p class="history-title">Recent Logs</p>
+        <div class="history-list">
+          <div class="history-row" *ngFor="let log of healthHistory.slice(1, 8)">
+            <div class="history-date">
+              <span class="history-day">{{ log.date | date:'d' }}</span>
+              <span class="history-month">{{ log.date | date:'MMM' }}</span>
+            </div>
+            <div class="history-divider">
+              <div class="history-dot"></div>
+              <div class="history-line"></div>
+            </div>
+            <div class="history-values">
+              <span class="history-chip">⚖️ {{ log.weight }}kg</span>
+              <span class="history-chip">❤️ {{ log.bpSys }}/{{ log.bpDia }}</span>
+              <span class="history-chip">👣 {{ log.kicks }}</span>
+              <span class="history-chip">{{ moodLabels[log.mood] }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Healthcare note -->
+      <div class="provider-note" [class.visible]="animReady">
+        <div class="provider-note-icon">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+            <path d="M10 2L4 5v5c0 4 2.7 7.7 6 9 3.3-1.3 6-5 6-9V5L10 2z"
+                  fill="rgba(109,191,191,0.15)" stroke="#6dbfbf" stroke-width="1.5"/>
+            <path d="M7 10l2 2 4-4" stroke="#6dbfbf" stroke-width="1.4" stroke-linecap="round"/>
           </svg>
         </div>
-        <div class="feature-text">
-          <p class="feature-title">Milestone Gallery</p>
-          <p class="feature-desc">Organise memories by week and milestone events</p>
+        <div class="provider-note-text">
+          <p class="provider-note-title">Healthcare Provider Access</p>
+          <p class="provider-note-desc">Your health data and photos will be securely shareable with your healthcare provider in a future update.</p>
         </div>
-        <span class="feature-badge">Soon</span>
       </div>
 
     </div>
@@ -96,7 +401,9 @@
     <div style="height: 90px;"></div>
   </div>
 
-  <!-- Bottom Navigation -->
+  <!-- ══════════════════════════════════════════
+       BOTTOM NAVIGATION
+  ══════════════════════════════════════════ -->
   <div class="bottom-nav">
     <button class="nav-item" (click)="navigate('/home')">
       <svg width="22" height="22" viewBox="0 0 22 22" fill="none">

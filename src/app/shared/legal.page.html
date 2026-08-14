@@ -1,0 +1,129 @@
+<ion-content class="legal-content" [attr.data-theme]="isDark ? 'dark' : 'light'">
+  <div class="legal-wrap">
+    <div class="blob blob-top"></div>
+    <div class="blob blob-bottom"></div>
+
+    <!-- Header -->
+    <div class="legal-header">
+      <button class="back-btn" (click)="goBack()">
+        <ion-icon name="arrow-back-outline"></ion-icon>
+      </button>
+      <div class="header-center">
+        <div class="legal-icon">
+          <ion-icon name="document-text-outline" style="font-size: 22px; color: var(--dark);"></ion-icon>
+        </div>
+        <h1 class="legal-title">Terms &amp; Privacy</h1>
+        <p class="legal-date">Last updated: July 2026</p>
+      </div>
+    </div>
+
+    <!-- Body -->
+    <div class="legal-body" [class.visible]="bodyVisible">
+
+      <div class="intro-card">
+        Welcome to <strong>MomsCare</strong>. This page explains the terms for using our pregnancy tracking app,
+        and how we collect, store, and protect your personal and health information.
+      </div>
+
+      <!-- ============ TERMS OF SERVICE ============ -->
+
+      <div class="section-block">
+        <span class="section-number">TERMS 01</span>
+        <h2 class="section-heading">Acceptance of Terms</h2>
+        <p class="section-body">
+          By creating an account and using MomsCare, you agree to these Terms of Service and our Privacy Policy.
+          If you don't agree, please don't use the app.
+        </p>
+      </div>
+
+      <div class="section-block">
+        <span class="section-number">TERMS 02</span>
+        <h2 class="section-heading">Account Responsibilities</h2>
+        <p class="section-body">
+          You're responsible for keeping your login credentials secure and for all activity under your account.
+        </p>
+        <ul class="legal-list">
+          <li><strong>Accurate info:</strong> Please provide correct details when registering.</li>
+          <li><strong>OTP verification:</strong> Email verification is required to activate your account.</li>
+          <li><strong>One account per user:</strong> Please don't create duplicate accounts.</li>
+        </ul>
+      </div>
+
+      <div class="section-block">
+        <span class="section-number">TERMS 03</span>
+        <h2 class="section-heading">Medical Disclaimer</h2>
+        <div class="highlight-box">
+          <ion-icon name="information-circle-outline" style="font-size:20px; color: var(--purple);"></ion-icon>
+          <p><strong>MomsCare is not a substitute for professional medical advice.</strong> Always consult your doctor or midwife for medical decisions.</p>
+        </div>
+      </div>
+
+      <!-- ============ PRIVACY POLICY ============ -->
+
+      <div class="section-block">
+        <span class="section-number">PRIVACY 01</span>
+        <h2 class="section-heading">Information We Collect</h2>
+        <div class="info-grid">
+          <div class="info-card">
+            <div class="info-icon pink">
+              <ion-icon name="document-text-outline" style="color: var(--pink); font-size: 16px;"></ion-icon>
+            </div>
+            <strong>Account Data</strong>
+            <p>Name, email, and password (encrypted).</p>
+          </div>
+          <div class="info-card">
+            <div class="info-icon purple">
+              <ion-icon name="shield-checkmark-outline" style="color: var(--purple); font-size: 16px;"></ion-icon>
+            </div>
+            <strong>Pregnancy Data</strong>
+            <p>Due date, milestones, and tracked symptoms.</p>
+          </div>
+          <div class="info-card">
+            <div class="info-icon mint">
+              <ion-icon name="lock-closed-outline" style="color: var(--mint); font-size: 16px;"></ion-icon>
+            </div>
+            <strong>Appointments</strong>
+            <p>Dates and notes you add for checkups.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="section-block">
+        <span class="section-number">PRIVACY 02</span>
+        <h2 class="section-heading">How We Protect Your Data</h2>
+        <p class="section-body">
+          Your data is stored securely on <strong>Firebase Firestore</strong>, protected by authenticated access
+          rules. We never sell your personal or health information to third parties.
+        </p>
+      </div>
+
+      <div class="section-block">
+        <span class="section-number">PRIVACY 03</span>
+        <h2 class="section-heading">Your Rights</h2>
+        <ul class="legal-list">
+          <li><strong>Access:</strong> You can view your stored data anytime in your profile.</li>
+          <li><strong>Correction:</strong> You can update your info in Profile Settings.</li>
+          <li><strong>Deletion:</strong> You may request account deletion at any time.</li>
+        </ul>
+
+        <div class="contact-card">
+          <div class="contact-row">
+            <ion-icon name="mail-outline" style="font-size:18px; color: var(--pink);"></ion-icon>
+            support&#64;momscare.app
+          </div>
+        </div>
+      </div>
+
+      <div class="legal-footer">
+        <p>By tapping "I Agree" below, you confirm you've read and accepted both our Terms of Service and Privacy Policy.</p>
+      </div>
+    </div>
+
+    <!-- Bottom action -->
+    <div class="bottom-action">
+      <button class="agree-btn" (click)="onAgree()">
+        I Agree &amp; Continue
+      </button>
+    </div>
+  </div>
+</ion-content>

@@ -422,3 +422,15 @@
   text-decoration: none;
   &:hover { text-decoration: underline; }
 }
+
+/* ── Firebase general error ── */
+.general-error {
+  display: flex; align-items: center; gap: 8px;
+  background: rgba(224, 85, 128, 0.08);
+  border: 1px solid rgba(224, 85, 128, 0.22);
+  border-radius: 12px; padding: 10px 14px;
+  margin-bottom: 12px;
+  font-size: 0.78rem; font-weight: 700; color: #e05580;
+  font-family: 'Nunito', 'Poppins', sans-serif;
+  line-height: 1.4;
+}

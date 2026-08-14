@@ -77,8 +77,15 @@ ion-card, ion-item, ion-list {
 }
 
 body.dark {
-  --ion-background-color: #121212;
-  --ion-text-color: #ffffff;
-  --ion-card-background: #1e1e1e;
-  --ion-item-background: #1e1e1e;
+  --ion-background-color: #1a0f24;
+  --ion-text-color: #f0e4fa;
+  --ion-card-background: #2d1941;
+  --ion-item-background: #2d1941;
+  --ion-toolbar-background: #1a0f24;
+  --ion-tab-bar-background: #1a0f24;
+ 
+  ion-content {
+    --background: #1a0f24;
+    --color: #f0e4fa;
+  }
 }

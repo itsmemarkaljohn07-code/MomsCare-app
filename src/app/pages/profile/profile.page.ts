@@ -1,9 +1,12 @@
 // profile.page.ts
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { IonicModule } from '@ionic/angular';
+import { AuthService } from '../../services/auth.service';
+import { ThemeService } from '../../services/theme';
+import { Subscription } from 'rxjs';
 
 @Component({
   selector: 'app-profile',
@@ -12,11 +15,13 @@ import { IonicModule } from '@ionic/angular';
   standalone: true,
   imports: [IonicModule, CommonModule, FormsModule],
 })
-export class ProfilePage implements OnInit {
+export class ProfilePage implements OnInit, OnDestroy {
 
   darkMode      = false;
   pregnancyWeek = 20;
   dueDate       = new Date('2025-09-15');
+
+  private themeSub!: Subscription;
 
   // ── Selected avatar (reads from localStorage) ──
   get selectedAvatar() {
@@ -70,11 +75,30 @@ export class ProfilePage implements OnInit {
     return '3rd Trimester';
   }
 
-  toggleDarkMode(): void { this.darkMode = !this.darkMode; }
+  toggleDarkMode(): void {
+    this.theme.toggle();
+  }
 
-  constructor(private router: Router) {}
+  async signOut(): Promise<void> {
+    try {
+      await this.authService.logout();
+    } catch {}
+    this.router.navigate(['/welcome'], { replaceUrl: true });
+  }
 
-  ngOnInit(): void {}
+  constructor(
+    private router: Router,
+    private theme: ThemeService,
+    private authService: AuthService
+  ) {}
+
+  ngOnInit(): void {
+    this.themeSub = this.theme.isDark$.subscribe(val => (this.darkMode = val));
+  }
+
+  ngOnDestroy(): void {
+    this.themeSub?.unsubscribe();
+  }
 
   navigate(route: string): void {
     this.router.navigate([route]);

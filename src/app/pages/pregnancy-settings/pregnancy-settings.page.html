@@ -1,0 +1,124 @@
+<!-- pregnancy-settings.page.html -->
+<ion-content [fullscreen]="true" [attr.data-theme]="darkMode ? 'dark' : 'light'">
+  <div class="page-wrap">
+    <div class="blob blob-top"></div>
+    <div class="blob blob-bottom"></div>
+
+    <div class="page-header">
+      <button class="back-btn" (click)="goBack()">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+          <path d="M11 4L6 9l5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+      </button>
+      <div class="page-header-text">
+        <h1 class="page-title">Pregnancy Settings</h1>
+        <p class="page-sub">Tracking, notifications &amp; preferences</p>
+      </div>
+    </div>
+
+    <div class="content-body" [class.visible]="animReady">
+
+      <!-- Current status card -->
+      <div class="status-card">
+        <div class="status-row">
+          <div class="status-item">
+            <span class="status-val">{{ settings.pregnancyWeek }}</span>
+            <span class="status-lbl">Current Week</span>
+          </div>
+          <div class="status-divider"></div>
+          <div class="status-item">
+            <span class="status-val">{{ 40 - settings.pregnancyWeek }}</span>
+            <span class="status-lbl">Weeks Left</span>
+          </div>
+          <div class="status-divider"></div>
+          <div class="status-item">
+            <span class="status-val">{{ trimester }}</span>
+            <span class="status-lbl">Trimester</span>
+          </div>
+        </div>
+        <div class="progress-bar-wrap">
+          <div class="progress-bar-fill" [style.width.%]="pregnancyProgress"></div>
+        </div>
+        <p class="progress-label">{{ pregnancyProgress }}% of pregnancy complete</p>
+      </div>
+
+      <!-- Pregnancy dates -->
+      <p class="section-label">Pregnancy Dates</p>
+      <div class="card">
+        <div class="field-group">
+          <label class="field-label">Current Pregnancy Week</label>
+          <div class="week-stepper">
+            <button class="stepper-btn" (click)="adjustWeek(-1)">−</button>
+            <span class="stepper-val">Week {{ settings.pregnancyWeek }}</span>
+            <button class="stepper-btn plus" (click)="adjustWeek(1)">+</button>
+          </div>
+        </div>
+        <div class="field-group">
+          <label class="field-label">Expected Due Date</label>
+          <input class="field-input" type="date" [(ngModel)]="settings.dueDate"/>
+        </div>
+        <div class="field-group">
+          <label class="field-label">Last Menstrual Period (LMP)</label>
+          <input class="field-input" type="date" [(ngModel)]="settings.lmpDate"/>
+        </div>
+        <div class="field-group">
+          <label class="field-label">Calculation Method</label>
+          <select class="field-select" [(ngModel)]="settings.calcMethod">
+            <option value="lmp">Last Menstrual Period (LMP)</option>
+            <option value="ultrasound">Ultrasound Dating</option>
+            <option value="ivf">IVF / Transfer Date</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Notifications -->
+      <p class="section-label">Notifications</p>
+      <div class="card">
+        <div class="toggle-row" *ngFor="let n of notifToggles">
+          <div class="toggle-info">
+            <p class="toggle-title">{{ n.label }}</p>
+            <p class="toggle-sub">{{ n.desc }}</p>
+          </div>
+          <button class="mini-toggle" (click)="n.on = !n.on">
+            <div class="mini-toggle-track" [class.on]="n.on">
+              <div class="mini-toggle-thumb"></div>
+            </div>
+          </button>
+        </div>
+      </div>
+
+      <!-- Preferences -->
+      <p class="section-label">Preferences</p>
+      <div class="card">
+        <div class="field-group">
+          <label class="field-label">Weight Unit</label>
+          <select class="field-select" [(ngModel)]="settings.weightUnit">
+            <option value="kg">Kilograms (kg)</option>
+            <option value="lbs">Pounds (lbs)</option>
+          </select>
+        </div>
+        <div class="field-group">
+          <label class="field-label">Kick Count Reminder Time</label>
+          <input class="field-input" type="time" [(ngModel)]="settings.kickReminderTime"/>
+        </div>
+        <div class="field-group">
+          <label class="field-label">Clinic / Hospital</label>
+          <input class="field-input" [(ngModel)]="settings.clinic" placeholder="Your clinic name"/>
+        </div>
+        <div class="field-group">
+          <label class="field-label">High-Risk Pregnancy</label>
+          <select class="field-select" [(ngModel)]="settings.highRisk">
+            <option value="no">No</option>
+            <option value="yes">Yes — monitoring closely</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="btn-wrap">
+        <button class="btn-primary" (click)="saveSettings()">Save Settings</button>
+      </div>
+      <div class="toast" *ngIf="showToast">✓ Settings saved</div>
+
+    </div>
+  </div>
+</ion-content>

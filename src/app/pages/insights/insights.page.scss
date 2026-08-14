@@ -64,6 +64,10 @@ ion-content[data-theme="dark"] {
   .ar-tip-source { color: #a888c4; }
   .ar-divider { background: rgba(181, 127, 212, 0.12); }
   .ar-disclaimer { color: #a888c4; }
+  .ar-citation { background: rgba(181,127,212,0.08); border-color: rgba(181,127,212,0.20); }
+  .ar-citation-source { color: #f0e4fa; }
+  .ar-yt-btn { background: rgba(255,0,0,0.08); border-color: rgba(255,0,0,0.20); }
+  .ar-yt-icon { background: rgba(30,10,30,0.9); }
   .ar-back-btn { background: rgba(45, 25, 65, 0.92); color: #f0e4fa; }
 }
 
@@ -211,7 +215,7 @@ ion-content[data-theme="dark"] {
   display: flex; flex-direction: column; align-items: center; gap: 3px;
   background: none; border: none; cursor: pointer; padding: 6px 10px;
   color: var(--muted); transition: color 0.2s, transform 0.18s; border-radius: 12px;
-  span { font-size: 0.58rem; font-weight: 700; font-family: 'Nunito','Poppins',sans-serif; letter-spacing: 0.3px; }
+  span { font-size: 0.53rem; font-weight: 700; font-family: 'Nunito','Poppins',sans-serif; letter-spacing: 0.2px; }
   &.active { color: var(--pink); transform: translateY(-1px); span { color: var(--pink); } }
   &:hover:not(.active) { color: var(--purple); span { color: var(--purple); } }
 }
@@ -300,6 +304,71 @@ ion-content[data-theme="dark"] {
 
 .ar-divider { height: 1px; background: rgba(181,127,212,0.12); margin: 4px 0 14px; }
 .ar-disclaimer { font-size: 0.7rem; text-align: center; color: #9e7ab5; font-family: 'Nunito','Poppins',sans-serif; font-weight: 600; line-height: 1.5; }
+
+/* ── Resources section (YouTube + Citation) ── */
+.ar-resources {
+  display: flex; flex-direction: column; gap: 10px; margin-bottom: 18px;
+}
+
+/* YouTube button */
+.ar-yt-btn {
+  display: flex; align-items: center; gap: 12px;
+  background: rgba(255,0,0,0.06); border: 1.5px solid rgba(255,0,0,0.15);
+  border-radius: 16px; padding: 12px 14px; cursor: pointer; width: 100%;
+  text-align: left; transition: background 0.18s, transform 0.15s;
+  &:hover  { background: rgba(255,0,0,0.10); }
+  &:active { transform: scale(0.97); }
+}
+.ar-yt-icon {
+  width: 40px; height: 40px; border-radius: 12px; flex-shrink: 0;
+  background: rgba(255,255,255,0.9); display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 2px 8px rgba(255,0,0,0.15);
+}
+.ar-yt-text { flex: 1; }
+.ar-yt-label {
+  display: block; font-size: 0.82rem; font-weight: 800; color: #cc0000;
+  font-family: 'Nunito','Poppins',sans-serif; margin-bottom: 2px;
+}
+.ar-yt-sub {
+  display: block; font-size: 0.65rem; color: #9e7ab5;
+  font-family: 'Nunito','Poppins',sans-serif;
+}
+.ar-yt-arrow { color: #cc0000; flex-shrink: 0; opacity: 0.7; }
+
+/* Citation card */
+.ar-citation {
+  display: flex; align-items: flex-start; gap: 12px;
+  background: rgba(181,127,212,0.06); border: 1.5px solid rgba(181,127,212,0.15);
+  border-radius: 16px; padding: 14px;
+}
+.ar-citation-icon {
+  width: 32px; height: 32px; border-radius: 10px; flex-shrink: 0;
+  background: rgba(181,127,212,0.12); display: flex; align-items: center; justify-content: center;
+  color: #b57fd4; margin-top: 2px;
+}
+.ar-citation-body { flex: 1; }
+.ar-citation-label {
+  font-size: 0.58rem; font-weight: 800; text-transform: uppercase;
+  letter-spacing: 0.6px; color: #b57fd4;
+  font-family: 'Nunito','Poppins',sans-serif; margin: 0 0 4px; display: block;
+}
+.ar-citation-source {
+  font-size: 0.8rem; font-weight: 800; color: #3d2252;
+  font-family: 'Nunito','Poppins',sans-serif; margin: 0 0 3px; line-height: 1.3;
+}
+.ar-citation-meta {
+  font-size: 0.68rem; color: #9e7ab5;
+  font-family: 'Nunito','Poppins',sans-serif; margin: 0 0 8px;
+}
+.ar-citation-link {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 0.7rem; font-weight: 800; color: #b57fd4;
+  font-family: 'Nunito','Poppins',sans-serif;
+  background: rgba(181,127,212,0.10); border: 1px solid rgba(181,127,212,0.22);
+  border-radius: 99px; padding: 4px 10px; cursor: pointer;
+  transition: background 0.18s;
+  &:hover { background: rgba(181,127,212,0.18); }
+}
 
 /* ── Responsive ── */
 @media (min-width: 600px) {

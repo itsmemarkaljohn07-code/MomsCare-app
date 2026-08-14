@@ -167,10 +167,10 @@ ion-content {
   to   { opacity: 1; transform: translateY(0) scale(1); }
 }
 
-/* ── Brand Icon (no circle background) ── */
+/* ── Brand Icon ── */
 .brand-icon {
-  width: 140px;
-  height: 140px;
+  width: 260px;
+  height: 260px;
   object-fit: contain;
   filter:
     drop-shadow(0 14px 36px rgba(181, 127, 212, 0.55))

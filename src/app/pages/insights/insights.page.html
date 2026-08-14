@@ -98,7 +98,8 @@
         <div class="article-card" *ngFor="let article of bodyArticles"
              (click)="openArticle(article.articleKey)">
           <div class="card-image-wrap">
-            <div class="article-image-placeholder" [style.background]="article.bgColor"></div>
+            <img *ngIf="article.image" [src]="article.image" class="article-image" [alt]="article.title"/>
+            <div *ngIf="!article.image" class="article-image-placeholder" [style.background]="article.bgColor"></div>
           </div>
           <div class="article-body">
             <span class="article-tag">{{ article.tag }}</span>
@@ -126,7 +127,8 @@
         <div class="article-card" *ngFor="let article of babyArticles"
              (click)="openArticle(article.articleKey)">
           <div class="card-image-wrap">
-            <div class="article-image-placeholder" [style.background]="article.bgColor"></div>
+            <img *ngIf="article.image" [src]="article.image" class="article-image" [alt]="article.title"/>
+            <div *ngIf="!article.image" class="article-image-placeholder" [style.background]="article.bgColor"></div>
           </div>
           <div class="article-body">
             <span class="article-tag">{{ article.tag }}</span>
@@ -166,7 +168,8 @@
         <div class="article-card" *ngFor="let article of nutritionArticles"
              (click)="openArticle(article.articleKey)">
           <div class="card-image-wrap">
-            <div class="article-image-placeholder" [style.background]="article.bgColor"></div>
+            <img *ngIf="article.image" [src]="article.image" class="article-image" [alt]="article.title"/>
+            <div *ngIf="!article.image" class="article-image-placeholder" [style.background]="article.bgColor"></div>
           </div>
           <div class="article-body">
             <span class="article-tag">{{ article.tag }}</span>
@@ -194,7 +197,8 @@
         <div class="article-card" *ngFor="let article of mindArticles"
              (click)="openArticle(article.articleKey)">
           <div class="card-image-wrap">
-            <div class="article-image-placeholder" [style.background]="article.bgColor"></div>
+            <img *ngIf="article.image" [src]="article.image" class="article-image" [alt]="article.title"/>
+            <div *ngIf="!article.image" class="article-image-placeholder" [style.background]="article.bgColor"></div>
           </div>
           <div class="article-body">
             <span class="article-tag">{{ article.tag }}</span>
@@ -222,7 +226,8 @@
         <div class="article-card" *ngFor="let article of birthArticles"
              (click)="openArticle(article.articleKey)">
           <div class="card-image-wrap">
-            <div class="article-image-placeholder" [style.background]="article.bgColor"></div>
+            <img *ngIf="article.image" [src]="article.image" class="article-image" [alt]="article.title"/>
+            <div *ngIf="!article.image" class="article-image-placeholder" [style.background]="article.bgColor"></div>
           </div>
           <div class="article-body">
             <span class="article-tag">{{ article.tag }}</span>
@@ -404,6 +409,62 @@
         </div>
 
         <div class="ar-divider"></div>
+
+        <!-- ── YouTube & Citation ── -->
+        <div class="ar-resources" *ngIf="activeArticleData">
+
+          <!-- YouTube button -->
+          <button class="ar-yt-btn"
+                  (click)="openUrl(activeArticleData.youTubeUrl)"
+                  *ngIf="activeArticleData.youTubeUrl">
+            <div class="ar-yt-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                <rect x="2" y="5" width="20" height="14" rx="3"
+                      fill="#FF0000"/>
+                <path d="M10 9l6 3-6 3V9z" fill="white"/>
+              </svg>
+            </div>
+            <div class="ar-yt-text">
+              <span class="ar-yt-label">Watch on YouTube</span>
+              <span class="ar-yt-sub">Related video for this topic</span>
+            </div>
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" class="ar-yt-arrow">
+              <path d="M3 7h8M8 4l3 3-3 3" stroke="currentColor"
+                    stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+
+          <!-- Citation -->
+          <div class="ar-citation" *ngIf="activeArticleData.citation">
+            <div class="ar-citation-icon">
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+                <rect x="2" y="2" width="12" height="12" rx="2"
+                      stroke="currentColor" stroke-width="1.3"/>
+                <path d="M5 5h6M5 8h6M5 11h4"
+                      stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+              </svg>
+            </div>
+            <div class="ar-citation-body">
+              <p class="ar-citation-label">Source &amp; Reference</p>
+              <p class="ar-citation-source">{{ activeArticleData.citation.source }}</p>
+              <p class="ar-citation-meta">
+                {{ activeArticleData.citation.author }} · {{ activeArticleData.citation.year }}
+              </p>
+              <button class="ar-citation-link"
+                      (click)="openUrl(activeArticleData.citation.url)">
+                <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
+                  <path d="M5 2H2a1 1 0 00-1 1v7a1 1 0 001 1h7a1 1 0 001-1V7"
+                        stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+                  <path d="M8 1h3v3M11 1L6 6"
+                        stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+                </svg>
+                View source
+              </button>
+            </div>
+          </div>
+
+        </div>
+
         <p class="ar-disclaimer">Always discuss any concerns with your midwife or OB-GYN. Every pregnancy is unique.</p>
         <div style="height: 40px;"></div>
       </div>

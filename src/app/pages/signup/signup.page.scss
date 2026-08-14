@@ -815,3 +815,52 @@
     margin: 0; line-height: 1.5;
   }
 }
+
+/* ── Firebase general error ── */
+.general-error-box {
+  display: flex; align-items: flex-start; gap: 8px;
+  background: rgba(224, 85, 128, 0.08);
+  border: 1px solid rgba(224, 85, 128, 0.25);
+  border-radius: 12px; padding: 10px 14px;
+  margin-bottom: 12px;
+  font-size: 0.78rem; font-weight: 700; color: #e05580;
+  font-family: 'Nunito', 'Poppins', sans-serif; line-height: 1.4;
+  svg { flex-shrink: 0; margin-top: 1px; }
+}
+
+/* ── OTP error / success / dev hint ── */
+.otp-error-box, .otp-success-box {
+  display: flex; align-items: center; gap: 8px;
+  border-radius: 12px; padding: 10px 14px; margin: 8px 0;
+  font-size: 0.78rem; font-weight: 700;
+  font-family: 'Nunito', 'Poppins', sans-serif; line-height: 1.4;
+}
+.otp-error-box {
+  background: rgba(224,85,128,0.08);
+  border: 1px solid rgba(224,85,128,0.25);
+  color: #e05580;
+}
+.otp-success-box {
+  background: rgba(91,186,138,0.08);
+  border: 1px solid rgba(91,186,138,0.25);
+  color: #5bba8a;
+}
+.otp-dev-hint {
+  text-align: center; font-size: 0.7rem; color: #9e7ab5;
+  font-family: 'Nunito','Poppins',sans-serif;
+  background: rgba(181,127,212,0.08); border-radius: 8px;
+  padding: 6px 10px; margin: 6px 0;
+}
+
+/* ── SMS sending state ── */
+.otp-sending {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  font-size: 0.78rem; font-weight: 700; color: var(--muted, #9e7ab5);
+  font-family: 'Nunito','Poppins',sans-serif; margin: 8px 0;
+}
+.otp-sent-note {
+  text-align: center; font-size: 0.75rem; font-weight: 700;
+  color: #5bba8a; font-family: 'Nunito','Poppins',sans-serif;
+  background: rgba(91,186,138,0.08); border: 1px solid rgba(91,186,138,0.2);
+  border-radius: 10px; padding: 7px 12px; margin: 6px 0;
+}

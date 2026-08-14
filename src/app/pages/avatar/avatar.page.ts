@@ -1,10 +1,12 @@
 // avatar.page.ts
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit , OnDestroy } from '@angular/core';
 import { Router } from '@angular/router';
 import { Location } from '@angular/common';
 import { IonicModule } from '@ionic/angular';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { ThemeService } from '../../services/theme';
+import { Subscription } from 'rxjs';
 
 export interface AvatarAnimal {
   id: string;
@@ -26,7 +28,10 @@ export interface AvatarConfig {
   standalone: true,
   imports: [IonicModule, CommonModule, FormsModule],
 })
-export class AvatarPage implements OnInit {
+export class AvatarPage implements OnInit, OnDestroy {
+
+  darkMode = false;
+  private themeSub!: Subscription;
 
   animReady = false;
 
@@ -69,9 +74,10 @@ export class AvatarPage implements OnInit {
   selectedColor  = '#e07eb8';
   selectedAnimal: AvatarAnimal = this.animals[0];
 
-  constructor(private router: Router, private location: Location) {}
+  constructor(private router: Router, private location: Location, private theme: ThemeService) {}
 
   ngOnInit(): void {
+    this.themeSub = this.theme.isDark$.subscribe(val => (this.darkMode = val));
     this.loadSaved();
     requestAnimationFrame(() => setTimeout(() => (this.animReady = true), 80));
   }
@@ -111,5 +117,9 @@ export class AvatarPage implements OnInit {
 
   goBack(): void {
     this.location.back();
+  }
+
+  ngOnDestroy(): void {
+    this.themeSub?.unsubscribe();
   }
 }

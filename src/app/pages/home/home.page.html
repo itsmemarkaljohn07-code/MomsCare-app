@@ -153,7 +153,7 @@
 
     <!-- ── Greeting (dynamic user name) ── -->
     <div class="greeting-area" [class.visible]="animReady">
-      <p class="greeting-text">{{ greeting }}, {{ currentUser.firstName }} 👋</p>
+      <p class="greeting-text">{{ greeting }}, {{ greetingName }} 👋</p>
       <div class="greeting-pills">
         <span class="pill pill-week">Week {{ pregnancyWeek }}</span>
         <span class="pill pill-trim">{{ trimester }}</span>
@@ -229,72 +229,66 @@
                   stroke="rgba(195,130,160,0.55)" stroke-width="2.5"
                   stroke-linecap="round" fill="none"/>
 
-            <!-- ── Fetal body (scales with week) ── -->
-            <!-- Head -->
-            <ellipse
-              [attr.cx]="fetal.hx" [attr.cy]="fetal.hy"
-              [attr.rx]="fetal.hr * 1.05" [attr.ry]="fetal.hr"
-              fill="rgba(220,160,185,0.75)"/>
-            <!-- Brain highlight -->
-            <ellipse
-              [attr.cx]="fetal.hx - fetal.hr * 0.15"
-              [attr.cy]="fetal.hy - fetal.hr * 0.25"
-              [attr.rx]="fetal.hr * 0.45" [attr.ry]="fetal.hr * 0.3"
-              fill="rgba(240,190,210,0.50)"/>
-            <!-- Eye -->
-            <circle
-              [attr.cx]="fetal.hx + fetal.hr * 0.28"
-              [attr.cy]="fetal.hy - fetal.hr * 0.05"
-              [attr.r]="fetal.hr * 0.12"
-              fill="rgba(130,70,100,0.55)"/>
+            <!-- ══════════════════════════════════════════
+                 FETUS — single smooth silhouette, scales with week
+            ══════════════════════════════════════════ -->
 
-            <!-- Torso / body -->
-            <ellipse
-              [attr.cx]="fetal.bx" [attr.cy]="fetal.by"
-              [attr.rx]="fetal.bw" [attr.ry]="fetal.bh"
-              fill="rgba(210,150,175,0.65)"/>
-            <!-- Belly highlight -->
-            <ellipse
-              [attr.cx]="fetal.bx + fetal.bw * 0.15"
-              [attr.cy]="fetal.by - fetal.bh * 0.1"
-              [attr.rx]="fetal.bw * 0.5" [attr.ry]="fetal.bh * 0.4"
-              fill="rgba(235,185,205,0.35)"/>
+            <!-- Soft drop shadow beneath the body for depth -->
+            <ellipse [attr.cx]="fetal.bx" [attr.cy]="fetal.by + fetal.bh * 0.9"
+                     [attr.rx]="fetal.bw * 1.3" [attr.ry]="fetal.bh * 0.35"
+                     fill="rgba(160,90,120,0.10)"/>
 
-            <!-- Upper arm -->
-            <ellipse
-              [attr.cx]="fetal.bx - fetal.bw * 0.85"
-              [attr.cy]="fetal.by - fetal.bh * 0.25"
-              [attr.rx]="fetal.bw * 0.28" [attr.ry]="fetal.bh * 0.55"
-              fill="rgba(210,150,175,0.60)"
-              [attr.transform]="'rotate(-30,' + (fetal.bx - fetal.bw * 0.85) + ',' + (fetal.by - fetal.bh * 0.25) + ')'"/>
-            <!-- Lower arm / hand -->
-            <ellipse
-              [attr.cx]="fetal.bx - fetal.bw * 1.1"
-              [attr.cy]="fetal.by + fetal.bh * 0.1"
-              [attr.rx]="fetal.bw * 0.22" [attr.ry]="fetal.bh * 0.40"
-              fill="rgba(215,155,180,0.55)"
-              [attr.transform]="'rotate(20,' + (fetal.bx - fetal.bw * 1.1) + ',' + (fetal.by + fetal.bh * 0.1) + ')'"/>
+            <!-- Curled legs (drawn first, sits behind torso) -->
+            <path [attr.d]="legsPath"
+                  fill="none" stroke="rgba(205,145,170,0.62)"
+                  [attr.stroke-width]="fetal.bw * 0.62"
+                  stroke-linecap="round"/>
 
-            <!-- Upper leg -->
-            <ellipse
-              [attr.cx]="fetal.bx - fetal.bw * 0.3"
-              [attr.cy]="fetal.by + fetal.bh * 1.1"
-              [attr.rx]="fetal.bw * 0.38" [attr.ry]="fetal.bh * 0.62"
-              fill="rgba(205,145,170,0.62)"
-              [attr.transform]="'rotate(15,' + (fetal.bx - fetal.bw * 0.3) + ',' + (fetal.by + fetal.bh * 1.1) + ')'"/>
-            <!-- Lower leg -->
-            <ellipse
-              [attr.cx]="fetal.bx + fetal.bw * 0.55"
-              [attr.cy]="fetal.by + fetal.bh * 1.35"
-              [attr.rx]="fetal.bw * 0.28" [attr.ry]="fetal.bh * 0.52"
-              fill="rgba(205,145,170,0.55)"
-              [attr.transform]="'rotate(-25,' + (fetal.bx + fetal.bw * 0.55) + ',' + (fetal.by + fetal.bh * 1.35) + ')'"/>
+            <!-- Curled arm (drawn before torso so hand tucks near chin) -->
+            <path [attr.d]="armPath"
+                  fill="none" stroke="rgba(210,150,175,0.60)"
+                  [attr.stroke-width]="fetal.bw * 0.42"
+                  stroke-linecap="round"/>
 
-            <!-- Spine / back curve suggestion -->
-            <path
-              [attr.d]="spinalPath"
-              stroke="rgba(180,115,145,0.28)" stroke-width="2"
-              stroke-linecap="round" fill="none"/>
+            <!-- Main body silhouette: head + neck + torso + hips in one continuous shape -->
+            <path [attr.d]="bodyPath"
+                  fill="rgba(216,156,182,0.82)"
+                  stroke="rgba(180,115,145,0.20)" stroke-width="0.75"/>
+
+            <!-- Belly / chest highlight for soft dimensionality -->
+            <ellipse [attr.cx]="fetal.bx + fetal.bw * 0.25"
+                     [attr.cy]="fetal.by - fetal.bh * 0.1"
+                     [attr.rx]="fetal.bw * 0.55" [attr.ry]="fetal.bh * 0.45"
+                     fill="rgba(240,195,215,0.32)"/>
+
+            <!-- Spine shading line -->
+            <path [attr.d]="spinalPath"
+                  stroke="rgba(170,105,135,0.22)" stroke-width="1.6"
+                  stroke-linecap="round" fill="none"/>
+
+            <!-- Head highlight (cranium curve) -->
+            <ellipse [attr.cx]="fetal.hx - fetal.hr * 0.1"
+                     [attr.cy]="fetal.hy - fetal.hr * 0.35"
+                     [attr.rx]="fetal.hr * 0.55" [attr.ry]="fetal.hr * 0.42"
+                     fill="rgba(242,198,220,0.42)"/>
+
+            <!-- Ear -->
+            <ellipse [attr.cx]="fetal.hx - fetal.hr * 0.75"
+                     [attr.cy]="fetal.hy + fetal.hr * 0.05"
+                     [attr.rx]="fetal.hr * 0.16" [attr.ry]="fetal.hr * 0.22"
+                     fill="rgba(195,135,165,0.55)"/>
+
+            <!-- Eye (closed, gentle curve) -->
+            <path [attr.d]="'M ' + (fetal.hx + fetal.hr*0.05) + ' ' + (fetal.hy + fetal.hr*0.05) + ' Q ' + (fetal.hx + fetal.hr*0.28) + ' ' + (fetal.hy + fetal.hr*0.18) + ' ' + (fetal.hx + fetal.hr*0.48) + ' ' + (fetal.hy + fetal.hr*0.08)"
+                  stroke="rgba(120,60,90,0.55)" [attr.stroke-width]="fetal.hr * 0.07"
+                  stroke-linecap="round" fill="none"/>
+
+            <!-- Nose bump -->
+            <ellipse [attr.cx]="fetal.hx + fetal.hr * 0.55"
+                     [attr.cy]="fetal.hy + fetal.hr * 0.28"
+                     [attr.rx]="fetal.hr * 0.1" [attr.ry]="fetal.hr * 0.13"
+                     fill="rgba(200,140,170,0.45)"/>
+
 
             <!-- Placenta blob (top) -->
             <ellipse cx="110" cy="42" rx="42" ry="18"

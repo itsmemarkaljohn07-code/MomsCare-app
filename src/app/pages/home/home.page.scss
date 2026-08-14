@@ -37,11 +37,16 @@ ion-content[data-theme="dark"] {
   --field-bg:     rgba(255, 255, 255, 0.07);
   --shadow-sm:    0 2px 12px rgba(0, 0, 0, 0.3);
   --shadow-md:    0 6px 24px rgba(0, 0, 0, 0.4);
+  --nav-bg:       rgba(26, 15, 36, 0.97);
+  --nav-border:   rgba(181, 127, 212, 0.20);
 
   .home-content { --background: var(--bg); }
   .baby-hero { background: linear-gradient(180deg, #2a0e1e 0%, #1a0d28 60%, var(--bg) 100%); }
   .fetal-glow { background: radial-gradient(ellipse at center, rgba(180,80,120,0.25) 0%, transparent 70%); }
   .health-tile, .checklist-card, .appt-row, .due-countdown { background: var(--card-bg); border-color: var(--card-border); }
+  .bottom-nav { background: var(--nav-bg); border-color: var(--nav-border); }
+  .measure-chip { background: rgba(45, 25, 65, 0.92); border-color: rgba(155,111,196,0.25); }
+  .week-nav { background: rgba(255,255,255,0.10); &:hover { background: rgba(255,255,255,0.18); } }
   .modal-sheet { background: #1e1030; }
   .notif-panel { background: #1e1030; border-color: rgba(155,111,196,0.2); }
   .notif-item { border-color: rgba(155,111,196,0.12); }
@@ -668,9 +673,9 @@ ion-content[data-theme="dark"] {
 ══════════════════════════════════════════ */
 .bottom-nav {
   position: fixed; bottom: 0; left: 0; right: 0; height: 68px;
-  background: rgba(255,255,255,0.97);
+  background: var(--nav-bg, rgba(255,255,255,0.97));
   backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
-  border-top: 1px solid rgba(155,111,196,0.12);
+  border-top: 1px solid var(--nav-border, rgba(155,111,196,0.12));
   display: flex; align-items: center; justify-content: space-around;
   padding-bottom: env(safe-area-inset-bottom, 0); z-index: 50;
 }
@@ -680,7 +685,7 @@ ion-content[data-theme="dark"] {
   background: none; border: none; cursor: pointer; padding: 6px 10px;
   color: var(--muted); transition: color 0.2s, transform 0.18s;
   border-radius: var(--radius-sm);
-  span { font-size: 0.57rem; font-weight: 700; font-family: 'Nunito','Poppins',sans-serif; letter-spacing: 0.3px; }
+  span { font-size: 0.53rem; font-weight: 700; font-family: 'Nunito','Poppins',sans-serif; letter-spacing: 0.2px; }
   &.active { color: var(--pink); transform: translateY(-1px); span { color: var(--pink); } }
   &:hover:not(.active) { color: var(--purple); span { color: var(--purple); } }
 }

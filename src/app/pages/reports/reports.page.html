@@ -1,0 +1,161 @@
+<!-- reports.page.html -->
+<ion-content [fullscreen]="true" [attr.data-theme]="darkMode ? 'dark' : 'light'">
+  <div class="page-wrap">
+    <div class="blob blob-top"></div>
+    <div class="blob blob-bottom"></div>
+
+    <div class="page-header">
+      <button class="back-btn" (click)="goBack()">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+          <path d="M11 4L6 9l5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+      </button>
+      <div class="page-header-text">
+        <h1 class="page-title">Graphs &amp; Reports</h1>
+        <p class="page-sub">Your pregnancy health summary</p>
+      </div>
+    </div>
+
+    <div class="content-body" [class.visible]="animReady">
+
+      <!-- Summary row -->
+      <div class="summary-row">
+        <div class="summary-card pink">
+          <span class="summary-icon">⚖️</span>
+          <span class="summary-val">{{ current.weight }} kg</span>
+          <span class="summary-lbl">Weight</span>
+        </div>
+        <div class="summary-card purple">
+          <span class="summary-icon">❤️</span>
+          <span class="summary-val">{{ current.bp }}</span>
+          <span class="summary-lbl">Blood Pressure</span>
+        </div>
+        <div class="summary-card mint">
+          <span class="summary-icon">👣</span>
+          <span class="summary-val">{{ current.kicks }}</span>
+          <span class="summary-lbl">Kicks Today</span>
+        </div>
+        <div class="summary-card rose">
+          <span class="summary-icon">{{ moodEmoji }}</span>
+          <span class="summary-val">{{ moodName }}</span>
+          <span class="summary-lbl">Mood</span>
+        </div>
+      </div>
+
+      <!-- Weight trend -->
+      <p class="section-label">Weight Trend (kg)</p>
+      <div class="chart-card">
+        <div class="chart-header">
+          <span class="chart-title">Last 8 weeks</span>
+          <span class="chart-change" [class.up]="weightChange > 0">
+            {{ weightChange > 0 ? '+' : '' }}{{ weightChange }} kg this month
+          </span>
+        </div>
+        <div class="bar-chart">
+          <div class="bar-col" *ngFor="let d of weightData">
+            <div class="bar-fill weight-bar"
+                 [style.height.%]="barPct(d.val, weightMin, weightMax)">
+              <span class="bar-tooltip">{{ d.val }}</span>
+            </div>
+            <span class="bar-label">{{ d.label }}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Blood pressure -->
+      <p class="section-label">Blood Pressure (mmHg)</p>
+      <div class="chart-card">
+        <div class="chart-header">
+          <span class="chart-title">Systolic / Diastolic</span>
+          <span class="tag" [class.green]="bpNormal" [class.rose]="!bpNormal">
+            {{ bpNormal ? '✓ Normal' : '⚠ Check' }}
+          </span>
+        </div>
+        <div class="bp-list">
+          <div class="bp-row" *ngFor="let b of bpData">
+            <span class="bp-date">{{ b.label }}</span>
+            <div class="bp-bars">
+              <div class="bp-bar sys" [style.width.%]="(b.sys/200)*100">
+                <span>{{ b.sys }}</span>
+              </div>
+              <div class="bp-bar dia" [style.width.%]="(b.dia/200)*100">
+                <span>{{ b.dia }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="bp-legend">
+          <span class="legend-dot sys"></span><span>Systolic</span>
+          <span class="legend-dot dia"></span><span>Diastolic</span>
+        </div>
+      </div>
+
+      <!-- Fetal kicks -->
+      <p class="section-label">Fetal Kicks (daily count)</p>
+      <div class="chart-card">
+        <div class="chart-header">
+          <span class="chart-title">Last 7 days</span>
+          <span class="chart-change">Avg: {{ avgKicks }} kicks/day</span>
+        </div>
+        <div class="kick-chart">
+          <div class="kick-col" *ngFor="let k of kickData">
+            <div class="kick-fill" [style.height.%]="(k.val/20)*100">
+              <span class="kick-val">{{ k.val }}</span>
+            </div>
+            <span class="kick-label">{{ k.label }}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Mood tracker -->
+      <p class="section-label">Mood History</p>
+      <div class="chart-card">
+        <div class="mood-history">
+          <div class="mood-entry" *ngFor="let m of moodData">
+            <span class="mood-date">{{ m.label }}</span>
+            <div class="mood-bar-wrap">
+              <div class="mood-bar-fill" [style.width.%]="((m.mood+1)/5)*100"
+                   [class]="'mood-' + m.mood"></div>
+            </div>
+            <span class="mood-emoji-sm">{{ moodEmojis[m.mood] }}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Pregnancy progress -->
+      <p class="section-label">Pregnancy Progress</p>
+      <div class="chart-card">
+        <div class="progress-visual">
+          <div class="trim-block" *ngFor="let t of trimesterBlocks" [class]="'trim-' + t.num">
+            <div class="trim-fill" [style.width.%]="t.pct"></div>
+            <span class="trim-label">{{ t.label }}</span>
+          </div>
+        </div>
+        <div class="progress-detail">
+          <div class="prog-row">
+            <span class="prog-label">Weeks completed</span>
+            <span class="prog-val">{{ pregnancyWeek }} / 40</span>
+          </div>
+          <div class="prog-row">
+            <span class="prog-label">Trimester</span>
+            <span class="prog-val">{{ trimester }}</span>
+          </div>
+          <div class="prog-row">
+            <span class="prog-label">Days until due date</span>
+            <span class="prog-val">{{ daysLeft }}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Healthcare provider note -->
+      <div class="provider-note">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+          <path d="M9 2L3 5v5c0 4 2.7 7.7 6 9 3.3-1.3 6-5 6-9V5L9 2z" fill="rgba(109,191,191,0.15)" stroke="#6dbfbf" stroke-width="1.4"/>
+          <path d="M6 9l2 2 4-4" stroke="#6dbfbf" stroke-width="1.3" stroke-linecap="round"/>
+        </svg>
+        <p>Full reports will be exportable and shareable with your healthcare provider in a future update.</p>
+      </div>
+
+    </div>
+  </div>
+</ion-content>

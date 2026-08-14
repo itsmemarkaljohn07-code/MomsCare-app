@@ -4,6 +4,8 @@ import { Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { IonicModule } from '@ionic/angular';
+import { ThemeService } from '../../services/theme';
+import { Subscription } from 'rxjs';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -37,6 +39,8 @@ export interface ArticleDefinition {
   tipBorder: string;
   tabs: { id: number; label: string }[];
   panels: Record<number, ArticlePanel>;
+  youTubeUrl: string;
+  citation: { source: string; author: string; year: string; url: string };
 }
 
 export interface ArticleCard {
@@ -62,6 +66,7 @@ export class InsightsPage implements OnInit, OnDestroy {
 
   animReady     = false;
   darkMode      = false;
+  private themeSub!: Subscription;
   pregnancyWeek = 20;
 
   // ── Article reader state ──────────────────────────────────────────────────
@@ -129,7 +134,7 @@ export class InsightsPage implements OnInit, OnDestroy {
             { label: 'Fatigue', desc: 'Progesterone causes deep tiredness. Your body is building the placenta — one of the most energy-intensive tasks it will ever do.', iconBg: 'rgba(185,225,240,0.35)', svgKey: 'moon' },
             { label: 'Brain & mood', desc: 'Hormonal shifts can cause heightened emotions, vivid dreams, and temporary memory lapses — all completely normal.', iconBg: 'rgba(220,195,255,0.25)', svgKey: 'brain' },
           ],
-          tip: { text: 'Small, frequent meals help with nausea. Ginger tea and cold foods are often better tolerated in the first trimester.', source: 'MomsCare Health · Nutrition' }
+          tip: { text: 'Small, frequent meals help with nausea. Ginger tea and cold foods are often better tolerated in the first trimester.', source: 'MomsCare Health · Nutrition' },
         },
         2: {
           tag: '2nd Trimester',
@@ -142,7 +147,7 @@ export class InsightsPage implements OnInit, OnDestroy {
             { label: 'Heightened senses', desc: 'Your sense of smell sharpens significantly — an evolutionary mechanism to help avoid foods that may be harmful.', iconBg: 'rgba(185,225,240,0.35)', svgKey: 'eye' },
             { label: 'Sleep shifts', desc: 'Finding a comfortable position becomes harder. Sleeping on your left side improves blood flow to baby and kidneys.', iconBg: 'rgba(220,195,255,0.25)', svgKey: 'moon' },
           ],
-          tip: { text: 'A pregnancy pillow supporting your bump and back can dramatically improve sleep quality from mid-pregnancy onward.', source: 'MomsCare Health · Wellness' }
+          tip: { text: 'A pregnancy pillow supporting your bump and back can dramatically improve sleep quality from mid-pregnancy onward.', source: 'MomsCare Health · Wellness' },
         },
         3: {
           tag: '3rd Trimester',
@@ -155,9 +160,11 @@ export class InsightsPage implements OnInit, OnDestroy {
             { label: 'Pelvic pressure', desc: 'As baby "drops" and engages in the pelvis, pressure below increases while breathing may momentarily ease.', iconBg: 'rgba(185,225,240,0.35)', svgKey: 'wave' },
             { label: 'Colostrum', desc: 'Your breasts begin producing colostrum — the first nutrient-rich milk — often from around week 28 onwards.', iconBg: 'rgba(220,195,255,0.25)', svgKey: 'heart' },
           ],
-          tip: { text: 'Gentle movement like walking and swimming relieves third-trimester discomfort and helps baby get into position for birth.', source: 'MomsCare Health · Movement' }
-        }
-      }
+          tip: { text: 'Gentle movement like walking and swimming relieves third-trimester discomfort and helps baby get into position for birth.', source: 'MomsCare Health · Movement' },
+        },
+      },
+      youTubeUrl: "https://www.youtube.com/watch?v=F_ssj7-8rYg",
+      citation: { source: "Mayo Clinic — Pregnancy Week by Week", author: "Mayo Clinic Staff", year: "2024", url: "https://www.mayoclinic.org/healthy-lifestyle/pregnancy-week-by-week/basics/healthy-pregnancy/hlv-20049471" },
     },
 
     // ── 2. Checkups ───────────────────────────────────────────────────────
@@ -191,7 +198,7 @@ export class InsightsPage implements OnInit, OnDestroy {
             { label: 'Supplements check', desc: 'Your midwife will confirm you\'re taking folic acid (400mcg) and discuss vitamin D, iron, and any prescription needs.', iconBg: 'rgba(181,127,212,0.12)', svgKey: 'pill' },
           ],
           tip: { text: 'Write down any symptoms, concerns, or questions before each appointment — it\'s easy to forget in the moment.', source: 'MomsCare Health · Medical' }
-        },
+    },
         2: {
           tag: 'Weeks 14–27',
           title: 'Monitoring your progress',
@@ -203,7 +210,7 @@ export class InsightsPage implements OnInit, OnDestroy {
             { label: 'Blood pressure & urine', desc: 'Checked at every visit to watch for signs of pre-eclampsia — a serious condition that can develop from mid-pregnancy onward.', iconBg: 'rgba(220,195,255,0.25)', svgKey: 'shield' },
             { label: 'Glucose tolerance test', desc: 'Offered around week 24–28 if you\'re at risk of gestational diabetes. Involves a fasting blood draw and a sugary drink.', iconBg: 'rgba(181,127,212,0.12)', svgKey: 'doc' },
           ],
-          tip: { text: 'Bring your partner or a support person to the anomaly scan — it\'s one of the most emotional appointments of pregnancy.', source: 'MomsCare Health · Medical' }
+          tip: { text: 'Bring your partner or a support person to the anomaly scan — it\'s one of the most emotional appointments of pregnancy.', source: 'MomsCare Health · Medical' },
         },
         3: {
           tag: 'Weeks 28–42',
@@ -216,9 +223,11 @@ export class InsightsPage implements OnInit, OnDestroy {
             { label: 'Group B Strep test', desc: 'An optional swab test offered around week 35–37 to check for GBS bacteria, which can affect newborns during delivery.', iconBg: 'rgba(220,195,255,0.25)', svgKey: 'shield' },
             { label: 'Post-dates planning', desc: 'If you reach week 41, your midwife will discuss membrane sweeps and induction options to avoid going significantly overdue.', iconBg: 'rgba(181,127,212,0.12)', svgKey: 'clock' },
           ],
-          tip: { text: 'Pack your hospital bag by week 36. Keep your birth plan, maternity notes, and insurance details together and easy to grab.', source: 'MomsCare Health · Planning' }
-        }
-      }
+          tip: { text: 'Pack your hospital bag by week 36. Keep your birth plan, maternity notes, and insurance details together and easy to grab.', source: 'MomsCare Health · Planning' },
+        },
+      },
+      youTubeUrl: "https://www.youtube.com/watch?v=UzEHC-oLQDw",
+      citation: { source: "NHS — Your Antenatal Care", author: "NHS UK", year: "2024", url: "https://www.nhs.uk/pregnancy/your-pregnancy-care/your-antenatal-care" },
     },
 
     // ── 3. Pregnancy fatigue ──────────────────────────────────────────────
@@ -226,7 +235,7 @@ export class InsightsPage implements OnInit, OnDestroy {
       title: 'Why pregnancy fatigue hits so hard',
       readTime: 3,
       heroTag: 'Symptoms',
-      heroImage: null,
+      heroImage: 'assets/icon/pregnancy_fatiuge.jpg',
       heroBg: 'linear-gradient(135deg, #ffeaf5 0%, #f3e0ff 100%)',
       accentColor: '#b57fd4',
       accentBg: 'rgba(181,127,212,0.10)',
@@ -252,7 +261,7 @@ export class InsightsPage implements OnInit, OnDestroy {
             { label: 'Emotional processing', desc: 'Anxiety, excitement, and the mental weight of early pregnancy are emotionally taxing — adding to physical exhaustion.', iconBg: 'rgba(185,225,240,0.35)', svgKey: 'brain' },
           ],
           tip: { text: 'Rest without guilt. First-trimester fatigue is a signal your body is working incredibly hard. Short naps of 20 minutes can restore alertness without disrupting night sleep.', source: 'MomsCare Health · Wellness' }
-        },
+    },
         2: {
           tag: 'Second Trimester Energy',
           title: 'The return of energy',
@@ -264,7 +273,7 @@ export class InsightsPage implements OnInit, OnDestroy {
             { label: 'Sleep quality', desc: 'Despite feeling more awake in the day, sleep becomes lighter. Vivid dreams, frequent urination, and early bump discomfort can disrupt overnight rest.', iconBg: 'rgba(185,225,240,0.35)', svgKey: 'moon' },
             { label: 'Physical demands', desc: 'Your growing bump shifts your centre of gravity, increasing muscle effort for basic movement. Even sitting upright uses more energy than before.', iconBg: 'rgba(220,195,255,0.25)', svgKey: 'bone' },
           ],
-          tip: { text: 'Iron-rich foods combined with vitamin C significantly improve absorption. Try spinach with lemon juice, or lentils with tomatoes.', source: 'MomsCare Health · Nutrition' }
+          tip: { text: 'Iron-rich foods combined with vitamin C significantly improve absorption. Try spinach with lemon juice, or lentils with tomatoes.', source: 'MomsCare Health · Nutrition' },
         },
         3: {
           tag: 'Third Trimester Fatigue',
@@ -277,9 +286,11 @@ export class InsightsPage implements OnInit, OnDestroy {
             { label: 'Breathlessness', desc: 'Baby pressing against your diaphragm means even mild exertion can leave you breathless — which is exhausting and often anxiety-inducing.', iconBg: 'rgba(185,225,240,0.35)', svgKey: 'breath' },
             { label: 'Birth preparation', desc: 'Your body is quietly preparing for labour — hormonal shifts, ligament softening, and cervical changes all use biological energy.', iconBg: 'rgba(220,195,255,0.25)', svgKey: 'labor' },
           ],
-          tip: { text: 'Prioritise sleep above socialising and non-essential tasks. A bedroom temperature of 16–18°C and a left-side sleeping position improves sleep quality significantly.', source: 'MomsCare Health · Wellness' }
-        }
-      }
+          tip: { text: 'Prioritise sleep above socialising and non-essential tasks. A bedroom temperature of 16–18°C and a left-side sleeping position improves sleep quality significantly.', source: 'MomsCare Health · Wellness' },
+        },
+      },
+      youTubeUrl: "https://www.youtube.com/watch?v=yAjpSgDmaLs",
+      citation: { source: "Cleveland Clinic — Fatigue During Pregnancy", author: "Cleveland Clinic", year: "2024", url: "https://my.clevelandclinic.org/health/symptoms/21213-fatigue" },
     },
 
     // ── 4. Round ligament pain ────────────────────────────────────────────
@@ -287,7 +298,7 @@ export class InsightsPage implements OnInit, OnDestroy {
       title: 'Round ligament pain explained',
       readTime: 3,
       heroTag: 'Body Changes',
-      heroImage: null,
+      heroImage: 'assets/icon/round_ligament_pain.jpg',
       heroBg: 'linear-gradient(135deg, #e8f8f0 0%, #d8f0ff 100%)',
       accentColor: '#6dbfbf',
       accentBg: 'rgba(109,191,191,0.10)',
@@ -309,7 +320,7 @@ export class InsightsPage implements OnInit, OnDestroy {
             { label: 'When to seek help', desc: 'Pain lasting more than a few minutes, accompanied by fever, bleeding, difficulty walking, or severe cramping should always be assessed by your midwife or doctor.', iconBg: 'rgba(185,225,240,0.35)', svgKey: 'shield' },
           ],
           tip: { text: 'Moving slowly and deliberately — especially when changing position — dramatically reduces the frequency and severity of round ligament pain episodes.', source: 'MomsCare Health · Body Changes' }
-        },
+    },
         2: {
           tag: 'Management',
           title: 'How to find relief',
@@ -321,9 +332,11 @@ export class InsightsPage implements OnInit, OnDestroy {
             { label: 'Prenatal yoga', desc: 'Gentle hip-opening stretches and prenatal yoga postures designed for round ligament support reduce frequency of episodes significantly for many women.', iconBg: 'rgba(181,127,212,0.12)', svgKey: 'breath' },
             { label: 'Movement adjustments', desc: 'Roll onto your side before sitting up from lying down. When standing, use a deliberate, slow movement. Avoid twisting your torso suddenly.', iconBg: 'rgba(185,225,240,0.35)', svgKey: 'check' },
           ],
-          tip: { text: 'If pain is persistent or one-sided, always mention it to your midwife. Round ligament pain is common, but it is a diagnosis of exclusion — other causes should be ruled out.', source: 'MomsCare Health · Body Changes' }
-        }
-      }
+          tip: { text: 'If pain is persistent or one-sided, always mention it to your midwife. Round ligament pain is common, but it is a diagnosis of exclusion — other causes should be ruled out.', source: 'MomsCare Health · Body Changes' },
+        },
+      },
+      youTubeUrl: "https://www.youtube.com/watch?v=TEFMQ5HaFoU",
+      citation: { source: "Cleveland Clinic — Round Ligament Pain", author: "Cleveland Clinic", year: "2023", url: "https://my.clevelandclinic.org/health/diseases/12451-round-ligament-pain" },
     },
 
     // ── 5. Skin changes ───────────────────────────────────────────────────
@@ -331,7 +344,7 @@ export class InsightsPage implements OnInit, OnDestroy {
       title: 'Why your skin changes and what helps',
       readTime: 4,
       heroTag: 'Skin & Hair',
-      heroImage: null,
+      heroImage: 'assets/icon/skinchanges_pregnancy.jpg',
       heroBg: 'linear-gradient(135deg, #fff0e8 0%, #ffe0f0 100%)',
       accentColor: '#e07eb8',
       accentBg: 'rgba(224,126,184,0.10)',
@@ -353,7 +366,7 @@ export class InsightsPage implements OnInit, OnDestroy {
             { label: 'Acne & oiliness', desc: 'Some women experience clearer skin in pregnancy; others see acne worsen. Avoid retinoids and salicylic acid — many common acne treatments are not safe in pregnancy.', iconBg: 'rgba(220,195,255,0.25)', svgKey: 'drop' },
           ],
           tip: { text: 'Apply broad-spectrum SPF 30+ daily to prevent melasma from darkening. A zinc-based mineral sunscreen is the safest choice during pregnancy.', source: 'MomsCare Health · Skin & Hair' }
-        },
+    },
         2: {
           tag: 'Hair & Nails',
           title: 'Changes to hair and nails',
@@ -365,9 +378,11 @@ export class InsightsPage implements OnInit, OnDestroy {
             { label: 'Faster nail growth', desc: 'Nails grow more quickly in pregnancy. They may also become stronger, though some women find their nails become more brittle or develop ridges.', iconBg: 'rgba(185,225,240,0.35)', svgKey: 'check' },
             { label: 'Body hair', desc: 'Increased androgens can cause more noticeable growth on the face, abdomen, or thighs in some women. This usually reduces significantly after birth.', iconBg: 'rgba(220,195,255,0.25)', svgKey: 'sun' },
           ],
-          tip: { text: 'If you choose to dye your hair in pregnancy, wait until after the first trimester and opt for semi-permanent, ammonia-free products in a well-ventilated salon.', source: 'MomsCare Health · Skin & Hair' }
-        }
-      }
+          tip: { text: 'If you choose to dye your hair in pregnancy, wait until after the first trimester and opt for semi-permanent, ammonia-free products in a well-ventilated salon.', source: 'MomsCare Health · Skin & Hair' },
+        },
+      },
+      youTubeUrl: "https://www.youtube.com/watch?v=qD8-eTHbHBs",
+      citation: { source: "American Academy of Dermatology — Skin Conditions During Pregnancy", author: "AAD", year: "2024", url: "https://www.aad.org/public/diseases/a-z/stretch-marks-treatment" },
     },
 
     // ── 6. Braxton Hicks ─────────────────────────────────────────────────
@@ -375,7 +390,7 @@ export class InsightsPage implements OnInit, OnDestroy {
       title: 'Understanding Braxton Hicks contractions',
       readTime: 4,
       heroTag: 'Symptoms',
-      heroImage: null,
+      heroImage: 'assets/icon/Braxton-Hicks contractions.jpg',
       heroBg: 'linear-gradient(135deg, #e8eeff 0%, #f0e0ff 100%)',
       accentColor: '#9b6fc4',
       accentBg: 'rgba(155,111,196,0.10)',
@@ -397,7 +412,7 @@ export class InsightsPage implements OnInit, OnDestroy {
             { label: 'When to call your midwife', desc: 'Contractions that are regular, intensifying, closer than 10 minutes apart, or accompanied by fluid, bleeding, or back pain should always be assessed promptly.', iconBg: 'rgba(220,195,255,0.25)', svgKey: 'shield' },
           ],
           tip: { text: 'Dehydration is the most common trigger for Braxton Hicks. If you notice an increase in frequency, drink a large glass of water, rest, and monitor whether they ease.', source: 'MomsCare Health · Symptoms' }
-        },
+    },
         2: {
           tag: 'Differentiation',
           title: 'Practice vs real labour',
@@ -409,9 +424,11 @@ export class InsightsPage implements OnInit, OnDestroy {
             { label: 'Location', desc: 'Braxton Hicks are typically felt only at the front. Labour contractions often begin in the lower back and wrap around to the front — the "belt" pattern.', iconBg: 'rgba(185,225,240,0.35)', svgKey: 'bone' },
             { label: 'Response to hydration', desc: 'Drinking water and resting often relieves Braxton Hicks within 30 minutes. True labour continues and intensifies regardless.', iconBg: 'rgba(220,195,255,0.25)', svgKey: 'drop' },
           ],
-          tip: { text: 'If you are ever uncertain whether you are in true labour, contact your midwife or maternity unit — they would always rather receive a call than have you wait alone.', source: 'MomsCare Health · Labor & Birth' }
-        }
-      }
+          tip: { text: 'If you are ever uncertain whether you are in true labour, contact your midwife or maternity unit — they would always rather receive a call than have you wait alone.', source: 'MomsCare Health · Labor & Birth' },
+        },
+      },
+      youTubeUrl: "https://www.youtube.com/watch?v=5WsxNnOrkZE",
+      citation: { source: "Mayo Clinic — Braxton Hicks Contractions", author: "Mayo Clinic Staff", year: "2024", url: "https://www.mayoclinic.org/healthy-lifestyle/pregnancy-week-by-week/expert-answers/braxton-hicks/faq-20058257" },
     },
 
     // ── 7. Baby senses ────────────────────────────────────────────────────
@@ -419,7 +436,7 @@ export class InsightsPage implements OnInit, OnDestroy {
       title: 'How your baby\'s senses develop week by week',
       readTime: 5,
       heroTag: 'Development',
-      heroImage: null,
+      heroImage: 'assets/icon/babys_senses.jpg',
       heroBg: 'linear-gradient(135deg, #fff5e0 0%, #ffe0d0 100%)',
       accentColor: '#d9609a',
       accentBg: 'rgba(217,96,154,0.10)',
@@ -441,7 +458,7 @@ export class InsightsPage implements OnInit, OnDestroy {
             { label: 'Pain sensitivity (wk 24+)', desc: 'While the neurological basis of fetal pain perception is scientifically debated, the pain pathways to the brain are largely connected by the end of the second trimester.', iconBg: 'rgba(220,195,255,0.25)', svgKey: 'brain' },
           ],
           tip: { text: 'Eating a varied diet of vegetables, herbs, and whole foods during pregnancy exposes your baby to diverse flavours — research suggests this may influence food acceptance in early childhood.', source: 'MomsCare Health · Baby Development' }
-        },
+    },
         2: {
           tag: 'Baby\'s Senses',
           title: 'Hearing and sight in the womb',
@@ -453,9 +470,11 @@ export class InsightsPage implements OnInit, OnDestroy {
             { label: 'Sight development (wk 22+)', desc: 'The eyes begin to open around week 26–28. While the womb is dark, light that penetrates the abdominal wall is visible — baby will move away from a bright torch held against your skin.', iconBg: 'rgba(185,225,240,0.35)', svgKey: 'eye' },
             { label: 'Visual readiness at birth', desc: 'At birth, babies can see clearly at 20–30cm — approximately the distance from breast to parent\'s face during feeding. Faces and high contrast patterns are most visually stimulating to newborns.', iconBg: 'rgba(220,195,255,0.25)', svgKey: 'eye' },
           ],
-          tip: { text: 'Reading aloud, singing, and talking to your bump from mid-pregnancy helps your baby recognise your voice and cadence. Many parents find it meaningful and calming too.', source: 'MomsCare Health · Baby Development' }
-        }
-      }
+          tip: { text: 'Reading aloud, singing, and talking to your bump from mid-pregnancy helps your baby recognise your voice and cadence. Many parents find it meaningful and calming too.', source: 'MomsCare Health · Baby Development' },
+        },
+      },
+      youTubeUrl: "https://www.youtube.com/watch?v=HlxWaqBYFok",
+      citation: { source: "Stanford Children's Health — Fetal Development", author: "Stanford Children's Health", year: "2024", url: "https://www.stanfordchildrens.org/en/topic/default?id=fetal-development-stages-of-growth-90-P02542" },
     },
 
     // ── 8. Fetal movement ─────────────────────────────────────────────────
@@ -463,7 +482,7 @@ export class InsightsPage implements OnInit, OnDestroy {
       title: 'Fetal movement: what\'s normal to feel',
       readTime: 4,
       heroTag: 'Development',
-      heroImage: null,
+      heroImage: 'assets/icon/fatal_movement.jpg',
       heroBg: 'linear-gradient(135deg, #e0f5ee 0%, #d0e8ff 100%)',
       accentColor: '#6dbfbf',
       accentBg: 'rgba(109,191,191,0.10)',
@@ -484,7 +503,7 @@ export class InsightsPage implements OnInit, OnDestroy {
             { label: 'Definite kicks (wk 20–28)', desc: 'By week 24, movements are strong enough to feel from outside. Partners can feel kicks by placing a hand on your bump. Baby has defined sleep–wake cycles by this point.', iconBg: 'rgba(181,127,212,0.12)', svgKey: 'heart' },
             { label: 'Third-trimester movement', desc: 'Space becomes limited, so movements shift from kicks to rolls and stretches. Movement should remain regular — a change in your baby\'s usual pattern should always be reported.', iconBg: 'rgba(185,225,240,0.35)', svgKey: 'clock' },
           ],
-          tip: { text: 'Baby tends to be most active 1–2 hours after you eat and often responds to cold or sweet drinks. Some babies are most active at night when the rocking motion of your movement during the day has stopped.', source: 'MomsCare Health · Baby Development' }
+          tip: { text: 'Baby tends to be most active 1–2 hours after you eat and often responds to cold or sweet drinks. Some babies are most active at night when the rocking motion of your movement during the day has stopped.', source: 'MomsCare Health · Baby Development' },
         },
         2: {
           tag: 'Safety',
@@ -497,9 +516,11 @@ export class InsightsPage implements OnInit, OnDestroy {
             { label: 'What to do if concerned', desc: 'Do not wait to see if movement increases. Do not use a home doppler as reassurance — it cannot confirm baby is well. Contact your midwife or maternity unit immediately.', iconBg: 'rgba(181,127,212,0.12)', svgKey: 'shield' },
             { label: 'Common myths', desc: 'Babies do not run out of room in the third trimester. Movement should not decrease as you near your due date. This myth has unfortunately delayed care in some situations.', iconBg: 'rgba(185,225,240,0.35)', svgKey: 'star' },
           ],
-          tip: { text: 'Apps like "Count the Kicks" can help you log movement patterns over time. Sharing this data with your midwife gives them a clearer picture of your baby\'s individual baseline.', source: 'MomsCare Health · Safety' }
-        }
-      }
+          tip: { text: 'Apps like "Count the Kicks" can help you log movement patterns over time. Sharing this data with your midwife gives them a clearer picture of your baby\'s individual baseline.', source: 'MomsCare Health · Safety' },
+        },
+      },
+      youTubeUrl: "https://www.youtube.com/watch?v=3M-bQ_B4E9M",
+      citation: { source: "Mayo Clinic — Fetal Movement: Feeling Your Baby Kick", author: "Mayo Clinic Staff", year: "2024", url: "https://www.mayoclinic.org/healthy-lifestyle/pregnancy-week-by-week/in-depth/fetal-movements/art-20044328" },
     },
 
     // ── 9. Iron in pregnancy ──────────────────────────────────────────────
@@ -507,7 +528,7 @@ export class InsightsPage implements OnInit, OnDestroy {
       title: 'Iron in pregnancy: why it matters so much',
       readTime: 4,
       heroTag: 'Nutrition',
-      heroImage: null,
+      heroImage: 'assets/icon/foods_rich in iron.jpg',
       heroBg: 'linear-gradient(135deg, #fff5e0 0%, #ffe8cc 100%)',
       accentColor: '#d9609a',
       accentBg: 'rgba(217,96,154,0.10)',
@@ -529,7 +550,7 @@ export class InsightsPage implements OnInit, OnDestroy {
             { label: 'When to test', desc: 'Blood tests for haemoglobin and ferritin are routine in the booking appointment and at around 28 weeks. Ask for results proactively — don\'t assume no news is good news.', iconBg: 'rgba(220,195,255,0.25)', svgKey: 'doc' },
           ],
           tip: { text: 'If prescribed iron supplements, take them on an empty stomach with orange juice for maximum absorption. If they cause constipation, ask your midwife about a lower-dose, gentler formulation.', source: 'MomsCare Health · Nutrition' }
-        },
+    },
         2: {
           tag: 'Food Sources',
           title: 'Getting iron from food',
@@ -541,9 +562,11 @@ export class InsightsPage implements OnInit, OnDestroy {
             { label: 'Absorption inhibitors', desc: 'Tea, coffee, calcium, and phytates (found in whole grains and legumes) reduce iron absorption. Avoid tea or coffee within an hour of iron-rich meals.', iconBg: 'rgba(224,126,184,0.12)', svgKey: 'drop' },
             { label: 'Fortified foods', desc: 'Many breakfast cereals, breads, and plant milks are fortified with iron. Check labels — fortified cereals can provide 5–8mg per serving.', iconBg: 'rgba(220,195,255,0.25)', svgKey: 'vitamin' },
           ],
-          tip: { text: 'A simple daily habit: add a small glass of orange juice to any iron-rich meal. This single change can meaningfully improve your iron status over weeks without any supplements.', source: 'MomsCare Health · Nutrition' }
-        }
-      }
+          tip: { text: 'A simple daily habit: add a small glass of orange juice to any iron-rich meal. This single change can meaningfully improve your iron status over weeks without any supplements.', source: 'MomsCare Health · Nutrition' },
+        },
+      },
+      youTubeUrl: "https://www.youtube.com/watch?v=UKPsA6DDZEM",
+      citation: { source: "WHO — Anaemia in Women and Children", author: "World Health Organization", year: "2024", url: "https://www.who.int/data/nutrition/nlis/info/anaemia" },
     },
 
     // ── 10. Pregnancy anxiety ─────────────────────────────────────────────
@@ -551,7 +574,7 @@ export class InsightsPage implements OnInit, OnDestroy {
       title: 'Pregnancy anxiety: what\'s normal and what\'s not',
       readTime: 5,
       heroTag: 'Mental Health',
-      heroImage: null,
+      heroImage: 'assets/icon/pregnancy anxiety.jpg',
       heroBg: 'linear-gradient(135deg, #f0e8ff 0%, #e0d8ff 100%)',
       accentColor: '#9b6fc4',
       accentBg: 'rgba(155,111,196,0.10)',
@@ -572,7 +595,7 @@ export class InsightsPage implements OnInit, OnDestroy {
             { label: 'Tokophobia', desc: 'An intense, specific fear of childbirth affects approximately 14% of pregnant women. It is a recognised phobia and can be effectively treated with psychological support.', iconBg: 'rgba(185,225,240,0.35)', svgKey: 'shield' },
             { label: 'Impact on pregnancy', desc: 'Severe untreated anxiety is associated with higher cortisol levels, which can affect fetal development and increase the risk of preterm birth. Seeking support is protective.', iconBg: 'rgba(220,195,255,0.25)', svgKey: 'star' },
           ],
-          tip: { text: 'Tell your midwife how you are feeling at every appointment. There is no threshold of distress you need to reach before mentioning it — and effective support is available.', source: 'MomsCare Health · Mental Health' }
+          tip: { text: 'Tell your midwife how you are feeling at every appointment. There is no threshold of distress you need to reach before mentioning it — and effective support is available.', source: 'MomsCare Health · Mental Health' },
         },
         2: {
           tag: 'Coping',
@@ -585,9 +608,11 @@ export class InsightsPage implements OnInit, OnDestroy {
             { label: 'Mindfulness practice', desc: 'Mindfulness-based cognitive therapy (MBCT) adapted for pregnancy is effective for both anxiety and depression. Apps like Headspace have specific pregnancy programmes.', iconBg: 'rgba(185,225,240,0.35)', svgKey: 'leaf' },
             { label: 'Professional support', desc: 'Your GP, midwife, or a perinatal mental health team can refer you for CBT, counselling, or medication if needed. Certain antidepressants are considered safe in pregnancy.', iconBg: 'rgba(220,195,255,0.25)', svgKey: 'talk' },
           ],
-          tip: { text: 'Physical activity is one of the most effective anxiolytics available. Even a 20-minute daily walk significantly reduces anxiety symptoms by lowering cortisol and increasing endorphins.', source: 'MomsCare Health · Mental Health' }
-        }
-      }
+          tip: { text: 'Physical activity is one of the most effective anxiolytics available. Even a 20-minute daily walk significantly reduces anxiety symptoms by lowering cortisol and increasing endorphins.', source: 'MomsCare Health · Mental Health' },
+        },
+      },
+      youTubeUrl: "https://www.youtube.com/watch?v=WWloIAQpMcQ",
+      citation: { source: "Mind UK — Anxiety During Pregnancy", author: "Mind UK", year: "2024", url: "https://www.mind.org.uk/information-support/types-of-mental-health-problems/anxiety-and-panic-attacks/anxiety-and-pregnancy" },
     },
 
     // ── 11. Stages of labour ──────────────────────────────────────────────
@@ -595,7 +620,7 @@ export class InsightsPage implements OnInit, OnDestroy {
       title: 'The stages of labour: what to expect',
       readTime: 7,
       heroTag: 'Labor',
-      heroImage: null,
+      heroImage: 'assets/icon/stages of labour.jpg',
       heroBg: 'linear-gradient(135deg, #ffe0f0 0%, #f0d8ff 100%)',
       accentColor: '#e07eb8',
       accentBg: 'rgba(224,126,184,0.10)',
@@ -616,7 +641,7 @@ export class InsightsPage implements OnInit, OnDestroy {
             { label: 'Position and movement', desc: 'Staying mobile and upright in early labour uses gravity to help baby descend and rotate. Rocking, kneeling, and walking all help progress and manage pain.', iconBg: 'rgba(185,225,240,0.35)', svgKey: 'breath' },
             { label: 'Pain relief options', desc: 'Gas and air (Entonox), warm water immersion, TENS machines, and epidurals are all available depending on your setting. Discuss your preferences in your birth plan.', iconBg: 'rgba(220,195,255,0.25)', svgKey: 'pill' },
           ],
-          tip: { text: 'In early labour, rest as much as possible, eat easily digestible foods, and time contractions using an app. There is no benefit to going to hospital before active labour is established.', source: 'MomsCare Health · Labour & Birth' }
+          tip: { text: 'In early labour, rest as much as possible, eat easily digestible foods, and time contractions using an app. There is no benefit to going to hospital before active labour is established.', source: 'MomsCare Health · Labour & Birth' },
         },
         2: {
           tag: 'Birth',
@@ -629,9 +654,11 @@ export class InsightsPage implements OnInit, OnDestroy {
             { label: 'The birth', desc: 'Your midwife will guide you through the final pushes. Skin-to-skin contact immediately after birth is strongly associated with breastfeeding success and bonding.', iconBg: 'rgba(185,225,240,0.35)', svgKey: 'hand' },
             { label: 'Third stage (placenta)', desc: 'The placenta is delivered 5–60 minutes after baby. A managed third stage (an injection to speed delivery) reduces postpartum haemorrhage risk by up to 60%.', iconBg: 'rgba(220,195,255,0.25)', svgKey: 'doc' },
           ],
-          tip: { text: 'Delayed cord clamping — waiting at least 1–3 minutes before cutting the cord — allows significant transfer of iron-rich blood to your baby and is now standard practice in most hospitals.', source: 'MomsCare Health · Labour & Birth' }
-        }
-      }
+          tip: { text: 'Delayed cord clamping — waiting at least 1–3 minutes before cutting the cord — allows significant transfer of iron-rich blood to your baby and is now standard practice in most hospitals.', source: 'MomsCare Health · Labour & Birth' },
+        },
+      },
+      youTubeUrl: "https://www.youtube.com/watch?v=8YtCTFPBRFE",
+      citation: { source: "NHS — Stages of Labour and Birth", author: "NHS UK", year: "2024", url: "https://www.nhs.uk/pregnancy/labour-and-birth/what-happens/the-stages-of-labour-and-birth" },
     },
 
     // ── 12. Hospital bag ──────────────────────────────────────────────────
@@ -639,7 +666,7 @@ export class InsightsPage implements OnInit, OnDestroy {
       title: 'Hospital bag essentials: the complete list',
       readTime: 4,
       heroTag: 'Checklist',
-      heroImage: null,
+      heroImage: 'assets/icon/Hospital Bag Essentials.jpg',
       heroBg: 'linear-gradient(135deg, #e0f5e8 0%, #d8f0ff 100%)',
       accentColor: '#6dbfbf',
       accentBg: 'rgba(109,191,191,0.10)',
@@ -661,7 +688,7 @@ export class InsightsPage implements OnInit, OnDestroy {
             { label: 'Postnatal essentials', desc: 'Maternity pads (take more than you think), comfortable underwear (disposable or dark cotton), nipple pads and lanolin cream if breastfeeding, and your usual toiletries and skincare.', iconBg: 'rgba(185,225,240,0.35)', svgKey: 'list' },
           ],
           tip: { text: 'Pack two bags if possible — one for labour and one for postnatal. Your birth partner can leave the postnatal bag in the car so the labour bag is light and easy to access in the early stages.', source: 'MomsCare Health · Birth Preparation' }
-        },
+    },
         2: {
           tag: 'For Baby',
           title: 'What to pack for your baby',
@@ -673,15 +700,17 @@ export class InsightsPage implements OnInit, OnDestroy {
             { label: 'Nappies & wipes', desc: 'A pack of newborn nappies and unscented, alcohol-free water wipes. Hospitals often provide some, but bringing your own avoids any shortages on busy wards.', iconBg: 'rgba(181,127,212,0.12)', svgKey: 'leaf' },
             { label: 'Comfort & warmth', desc: 'A cellular cotton blanket for swaddling, a hat for immediately after birth (babies lose significant heat through their heads), and a muslin or two.', iconBg: 'rgba(185,225,240,0.35)', svgKey: 'heart' },
           ],
-          tip: { text: 'Pre-wash all baby clothing and blankets in a gentle, fragrance-free detergent before packing. Newborn skin is extremely sensitive and can react to standard laundry products.', source: 'MomsCare Health · Birth Preparation' }
-        }
-      }
+          tip: { text: 'Pre-wash all baby clothing and blankets in a gentle, fragrance-free detergent before packing. Newborn skin is extremely sensitive and can react to standard laundry products.', source: 'MomsCare Health · Birth Preparation' },
+        },
+      },
+      youTubeUrl: "https://www.youtube.com/watch?v=ELqLTQSTANc",
+      citation: { source: "NHS — What to Pack in Your Hospital Bag", author: "NHS UK", year: "2024", url: "https://www.nhs.uk/pregnancy/labour-and-birth/preparing-for-the-birth/what-to-pack-in-your-hospital-bag" },
     },
 
     // ── 13. BABY BRAIN DEVELOPMENT ───────────────────────────────────────
     babybrain: {
       title: 'The baby\'s brain: how it grows so fast',
-      readTime: 6, heroTag: 'Development', heroImage: null,
+      readTime: 6, heroTag: 'Development', heroImage: "assets/icon/baby brain growth.jpg",
       heroBg: 'linear-gradient(135deg,#ede8ff 0%,#d8e8ff 100%)',
       accentColor: '#9b6fc4', accentBg: 'rgba(155,111,196,0.10)',
       highlightBg: 'rgba(155,111,196,0.07)', highlightBorder: 'rgba(155,111,196,0.20)',
@@ -708,13 +737,15 @@ export class InsightsPage implements OnInit, OnDestroy {
             {label:'Music and stimulation',desc:'Babies in the womb respond to music with heart rate changes and movement. Familiar melodies heard in utero are recognised and calming to newborns after birth.',iconBg:'rgba(220,195,255,0.25)',svgKey:'ear'},
           ],
           tip:{text:'Iodine is critical for thyroid function, which directly regulates fetal brain development. Many women are iodine-deficient without knowing it — check your prenatal vitamin contains at least 150mcg.',source:'MomsCare Health · Nutrition'}},
-      }
+      },
+      youTubeUrl: "https://www.youtube.com/watch?v=rpDhG-bMJiw",
+      citation: { source: "Zero to Three — Brain Development", author: "Zero to Three", year: "2024", url: "https://www.zerotothree.org/resource/brain-development" },
     },
 
     // ── 14. WHEN BABY HEARS YOUR VOICE ───────────────────────────────────
     hearingvoice: {
       title: 'When does baby start to hear your voice?',
-      readTime: 3, heroTag: 'Bonding', heroImage: null,
+      readTime: 3, heroTag: 'Bonding', heroImage: "assets/icon/Baby's_hearing.jpg",
       heroBg: 'linear-gradient(135deg,#ffeef5 0%,#eee8ff 100%)',
       accentColor: '#d9609a', accentBg: 'rgba(217,96,154,0.10)',
       highlightBg: 'rgba(217,96,154,0.07)', highlightBorder: 'rgba(217,96,154,0.20)',
@@ -741,13 +772,15 @@ export class InsightsPage implements OnInit, OnDestroy {
             {label:'Music choices',desc:'Calm, melodic music is most associated with positive fetal heart rate responses. Lullabies played consistently in the third trimester are recognisable calming stimuli to newborns.',iconBg:'rgba(220,195,255,0.25)',svgKey:'ear'},
           ],
           tip:{text:'Ask your partner or another key caregiver to also talk or sing to your bump regularly. Newborns show recognition of familiar voices beyond the mother, making early bonding easier for the whole family.',source:'MomsCare Health · Bonding'}},
-      }
+      },
+      youTubeUrl: "https://www.youtube.com/watch?v=Rba4pRu1P04",
+      citation: { source: "Mayo Clinic — Fetal Development: MRI in Pregnancy", author: "Mayo Clinic Staff", year: "2024", url: "https://www.mayoclinic.org/healthy-lifestyle/pregnancy-week-by-week/in-depth/fetal-development/art-20046151" },
     },
 
     // ── 15. WHAT BABY IS DOING RIGHT NOW ─────────────────────────────────
     babynow: {
       title: 'What your baby is doing right now',
-      readTime: 4, heroTag: 'Development', heroImage: null,
+      readTime: 4, heroTag: 'Development', heroImage: 'assets/icon/fatal_movement2.jpg',
       heroBg: 'linear-gradient(135deg,#e8faf0 0%,#e0eeff 100%)',
       accentColor: '#6dbfbf', accentBg: 'rgba(109,191,191,0.10)',
       highlightBg: 'rgba(109,191,191,0.07)', highlightBorder: 'rgba(109,191,191,0.22)',
@@ -774,13 +807,15 @@ export class InsightsPage implements OnInit, OnDestroy {
             {label:'Fingerprints forming',desc:'Your baby\'s unique fingerprints form between weeks 17–20, determined by the unique pressure and growth patterns of each individual finger during development.',iconBg:'rgba(185,225,240,0.35)',svgKey:'hand'},
           ],
           tip:{text:'At the anomaly scan, ask your sonographer to explain what they are seeing as they go. Most parents find the scan deeply emotional — taking video or still images to share with family is a meaningful keepsake.',source:'MomsCare Health · Baby Development'}},
-      }
+      },
+      youTubeUrl: "https://www.youtube.com/watch?v=x6GX4ZY-Rp0",
+      citation: { source: "Mayo Clinic — Fetal Development Week by Week", author: "Mayo Clinic Staff", year: "2024", url: "https://www.mayoclinic.org/healthy-lifestyle/pregnancy-week-by-week/in-depth/fetal-development/art-20046151" },
     },
 
     // ── 16. FOODS THAT SUPPORT BABY'S BRAIN ─────────────────────────────
     brainfoods: {
       title: 'Foods that support baby\'s brain development',
-      readTime: 5, heroTag: 'Nutrition', heroImage: null,
+      readTime: 5, heroTag: 'Nutrition', heroImage: 'assets/icon/foods_brain development.jpg',
       heroBg: 'linear-gradient(135deg,#e8ffe8 0%,#d8f5e8 100%)',
       accentColor: '#5bba8a', accentBg: 'rgba(91,186,138,0.10)',
       highlightBg: 'rgba(91,186,138,0.07)', highlightBorder: 'rgba(91,186,138,0.22)',
@@ -807,13 +842,15 @@ export class InsightsPage implements OnInit, OnDestroy {
             {label:'Nuts and seeds',desc:'Walnuts are the richest plant source of ALA omega-3. Pumpkin seeds provide zinc and magnesium. Brazil nuts provide selenium — important for thyroid function and immune health.',iconBg:'rgba(220,195,255,0.25)',svgKey:'star'},
           ],
           tip:{text:'A Mediterranean-style diet — rich in oily fish, olive oil, legumes, whole grains, and vegetables — is consistently associated with the best pregnancy and developmental outcomes in research.',source:'MomsCare Health · Nutrition'}},
-      }
+      },
+      youTubeUrl: "https://www.youtube.com/watch?v=o7HNKvWqNQw",
+      citation: { source: "Harvard Health — Nutrition During Pregnancy", author: "Harvard Health Publishing", year: "2024", url: "https://www.health.harvard.edu/blog/nutrition-during-pregnancy-2017112612666" },
     },
 
     // ── 17. STAYING HYDRATED ─────────────────────────────────────────────
     hydration: {
       title: 'Staying hydrated: more important than you think',
-      readTime: 3, heroTag: 'Wellness', heroImage: null,
+      readTime: 3, heroTag: 'Wellness', heroImage: 'assets/icon/Hydration and Pregnancy.jpg',
       heroBg: 'linear-gradient(135deg,#e0f5ff 0%,#d5eeff 100%)',
       accentColor: '#5b8fd4', accentBg: 'rgba(91,143,212,0.10)',
       highlightBg: 'rgba(91,143,212,0.06)', highlightBorder: 'rgba(91,143,212,0.20)',
@@ -840,13 +877,15 @@ export class InsightsPage implements OnInit, OnDestroy {
             {label:'Signs of dehydration',desc:'Headache, dizziness, dark urine, reduced fetal movement, Braxton Hicks, and extreme thirst are all signs to increase your fluid intake immediately and rest.',iconBg:'rgba(220,195,255,0.25)',svgKey:'shield'},
           ],
           tip:{text:'Keep a 1-litre water bottle visible at your desk, bedside, and in your bag. Visual cues are one of the most effective strategies for increasing water intake consistently throughout the day.',source:'MomsCare Health · Wellness'}},
-      }
+      },
+      youTubeUrl: "https://www.youtube.com/watch?v=GiUZ-jEfmH4",
+      citation: { source: "American College of Obstetricians and Gynecologists — Nutrition During Pregnancy", author: "ACOG", year: "2024", url: "https://www.acog.org/womens-health/faqs/nutrition-during-pregnancy" },
     },
 
     // ── 18. MORNING SICKNESS ─────────────────────────────────────────────
     morningsickness: {
       title: 'Morning sickness: foods that actually help',
-      readTime: 4, heroTag: 'Symptoms', heroImage: null,
+      readTime: 4, heroTag: 'Symptoms', heroImage: 'assets/icon/morning sickness foods.jpg',
       heroBg: 'linear-gradient(135deg,#fff5e8 0%,#ffe8e8 100%)',
       accentColor: '#e07eb8', accentBg: 'rgba(224,126,184,0.10)',
       highlightBg: 'rgba(224,126,184,0.07)', highlightBorder: 'rgba(224,126,184,0.20)',
@@ -873,13 +912,15 @@ export class InsightsPage implements OnInit, OnDestroy {
             {label:'Vitamin B6 supplementation',desc:'Vitamin B6 (pyridoxine) at 25mg three times daily is recommended by many obstetric guidelines for nausea in pregnancy. It can be taken alongside antihistamines if symptoms are severe.',iconBg:'rgba(220,195,255,0.25)',svgKey:'vitamin'},
           ],
           tip:{text:'Identify your specific smell triggers and eliminate them where possible — ask your partner to cook if cooking smells trigger nausea, and switch to fragrance-free toiletries and cleaning products.',source:'MomsCare Health · Symptoms'}},
-      }
+      },
+      youTubeUrl: "https://www.youtube.com/watch?v=u0EFfmq8qSg",
+      citation: { source: "NHS — Vomiting and Morning Sickness in Pregnancy", author: "NHS UK", year: "2024", url: "https://www.nhs.uk/pregnancy/related-conditions/common-symptoms/vomiting-and-morning-sickness" },
     },
 
     // ── 19. EMOTIONAL CHANGES ────────────────────────────────────────────
     emotions: {
       title: 'Why you might feel more emotional right now',
-      readTime: 4, heroTag: 'Emotions', heroImage: null,
+      readTime: 4, heroTag: 'Emotions', heroImage: 'assets/icon/emotional during pregnancy.jpg',
       heroBg: 'linear-gradient(135deg,#ffe8f0 0%,#f0e0ff 100%)',
       accentColor: '#e07eb8', accentBg: 'rgba(224,126,184,0.10)',
       highlightBg: 'rgba(224,126,184,0.07)', highlightBorder: 'rgba(224,126,184,0.20)',
@@ -906,13 +947,15 @@ export class InsightsPage implements OnInit, OnDestroy {
             {label:'Perinatal support services',desc:'Specialist perinatal mental health services support women with depression, anxiety, OCD, trauma history, and other mental health challenges during pregnancy and the postpartum period.',iconBg:'rgba(220,195,255,0.25)',svgKey:'talk'},
           ],
           tip:{text:'If your partner is struggling to understand your emotional experience, share information about the hormonal changes happening in your body. Most people respond with far more empathy when they understand the biological basis.',source:'MomsCare Health · Emotions'}},
-      }
+      },
+      youTubeUrl: "https://www.youtube.com/watch?v=F5BHGhB4A5g",
+      citation: { source: "Mind UK — Perinatal Mental Health", author: "Mind UK", year: "2024", url: "https://www.mind.org.uk/information-support/types-of-mental-health-problems/postnatal-depression-and-perinatal-mental-health/about-perinatal-mental-health" },
     },
 
     // ── 20. PREGNANCY INSOMNIA ────────────────────────────────────────────
     insomnia: {
       title: 'Pregnancy insomnia: causes and solutions',
-      readTime: 4, heroTag: 'Sleep', heroImage: null,
+      readTime: 4, heroTag: 'Sleep', heroImage: 'assets/icon/pregnancy insonnia.jpg',
       heroBg: 'linear-gradient(135deg,#eae8ff 0%,#d8e4ff 100%)',
       accentColor: '#9b6fc4', accentBg: 'rgba(155,111,196,0.10)',
       highlightBg: 'rgba(155,111,196,0.07)', highlightBorder: 'rgba(155,111,196,0.20)',
@@ -939,13 +982,15 @@ export class InsightsPage implements OnInit, OnDestroy {
             {label:'Anxiety and the mind',desc:'Worry about the birth, baby\'s health, and parenthood are common causes of lying awake. A 10-minute "worry journal" before bed — writing concerns and planned responses — significantly reduces overnight rumination.',iconBg:'rgba(220,195,255,0.25)',svgKey:'brain'},
           ],
           tip:{text:'Daytime naps of 20–30 minutes can compensate for fragmented overnight sleep without disrupting your circadian rhythm. The early afternoon is the ideal nap window — avoid napping after 3pm.',source:'MomsCare Health · Sleep'}},
-      }
+      },
+      youTubeUrl: "https://www.youtube.com/watch?v=0sBoQL0MZMU",
+      citation: { source: "Sleep Foundation — Pregnancy and Sleep", author: "Sleep Foundation", year: "2024", url: "https://www.sleepfoundation.org/pregnancy" },
     },
 
     // ── 21. BUILDING A SUPPORT SYSTEM ────────────────────────────────────
     supportsystem: {
       title: 'Building a support system before birth',
-      readTime: 4, heroTag: 'Wellness', heroImage: null,
+      readTime: 4, heroTag: 'Wellness', heroImage: 'assets/icon/building support system.jpg',
       heroBg: 'linear-gradient(135deg,#e8f5f0 0%,#e0f0ff 100%)',
       accentColor: '#6dbfbf', accentBg: 'rgba(109,191,191,0.10)',
       highlightBg: 'rgba(109,191,191,0.07)', highlightBorder: 'rgba(109,191,191,0.22)',
@@ -972,13 +1017,15 @@ export class InsightsPage implements OnInit, OnDestroy {
             {label:'Online communities',desc:'Evidence-based online pregnancy communities can supplement in-person support, particularly useful for those with limited local networks. Choose moderated communities with a positive, evidence-based culture.',iconBg:'rgba(220,195,255,0.25)',svgKey:'doc'},
           ],
           tip:{text:'Schedule regular check-ins with your key support people before birth — a weekly call or coffee. Maintaining relationships takes effort in pregnancy. Investing now means those relationships are strong when you need them most.',source:'MomsCare Health · Wellness'}},
-      }
+      },
+      youTubeUrl: "https://www.youtube.com/watch?v=6RBKLdGTkqE",
+      citation: { source: "Tommy's — Mental Health in Pregnancy", author: "Tommy's", year: "2024", url: "https://www.tommys.org/pregnancy-information/health-information-pregnancy/mental-health-in-pregnancy" },
     },
 
     // ── 22. BIRTH PLAN ────────────────────────────────────────────────────
     birthplan: {
       title: 'Building your birth plan step by step',
-      readTime: 5, heroTag: 'Planning', heroImage: null,
+      readTime: 5, heroTag: 'Planning', heroImage: 'assets/icon/birth plan.jpg',
       heroBg: 'linear-gradient(135deg,#e8e8ff 0%,#d8e0ff 100%)',
       accentColor: '#5b8fd4', accentBg: 'rgba(91,143,212,0.10)',
       highlightBg: 'rgba(91,143,212,0.06)', highlightBorder: 'rgba(91,143,212,0.20)',
@@ -1005,13 +1052,15 @@ export class InsightsPage implements OnInit, OnDestroy {
             {label:'Plan for deviation',desc:'Include a section: "If plans need to change, I would appreciate...". Being explicit that you understand birth is unpredictable, while communicating what would still be meaningful to you, is reassuring for care teams.',iconBg:'rgba(220,195,255,0.25)',svgKey:'shield'},
           ],
           tip:{text:'Consider writing your birth plan in three sections: preferred birth, if intervention is needed, and in the event of caesarean. This shows your care team you have thought through all possibilities.',source:'MomsCare Health · Planning'}},
-      }
+      },
+      youTubeUrl: "https://www.youtube.com/watch?v=9IiGrCCHQmM",
+      citation: { source: "NHS — Writing a Birth Plan", author: "NHS UK", year: "2024", url: "https://www.nhs.uk/pregnancy/labour-and-birth/preparing-for-the-birth/writing-a-birth-plan" },
     },
 
     // ── 23. PAIN RELIEF OPTIONS ───────────────────────────────────────────
     painrelief: {
       title: 'Pain relief options during labor explained',
-      readTime: 6, heroTag: 'Medical', heroImage: null,
+      readTime: 6, heroTag: 'Medical', heroImage: 'assets/icon/pain relief options.jpg',
       heroBg: 'linear-gradient(135deg,#ffeee8 0%,#ffe0f0 100%)',
       accentColor: '#e07eb8', accentBg: 'rgba(224,126,184,0.10)',
       highlightBg: 'rgba(224,126,184,0.07)', highlightBorder: 'rgba(224,126,184,0.20)',
@@ -1038,13 +1087,15 @@ export class InsightsPage implements OnInit, OnDestroy {
             {label:'Spinal block and CSE',desc:'A spinal block delivers immediate pain relief via a one-time injection. Combined spinal-epidural (CSE) combines both methods — useful for rapid relief with ongoing control.',iconBg:'rgba(220,195,255,0.25)',svgKey:'shield'},
           ],
           tip:{text:'Discuss all options with your midwife well before your due date. Understanding what is available at your specific birth setting — home, birth centre, or hospital — helps you make informed choices in the moment without pressure.',source:'MomsCare Health · Labour & Birth'}},
-      }
+      },
+      youTubeUrl: "https://www.youtube.com/watch?v=qV4_G2h2CJQ",
+      citation: { source: "NHS — Pain Relief in Labour", author: "NHS UK", year: "2024", url: "https://www.nhs.uk/pregnancy/labour-and-birth/what-happens/pain-relief-in-labour" },
     },
 
     // ── 24. EXERCISE IN PREGNANCY ─────────────────────────────────────────
     exercise: {
       title: 'Exercise in pregnancy: what\'s safe and what helps',
-      readTime: 5, heroTag: 'Wellness', heroImage: null,
+      readTime: 5, heroTag: 'Wellness', heroImage: 'assets/icon/exercise during pregnancy.jpg',
       heroBg: 'linear-gradient(135deg,#e8ffe0 0%,#d8f8e8 100%)',
       accentColor: '#5bba8a', accentBg: 'rgba(91,186,138,0.10)',
       highlightBg: 'rgba(91,186,138,0.07)', highlightBorder: 'rgba(91,186,138,0.22)',
@@ -1071,13 +1122,15 @@ export class InsightsPage implements OnInit, OnDestroy {
             {label:'Strength training',desc:'Light to moderate resistance training is safe throughout pregnancy for those with prior experience. Focus on bodyweight exercises and resistance bands. Avoid heavy overhead lifts and the Valsalva manoeuvre.',iconBg:'rgba(220,195,255,0.25)',svgKey:'shield'},
           ],
           tip:{text:'The talk test is the easiest way to gauge exercise intensity in pregnancy: if you can maintain a full conversation while exercising, you are at a safe moderate intensity. If you cannot, slow down.',source:'MomsCare Health · Exercise'}},
-      }
+      },
+      youTubeUrl: "https://www.youtube.com/watch?v=v5FHxe_ICEM",
+      citation: { source: "ACOG — Exercise During Pregnancy", author: "American College of Obstetricians and Gynecologists", year: "2024", url: "https://www.acog.org/womens-health/faqs/exercise-during-pregnancy" },
     },
 
     // ── 25. THE FOURTH TRIMESTER ──────────────────────────────────────────
     postpartum: {
       title: 'The fourth trimester: your recovery plan',
-      readTime: 7, heroTag: 'Postpartum', heroImage: null,
+      readTime: 7, heroTag: 'Postpartum', heroImage: 'assets/icon/forth trimester.jpg',
       heroBg: 'linear-gradient(135deg,#ffe8f5 0%,#f5e8ff 100%)',
       accentColor: '#b57fd4', accentBg: 'rgba(181,127,212,0.10)',
       highlightBg: 'rgba(181,127,212,0.07)', highlightBorder: 'rgba(181,127,212,0.20)',
@@ -1104,7 +1157,9 @@ export class InsightsPage implements OnInit, OnDestroy {
             {label:'Postpartum psychosis',desc:'A rare but serious condition affecting 1–2 in 1,000 women, usually within the first 2 weeks. Symptoms include confusion, hallucinations, and bizarre behaviour. It is a psychiatric emergency — call emergency services immediately.',iconBg:'rgba(220,195,255,0.25)',svgKey:'shield'},
           ],
           tip:{text:'Tell someone how you are really feeling every day in the fourth trimester — your partner, midwife, health visitor, or a trusted friend. Silence and isolation are the greatest risk factors for postpartum mental health challenges becoming serious.',source:'MomsCare Health · Postpartum'}},
-      }
+      },
+      youTubeUrl: "https://www.youtube.com/watch?v=JkrSFsWbGtQ",
+      citation: { source: "NHS — Your Body After the Birth", author: "NHS UK", year: "2024", url: "https://www.nhs.uk/pregnancy/labour-and-birth/after-the-birth/your-body-after-the-birth" },
     },
 
   };
@@ -1113,44 +1168,44 @@ export class InsightsPage implements OnInit, OnDestroy {
   popularArticles: ArticleCard[] = [
     { title: 'Your changing body: up to 42 weeks', tag: 'Body Changes', readTime: 6, bgColor: 'linear-gradient(135deg,rgba(244,210,240,0.7),rgba(220,195,255,0.6))', image: 'assets/icon/yourchangingbody.jpg', excerpt: 'Every system in your body is adapting — here\'s the full picture week by week.', articleKey: 'body' },
     { title: 'Checkups: when, how, and why', tag: 'Medical', readTime: 4, bgColor: 'linear-gradient(135deg,rgba(185,225,240,0.6),rgba(200,210,255,0.6))', image: 'assets/icon/checkupswhenhowandwhy.jpg', excerpt: 'What to expect at each prenatal visit and which tests matter most.', articleKey: 'checkups' },
-    { title: 'Why pregnancy fatigue hits so hard', tag: 'Symptoms', readTime: 3, bgColor: 'linear-gradient(135deg,rgba(255,210,230,0.6),rgba(244,210,240,0.7))', image: null, excerpt: 'Progesterone, placenta-building, and blood volume changes are all at play.', articleKey: 'fatigue' },
-    { title: 'Round ligament pain explained', tag: 'Body Changes', readTime: 3, bgColor: 'linear-gradient(135deg,rgba(210,240,220,0.6),rgba(185,225,240,0.6))', image: null, excerpt: 'Sharp, shooting pains on the sides of your belly — what they are and how to ease them.', articleKey: 'ligament' },
+    { title: 'Why pregnancy fatigue hits so hard', tag: 'Symptoms', readTime: 3, bgColor: 'linear-gradient(135deg,rgba(255,210,230,0.6),rgba(244,210,240,0.7))', image: 'assets/icon/pregnancy_fatiuge.jpg', excerpt: 'Progesterone, placenta-building, and blood volume changes are all at play.', articleKey: 'fatigue' },
+    { title: 'Round ligament pain explained', tag: 'Body Changes', readTime: 3, bgColor: 'linear-gradient(135deg,rgba(210,240,220,0.6),rgba(185,225,240,0.6))', image: 'assets/icon/round_ligament_pain.jpg', excerpt: 'Sharp, shooting pains on the sides of your belly — what they are and how to ease them.', articleKey: 'ligament' },
   ];
 
   bodyArticles: ArticleCard[] = [
-    { title: 'Why your skin changes and what helps', tag: 'Skin & Hair', readTime: 4, bgColor: 'linear-gradient(135deg,rgba(255,230,210,0.7),rgba(255,210,230,0.6))', excerpt: 'From the glow to the linea nigra — the science behind pregnancy skin changes.', articleKey: 'skin' },
-    { title: 'Understanding Braxton Hicks contractions', tag: 'Symptoms', readTime: 4, bgColor: 'linear-gradient(135deg,rgba(220,195,255,0.6),rgba(185,225,240,0.6))', excerpt: 'Practice contractions versus real ones — how to tell the difference.', articleKey: 'braxton' },
-    { title: 'Staying hydrated: more important than you think', tag: 'Wellness', readTime: 3, bgColor: 'linear-gradient(135deg,rgba(185,225,240,0.7),rgba(200,215,255,0.6))', excerpt: 'Your amniotic fluid is replenished every 3 hours — water intake directly matters.', articleKey: 'hydration' },
-    { title: 'Morning sickness: foods that actually help', tag: 'Symptoms', readTime: 4, bgColor: 'linear-gradient(135deg,rgba(255,215,220,0.6),rgba(244,210,240,0.6))', excerpt: 'Cold, bland, and small — the eating strategy that gets most women through.', articleKey: 'morningsickness' },
+    { title: 'Why your skin changes and what helps', tag: 'Skin & Hair', readTime: 4, bgColor: 'linear-gradient(135deg,rgba(255,230,210,0.7),rgba(255,210,230,0.6))', image: 'assets/icon/skinchanges_pregnancy.jpg', excerpt: 'From the glow to the linea nigra — the science behind pregnancy skin changes.', articleKey: 'skin' },
+    { title: 'Understanding Braxton Hicks contractions', tag: 'Symptoms', readTime: 4, bgColor: 'linear-gradient(135deg,rgba(220,195,255,0.6),rgba(185,225,240,0.6))', image: 'assets/icon/Braxton-Hicks contractions.jpg', excerpt: 'Practice contractions versus real ones — how to tell the difference.', articleKey: 'braxton' },
+    { title: 'Staying hydrated: more important than you think', tag: 'Wellness', readTime: 3, bgColor: 'linear-gradient(135deg,rgba(185,225,240,0.7),rgba(200,215,255,0.6))', excerpt: 'Your amniotic fluid is replenished every 3 hours — water intake directly matters.', image: 'assets/icon/Hydration and Pregnancy.jpg', articleKey: 'hydration' },
+    { title: 'Morning sickness: foods that actually help', tag: 'Symptoms', readTime: 4, bgColor: 'linear-gradient(135deg,rgba(255,215,220,0.6),rgba(244,210,240,0.6))', excerpt: 'Cold, bland, and small — the eating strategy that gets most women through.', image: 'assets/icon/morning sickness foods.jpg', articleKey: 'morningsickness' },
   ];
 
   babyArticles: ArticleCard[] = [
-    { title: 'How your baby\'s senses develop week by week', tag: 'Development', readTime: 5, bgColor: 'linear-gradient(135deg,rgba(255,220,180,0.6),rgba(255,200,210,0.6))', excerpt: 'Touch, hearing, taste, sight — your baby is already experiencing the world.', articleKey: 'senses' },
-    { title: 'Fetal movement: what\'s normal to feel', tag: 'Development', readTime: 4, bgColor: 'linear-gradient(135deg,rgba(185,240,225,0.6),rgba(200,215,255,0.6))', excerpt: 'Kicks, rolls, hiccups — a guide to the movements you\'ll experience.', articleKey: 'movement' },
-    { title: 'When does baby start to hear your voice?', tag: 'Bonding', readTime: 3, bgColor: 'linear-gradient(135deg,rgba(244,210,240,0.7),rgba(220,195,255,0.5))', excerpt: 'From week 18 onwards, your baby can hear sounds — including you.', articleKey: 'hearingvoice' },
-    { title: 'What your baby is doing right now', tag: 'Development', readTime: 4, bgColor: 'linear-gradient(135deg,rgba(200,240,220,0.6),rgba(185,225,240,0.6))', excerpt: 'Sucking, swallowing, practicing breathing — movement is constant inside.', articleKey: 'babynow' },
-    { title: 'The baby\'s brain: how it grows so fast', tag: 'Development', readTime: 6, bgColor: 'linear-gradient(135deg,rgba(210,200,255,0.6),rgba(190,210,255,0.6))', excerpt: '100 billion neurons, all forming before birth — the science is extraordinary.', articleKey: 'babybrain' },
+    { title: 'How your baby\'s senses develop week by week', tag: 'Development', readTime: 5, bgColor: 'linear-gradient(135deg,rgba(255,220,180,0.6),rgba(255,200,210,0.6))', image: 'assets/icon/babys_senses.jpg', excerpt: 'Touch, hearing, taste, sight — your baby is already experiencing the world.', articleKey: 'senses' },
+    { title: 'Fetal movement: what\'s normal to feel', tag: 'Development', readTime: 4, bgColor: 'linear-gradient(135deg,rgba(185,240,225,0.6),rgba(200,215,255,0.6))', image: 'assets/icon/fatal_movement.jpg', excerpt: 'Kicks, rolls, hiccups — a guide to the movements you\'ll experience.', articleKey: 'movement' },
+    { title: 'When does baby start to hear your voice?', tag: 'Bonding', readTime: 3, bgColor: 'linear-gradient(135deg,rgba(244,210,240,0.7),rgba(220,195,255,0.5))', image: "assets/icon/Baby's_hearing.jpg", excerpt: 'From week 18 onwards, your baby can hear sounds — including you.', articleKey: 'hearingvoice' },
+    { title: 'What your baby is doing right now', tag: 'Development', readTime: 4, bgColor: 'linear-gradient(135deg,rgba(200,240,220,0.6),rgba(185,225,240,0.6))', image: 'assets/icon/fatal_movement2.jpg', excerpt: 'Sucking, swallowing, practicing breathing — movement is constant inside.', articleKey: 'babynow' },
+    { title: 'The baby\'s brain: how it grows so fast', tag: 'Development', readTime: 6, bgColor: 'linear-gradient(135deg,rgba(210,200,255,0.6),rgba(190,210,255,0.6))', excerpt: '100 billion neurons, all forming before birth — the science is extraordinary.', image: "assets/icon/baby brain growth.jpg", articleKey: 'babybrain' },
   ];
 
   nutritionArticles: ArticleCard[] = [
-    { title: 'Iron in pregnancy: why it matters so much', tag: 'Nutrition', readTime: 4, bgColor: 'linear-gradient(135deg,rgba(255,230,190,0.7),rgba(255,210,180,0.6))', excerpt: 'Anaemia affects 1 in 3 pregnant women. Here\'s how to keep your levels healthy.', articleKey: 'iron' },
-    { title: 'Foods that support baby\'s brain development', tag: 'Nutrition', readTime: 5, bgColor: 'linear-gradient(135deg,rgba(200,240,200,0.7),rgba(185,225,210,0.6))', excerpt: 'DHA, choline, iodine — the nutrients that build your baby\'s neural connections.', articleKey: 'brainfoods' },
-    { title: 'Why you might feel more emotional right now', tag: 'Emotions', readTime: 4, bgColor: 'linear-gradient(135deg,rgba(255,230,200,0.6),rgba(255,210,225,0.6))', excerpt: 'Hormonal surges during pregnancy genuinely change emotional processing.', articleKey: 'emotions' },
-    { title: 'Exercise in pregnancy: what\'s safe and what helps', tag: 'Wellness', readTime: 5, bgColor: 'linear-gradient(135deg,rgba(210,240,215,0.7),rgba(190,235,210,0.6))', excerpt: 'Safe activities, what to avoid, and why staying active improves outcomes.', articleKey: 'exercise' },
+    { title: 'Iron in pregnancy: why it matters so much', tag: 'Nutrition', readTime: 4, bgColor: 'linear-gradient(135deg,rgba(255,230,190,0.7),rgba(255,210,180,0.6))', image: 'assets/icon/foods_rich in iron.jpg', excerpt: 'Anaemia affects 1 in 3 pregnant women. Here\'s how to keep your levels healthy.', articleKey: 'iron' },
+    { title: 'Foods that support baby\'s brain development', tag: 'Nutrition', readTime: 5, bgColor: 'linear-gradient(135deg,rgba(200,240,200,0.7),rgba(185,225,210,0.6))', image: 'assets/icon/foods_brain development.jpg', excerpt: 'DHA, choline, iodine — the nutrients that build your baby\'s neural connections.', articleKey: 'brainfoods' },
+    { title: 'Why you might feel more emotional right now', tag: 'Emotions', readTime: 4, bgColor: 'linear-gradient(135deg,rgba(255,230,200,0.6),rgba(255,210,225,0.6))', excerpt: 'Hormonal surges during pregnancy genuinely change emotional processing.', image: 'assets/icon/emotional during pregnancy.jpg', articleKey: 'emotions' },
+    { title: 'Exercise in pregnancy: what\'s safe and what helps', tag: 'Wellness', readTime: 5, bgColor: 'linear-gradient(135deg,rgba(210,240,215,0.7),rgba(190,235,210,0.6))', excerpt: 'Safe activities, what to avoid, and why staying active improves outcomes.', image: 'assets/icon/exercise during pregnancy.jpg', articleKey: 'exercise' },
   ];
 
   mindArticles: ArticleCard[] = [
-    { title: 'Pregnancy anxiety: what\'s normal and what\'s not', tag: 'Mental Health', readTime: 5, bgColor: 'linear-gradient(135deg,rgba(220,195,255,0.6),rgba(200,185,255,0.5))', excerpt: 'Worry is universal in pregnancy. Knowing when to seek support makes all the difference.', articleKey: 'anxiety' },
-    { title: 'Pregnancy insomnia: causes and solutions', tag: 'Sleep', readTime: 4, bgColor: 'linear-gradient(135deg,rgba(210,200,255,0.6),rgba(185,210,240,0.6))', excerpt: 'Progesterone, discomfort, and racing thoughts — a guide to sleeping better.', articleKey: 'insomnia' },
-    { title: 'Building a support system before birth', tag: 'Wellness', readTime: 4, bgColor: 'linear-gradient(135deg,rgba(185,240,225,0.6),rgba(185,225,240,0.6))', excerpt: 'Who to lean on, how to ask for help, and why doing it before baby arrives matters.', articleKey: 'supportsystem' },
-    { title: 'The fourth trimester: your recovery plan', tag: 'Postpartum', readTime: 7, bgColor: 'linear-gradient(135deg,rgba(255,215,235,0.7),rgba(240,215,255,0.6))', excerpt: 'The weeks after birth are as important as pregnancy — here\'s what to prepare for.', articleKey: 'postpartum' },
+    { title: 'Pregnancy anxiety: what\'s normal and what\'s not', tag: 'Mental Health', readTime: 5, bgColor: 'linear-gradient(135deg,rgba(220,195,255,0.6),rgba(200,185,255,0.5))', excerpt: 'Worry is universal in pregnancy. Knowing when to seek support makes all the difference.', image: 'assets/icon/pregnancy anxiety.jpg', articleKey: 'anxiety' },
+    { title: 'Pregnancy insomnia: causes and solutions', tag: 'Sleep', readTime: 4, bgColor: 'linear-gradient(135deg,rgba(210,200,255,0.6),rgba(185,210,240,0.6))', excerpt: 'Progesterone, discomfort, and racing thoughts — a guide to sleeping better.', image: 'assets/icon/pregnancy insonnia.jpg', articleKey: 'insomnia' },
+    { title: 'Building a support system before birth', tag: 'Wellness', readTime: 4, bgColor: 'linear-gradient(135deg,rgba(185,240,225,0.6),rgba(185,225,240,0.6))', excerpt: 'Who to lean on, how to ask for help, and why doing it before baby arrives matters.', image: 'assets/icon/building support system.jpg', articleKey: 'supportsystem' },
+    { title: 'The fourth trimester: your recovery plan', tag: 'Postpartum', readTime: 7, bgColor: 'linear-gradient(135deg,rgba(255,215,235,0.7),rgba(240,215,255,0.6))', excerpt: 'The weeks after birth are as important as pregnancy — here\'s what to prepare for.', image: 'assets/icon/forth trimester.jpg', articleKey: 'postpartum' },
   ];
 
   birthArticles: ArticleCard[] = [
-    { title: 'The stages of labour: what to expect', tag: 'Labor', readTime: 7, bgColor: 'linear-gradient(135deg,rgba(255,200,215,0.7),rgba(244,210,240,0.6))', excerpt: 'Early, active, and transition — a calm, honest walk through each phase.', articleKey: 'labour' },
-    { title: 'Hospital bag essentials: the complete list', tag: 'Checklist', readTime: 4, bgColor: 'linear-gradient(135deg,rgba(185,240,220,0.6),rgba(200,215,255,0.6))', excerpt: 'For you, for baby, and for your birth partner — nothing forgotten.', articleKey: 'hospitalbag' },
-    { title: 'Building your birth plan step by step', tag: 'Planning', readTime: 5, bgColor: 'linear-gradient(135deg,rgba(200,215,255,0.7),rgba(220,195,255,0.6))', excerpt: 'What to include, how to communicate it, and staying flexible when plans change.', articleKey: 'birthplan' },
-    { title: 'Pain relief options during labor explained', tag: 'Medical', readTime: 6, bgColor: 'linear-gradient(135deg,rgba(255,230,190,0.6),rgba(255,210,215,0.6))', excerpt: 'Epidural, gas and air, TENS, pool birth — each option honestly reviewed.', articleKey: 'painrelief' },
+    { title: 'The stages of labour: what to expect', tag: 'Labor', readTime: 7, bgColor: 'linear-gradient(135deg,rgba(255,200,215,0.7),rgba(244,210,240,0.6))', excerpt: 'Early, active, and transition — a calm, honest walk through each phase.', image: 'assets/icon/stages of labour.jpg', articleKey: 'labour' },
+    { title: 'Hospital bag essentials: the complete list', tag: 'Checklist', readTime: 4, bgColor: 'linear-gradient(135deg,rgba(185,240,220,0.6),rgba(200,215,255,0.6))', excerpt: 'For you, for baby, and for your birth partner — nothing forgotten.', image: 'assets/icon/Hospital Bag Essentials.jpg', articleKey: 'hospitalbag' },
+    { title: 'Building your birth plan step by step', tag: 'Planning', readTime: 5, bgColor: 'linear-gradient(135deg,rgba(200,215,255,0.7),rgba(220,195,255,0.6))', excerpt: 'What to include, how to communicate it, and staying flexible when plans change.', image: 'assets/icon/birth plan.jpg', articleKey: 'birthplan' },
+    { title: 'Pain relief options during labor explained', tag: 'Medical', readTime: 6, bgColor: 'linear-gradient(135deg,rgba(255,230,190,0.6),rgba(255,210,215,0.6))', excerpt: 'Epidural, gas and air, TENS, pool birth — each option honestly reviewed.', image: 'assets/icon/pain relief options.jpg', articleKey: 'painrelief' },
   ];
 
   weeklyTips = [
@@ -1196,13 +1251,18 @@ export class InsightsPage implements OnInit, OnDestroy {
   }
 
   // ── Lifecycle ─────────────────────────────────────────────────────────────
-  constructor(private router: Router) {}
+  constructor(private router: Router, private theme: ThemeService) {}
 
   ngOnInit(): void {
+    this.themeSub = this.theme.isDark$.subscribe(val => (this.darkMode = val));
     requestAnimationFrame(() => setTimeout(() => (this.animReady = true), 80));
   }
 
-  ngOnDestroy(): void {}
+  ngOnDestroy(): void { this.themeSub?.unsubscribe(); }
 
   navigate(route: string): void { this.router.navigate([route]); }
+
+  openUrl(url: string): void {
+    if (url) window.open(url, '_blank', 'noopener,noreferrer');
+  }
 }

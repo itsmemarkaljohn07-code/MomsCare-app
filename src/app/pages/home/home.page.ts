@@ -4,18 +4,21 @@ import { Router, ActivatedRoute } from '@angular/router';
 import { CommonModule, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { IonicModule } from '@ionic/angular';
+import { ThemeService } from '../../services/theme';
+import { AuthService } from '../../services/auth.service';
+import { Subscription } from 'rxjs';
 
 // ─── User model ──────────────────────────────────────────────────────────────
-// This interface is ready to be populated from your auth/database service
-// once authentication is implemented. For now, it uses a default user.
+// Populated from the authenticated user's Firestore profile (see
+// AuthService.getProfile()). pregnancyWeek/pregnancyDays are NOT stored
+// directly — they're derived live from dueDate each time the page loads,
+// so they stay accurate as real time passes rather than freezing at
+// whatever value was true on signup day.
 export interface AppUser {
-  firstName:     string;
-  lastName:      string;
-  email:         string;
-  pregnancyWeek: number;
-  pregnancyDays: number;
-  dueDate:       Date;
-  firstTimeMom:  boolean | null;
+  fullName:     string;
+  email:        string;
+  dueDate:      Date;
+  firstTimeMom: boolean | null;
 }
 
 // ─── Notification model ───────────────────────────────────────────────────────
@@ -43,6 +46,9 @@ export class HomePage implements OnInit, OnDestroy {
   currentTime  = new Date();
   today        = new Date();
   darkMode     = false;
+  isLoadingUser = true;
+  private themeSub!: Subscription;
+  private userSub!: Subscription;
 
   private clockInterval:    any;
   private countdownInterval: any;
@@ -58,28 +64,34 @@ export class HomePage implements OnInit, OnDestroy {
   }
 
   // ════════════════════════════════════════════════════════
-  // CURRENT USER
-  // ─────────────────────────────────────────────────────────
-  // TODO: Replace this with data from your AuthService / UserService
-  // once authentication is connected.
-  // Example:
-  //   constructor(private authService: AuthService) {}
-  //   ngOnInit() { this.currentUser = this.authService.getCurrentUser(); }
+  // CURRENT USER — loaded from AuthService in ngOnInit().
+  // Defaults here only matter for the brief moment before the real
+  // profile loads; dueDate defaults to today so countdown/progress
+  // math never divides by an invalid date while loading.
   // ════════════════════════════════════════════════════════
   currentUser: AppUser = {
-    firstName:     'Maria',
-    lastName:      'Santos',
-    email:         'maria@email.com',
-    pregnancyWeek: 20,
-    pregnancyDays: 3,
-    dueDate:       new Date('2025-09-15'),
-    firstTimeMom:  true,
+    fullName:     '',
+    email:        '',
+    dueDate:      new Date(),
+    firstTimeMom: null,
   };
 
-  // ── Pregnancy derived from user ──
-  get pregnancyWeek(): number { return this.currentUser.pregnancyWeek; }
-  get pregnancyDays(): number { return this.currentUser.pregnancyDays; }
-  get dueDate():       Date   { return this.currentUser.dueDate; }
+  // Pregnancy week/days are computed live from the stored due date —
+  // not stored as static fields, so they stay correct as time passes.
+  pregnancyWeek = 0;
+  pregnancyDays = 0;
+
+  private recomputePregnancyFromDueDate(): void {
+    const TOTAL_PREGNANCY_DAYS = 280; // 40 weeks
+    const msPerDay = 24 * 60 * 60 * 1000;
+    const now = new Date();
+    const daysUntilDue = Math.round((this.currentUser.dueDate.getTime() - now.getTime()) / msPerDay);
+    const daysElapsed = Math.max(0, Math.min(TOTAL_PREGNANCY_DAYS, TOTAL_PREGNANCY_DAYS - daysUntilDue));
+    this.pregnancyWeek = Math.min(40, Math.floor(daysElapsed / 7));
+    this.pregnancyDays = daysElapsed % 7;
+  }
+
+  get dueDate(): Date { return this.currentUser.dueDate; }
 
   // Week strip (shows 5 weeks centred on current week)
   weekStripOffset = 0;
@@ -171,49 +183,103 @@ export class HomePage implements OnInit, OnDestroy {
   }
 
   // ── Fetal SVG — womb visualization ──────────────────────
-  // All positions are computed dynamically so the fetus
-  // grows visually as pregnancy weeks increase (1 → 40).
+  // A single smooth "C-curve" silhouette (head tucked toward chest,
+  // knees drawn up) is generated as one continuous path, scaled by
+  // pregnancy week. This reads as a recognisable curled fetus rather
+  // than a collection of separate shapes.
 
   private get s(): number {
-    // scale factor 0.30 at week 4 → 1.0 at week 40
-    return Math.max(0.30, Math.min(1.0, 0.30 + (this.pregnancyWeek / 40) * 0.70));
+    // scale factor 0.32 at week 4 → 1.0 at week 40
+    return Math.max(0.32, Math.min(1.0, 0.32 + (this.pregnancyWeek / 40) * 0.68));
   }
 
-  // Fetal body geometry (used in template as `fetal.*`)
+  // Centre point the whole silhouette is built around
+  private get origin() {
+    return { cx: 110, cy: 128 };
+  }
+
+  // Core proportions (used by body silhouette, head, limbs)
   get fetal() {
-    const s  = this.s;
-    const cx = 110; // SVG centre x
-    const cy = 132; // SVG centre y  — shift up slightly for small fetuses
+    const s = this.s;
+    const { cx, cy } = this.origin;
 
-    // Curled-up posture: head slightly to the right of centre, body curled below
-    const hx = cx + s * 6;
-    const hy = cy - s * 28;
-    const hr = s * 18;          // head radius
-
-    const bx = cx - s * 4;
-    const by = cy + s * 8;
-    const bw = s * 14;          // body half-width
-    const bh = s * 24;          // body half-height
-
-    return { hx, hy, hr, bx, by, bw, bh };
+    return {
+      cx, cy, s,
+      // Head circle
+      hx: cx + s * 22,
+      hy: cy - s * 34,
+      hr: s * 23,
+      // Torso reference (used for limb anchoring)
+      bx: cx - s * 2,
+      by: cy + s * 6,
+      bw: s * 17,
+      bh: s * 26,
+    };
   }
 
-  // Umbilical cord cubic bezier
+  // Main body silhouette — head, neck, curled spine, rounded bottom, all in one path
+  get bodyPath(): string {
+    const f = this.fetal;
+    const s = f.s;
+    return `
+      M ${f.hx - f.hr * 0.95} ${f.hy + f.hr * 0.55}
+      C ${f.hx - f.hr * 1.25} ${f.hy - f.hr * 0.3}
+        ${f.hx - f.hr * 0.55} ${f.hy - f.hr * 1.25}
+        ${f.hx + f.hr * 0.25} ${f.hy - f.hr * 1.1}
+      C ${f.hx + f.hr * 1.05} ${f.hy - f.hr * 0.95}
+        ${f.hx + f.hr * 1.15} ${f.hy + f.hr * 0.15}
+        ${f.hx + f.hr * 0.6} ${f.hy + f.hr * 0.75}
+      C ${f.hx + f.hr * 0.3} ${f.hy + f.hr * 1.05}
+        ${f.bx + f.bw * 1.1} ${f.by - f.bh * 0.85}
+        ${f.bx + f.bw * 1.15} ${f.by - f.bh * 0.2}
+      C ${f.bx + f.bw * 1.2} ${f.by + f.bh * 0.55}
+        ${f.bx + f.bw * 0.65} ${f.by + f.bh * 1.05}
+        ${f.bx - f.bw * 0.05} ${f.by + f.bh * 1.15}
+      C ${f.bx - f.bw * 0.75} ${f.by + f.bh * 1.25}
+        ${f.bx - f.bw * 1.3} ${f.by + f.bh * 0.7}
+        ${f.bx - f.bw * 1.15} ${f.by - f.bh * 0.1}
+      C ${f.bx - f.bw * 1.05} ${f.by - f.bh * 0.75}
+        ${f.bx - f.bw * 0.55} ${f.hy + f.hr * 1.3}
+        ${f.hx - f.hr * 0.95} ${f.hy + f.hr * 0.55}
+      Z
+    `.replace(/\s+/g, ' ').trim();
+  }
+
+  // Curled arm — shoulder to tucked hand near chin
+  get armPath(): string {
+    const f = this.fetal;
+    const shx = f.bx + f.bw * 0.55, shy = f.by - f.bh * 0.55;
+    const elx = f.bx + f.bw * 1.05, ely = f.by - f.bh * 0.05;
+    const hax = f.hx + f.hr * 0.15, hay = f.hy + f.hr * 0.85;
+    return `M ${shx} ${shy} Q ${elx} ${ely} ${hax} ${hay}`;
+  }
+
+  // Curled legs — hips to tucked knees to feet near chest
+  get legsPath(): string {
+    const f = this.fetal;
+    const hipx = f.bx - f.bw * 0.5, hipy = f.by + f.bh * 0.85;
+    const kneex = f.bx + f.bw * 0.9, kneey = f.by + f.bh * 1.15;
+    const footx = f.bx + f.bw * 0.1, footy = f.by - f.bh * 0.05;
+    return `M ${hipx} ${hipy} Q ${kneex} ${kneey} ${footx} ${footy}`;
+  }
+
+  // Umbilical cord cubic bezier — from belly to placenta at top
   get umbilicalPath(): string {
     const f  = this.fetal;
-    // Goes from belly-button area of fetus to placenta at top
-    const sx = f.bx + 4;
-    const sy = f.by - f.bh * 0.3;
-    return `M ${sx} ${sy} C ${sx - 28} ${sy - 40} ${sx + 22} 80 110 58`;
+    const sx = f.bx - f.bw * 0.2;
+    const sy = f.by + f.bh * 0.1;
+    return `M ${sx} ${sy} C ${sx - 22} ${sy - 36} ${sx + 30} 78 110 56`;
   }
 
-  // Spine curve suggestion
+  // Spine curve suggestion (subtle shading line along the back)
   get spinalPath(): string {
     const f = this.fetal;
-    return `M ${f.bx - f.bw * 0.1} ${f.hy + f.hr * 0.7}
-            Q ${f.bx - f.bw * 0.35} ${f.by}
-              ${f.bx - f.bw * 0.2} ${f.by + f.bh * 0.8}`;
+    return `M ${f.hx - f.hr * 0.4} ${f.hy + f.hr * 0.3}
+            Q ${f.bx - f.bw * 0.9} ${f.by - f.bh * 0.3}
+              ${f.bx - f.bw * 0.6} ${f.by + f.bh * 0.9}`;
   }
+
+
 
   // ── Navigation tabs ─────────────────────────────────────
   activeTab = 'home';
@@ -245,6 +311,10 @@ export class HomePage implements OnInit, OnDestroy {
 
   // ════════════════════════════════════════════════════════
   // NOTIFICATIONS
+  // NOTE: still local/sample data — these aren't part of registration,
+  // so there's no "real" source for them yet. Left as-is per the scope
+  // of this fix (registration-derived fields only); wire these up to a
+  // real notifications collection/service separately when ready.
   // ════════════════════════════════════════════════════════
   showNotifPanel = false;
 
@@ -298,7 +368,10 @@ export class HomePage implements OnInit, OnDestroy {
   }
 
   // ════════════════════════════════════════════════════════
-  // APPOINTMENTS (navigate to appointments page on "See all")
+  // APPOINTMENTS
+  // NOTE: same as notifications above — not part of registration data,
+  // left as sample data for now; wire to a real appointments
+  // collection separately.
   // ════════════════════════════════════════════════════════
   appointments = [
     { date: 'May 10',  day: 'Sat', label: 'Prenatal Checkup',   doctor: 'Dr. Reyes',  type: 'checkup',    icon: '🩺' },
@@ -316,16 +389,20 @@ export class HomePage implements OnInit, OnDestroy {
   }
 
   // ════════════════════════════════════════════════════════
-  // HEALTH SNAPSHOT (unchanged as requested)
+  // HEALTH SNAPSHOT
+  // NOTE: this is user-logged data entered through the "Log data" modal
+  // in this same session — it's not registration data, so it's left
+  // exactly as before. A real implementation would persist this to
+  // Firestore per-day; out of scope for this fix.
   // ════════════════════════════════════════════════════════
   health = {
-    weight: 62.4,
-    bp:     '112/72',
-    mood:   3 as number | null,
+    weight: 0,
+    bp:     '--/--',
+    mood:   null as number | null,
     kicks:  0,
   };
 
-  healthDraft = { weight: 62.4, bpSys: 112, bpDia: 72, kicks: 0 };
+  healthDraft = { weight: 0, bpSys: 120, bpDia: 80, kicks: 0 };
   showHealthModal = false;
   activeField     = '';
 
@@ -450,8 +527,13 @@ export class HomePage implements OnInit, OnDestroy {
   }
 
   // ════════════════════════════════════════════════════════
-  // GREETING
+  // GREETING — first name derived from the stored full name
   // ════════════════════════════════════════════════════════
+  get greetingName(): string {
+    const first = this.currentUser.fullName?.trim().split(/\s+/)[0];
+    return first || 'Mama';
+  }
+
   get greeting(): string {
     const h = new Date().getHours();
     if (h < 12) return 'Good morning';
@@ -462,11 +544,45 @@ export class HomePage implements OnInit, OnDestroy {
   // ════════════════════════════════════════════════════════
   // LIFECYCLE
   // ════════════════════════════════════════════════════════
-  constructor(private router: Router, private route: ActivatedRoute) {}
+  constructor(
+    private router: Router,
+    private route: ActivatedRoute,
+    private theme: ThemeService,
+    private authService: AuthService,
+  ) {}
+
+  private async loadUserProfile(): Promise<void> {
+    this.isLoadingUser = true;
+    try {
+      const profile = await this.authService.getProfile();
+      if (profile) {
+        this.currentUser = {
+          fullName:     profile.fullName || '',
+          email:        profile.email    || '',
+          dueDate:      profile.dueDate ? new Date(profile.dueDate) : new Date(),
+          firstTimeMom: profile.firstTimeMom ?? null,
+        };
+        this.recomputePregnancyFromDueDate();
+        this.updateCountdown();
+      }
+    } catch (err) {
+      console.error('Failed to load user profile:', err);
+    } finally {
+      this.isLoadingUser = false;
+    }
+  }
 
   ngOnInit(): void {
-    // TODO: load real user from auth service here
-    // this.currentUser = this.authService.getCurrentUser();
+    this.themeSub = this.theme.isDark$.subscribe(val => (this.darkMode = val));
+
+    // Load the real signed-in user's profile (replaces the old mock
+    // currentUser object). authService.user$ tells us once Firebase Auth
+    // has resolved who's signed in; we then fetch their Firestore profile.
+    this.userSub = this.authService.user$.subscribe(fbUser => {
+      if (fbUser) {
+        this.loadUserProfile();
+      }
+    });
 
     requestAnimationFrame(() => {
       setTimeout(() => (this.animReady = true), 80);
@@ -477,10 +593,12 @@ export class HomePage implements OnInit, OnDestroy {
       this.currentTime = new Date();
     }, 60000);
 
-    // Live countdown (ticks every minute)
+    // Live countdown (ticks every minute) — also recompute pregnancy
+    // week/days here so both stay in sync as time passes.
     this.updateCountdown();
     this.countdownInterval = setInterval(() => {
       this.updateCountdown();
+      this.recomputePregnancyFromDueDate();
     }, 60000);
 
     // Checklist with 24h reset
@@ -489,6 +607,8 @@ export class HomePage implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.themeSub?.unsubscribe();
+    this.userSub?.unsubscribe();
     if (this.clockInterval)     clearInterval(this.clockInterval);
     if (this.countdownInterval) clearInterval(this.countdownInterval);
     if (this.midnightTimeout)   clearTimeout(this.midnightTimeout);

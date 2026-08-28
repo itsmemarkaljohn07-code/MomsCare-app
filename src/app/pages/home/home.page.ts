@@ -55,6 +55,8 @@ export class HomePage implements OnInit, OnDestroy {
   private midnightTimeout:  any;
 
   // ── Selected avatar (synced from avatar customization page) ──
+  // NOTE: still used elsewhere (e.g. Profile page), just no longer
+  // rendered in the Home top bar since Profile access moved to the nav bar.
   get selectedAvatar() {
     try {
       const saved = localStorage.getItem('momscare_avatar');

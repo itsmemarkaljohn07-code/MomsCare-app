@@ -69,6 +69,9 @@ export class InsightsPage implements OnInit, OnDestroy {
   private themeSub!: Subscription;
   pregnancyWeek = 20;
 
+  // ── Bottom nav active state ──────────────────────────────────────────────
+  activeTab = 'insights';
+
   // ── Article reader state ──────────────────────────────────────────────────
   articleOpen    = false;
   articleAnimIn  = false;

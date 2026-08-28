@@ -42,6 +42,11 @@ export class AppointmentsPage implements OnInit, OnDestroy {
   expandedCard: number | null = null;
   expandedPast: number | null = null;
 
+  // ── Bottom nav active state ──────────────────
+  // Kept separate from `activeTab` above, since that property already
+  // drives the Upcoming/Past tab switcher on this page.
+  navActiveTab = 'appts';
+
   // ── Modal State ──────────────────────────────
   showModal = false;
   selectedIcon = '🩺';

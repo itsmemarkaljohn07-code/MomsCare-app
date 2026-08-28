@@ -95,31 +95,8 @@ ion-content[data-theme="dark"] {
   to   { transform: translate(20px, 24px) scale(1.08); }
 }
 
-/* ── Avatar button (Flo-style top-left) ── */
-.avatar-btn {
-  position: relative;
-  width: 40px; height: 40px;
-  border: none; background: none; cursor: pointer;
-  padding: 0; flex-shrink: 0;
-  transition: transform 0.18s;
-  &:active { transform: scale(0.92); }
-}
-.avatar-circle {
-  width: 40px; height: 40px; border-radius: 50%;
-  display: flex; align-items: center; justify-content: center;
-  box-shadow: 0 3px 12px rgba(155,111,196,0.28);
-  transition: box-shadow 0.2s;
-  .avatar-btn:hover & { box-shadow: 0 5px 18px rgba(155,111,196,0.40); }
-}
-.avatar-emoji { font-size: 1.35rem; line-height: 1; }
-.avatar-notif-dot {
-  position: absolute; top: 0; right: 0;
-  width: 10px; height: 10px; border-radius: 50%;
-  background: var(--pink); border: 2px solid var(--bg);
-}
-
 /* ══════════════════════════════════════════
-   TOP BAR (no logo/brand)
+   TOP BAR (profile avatar removed; date chip left, bell right)
 ══════════════════════════════════════════ */
 .top-bar {
   width: 100%; max-width: 440px;
@@ -669,25 +646,60 @@ ion-content[data-theme="dark"] {
 }
 
 /* ══════════════════════════════════════════
-   BOTTOM NAVIGATION
+   BOTTOM NAVIGATION — icon-only, Snapshot centered + highlighted
 ══════════════════════════════════════════ */
 .bottom-nav {
-  position: fixed; bottom: 0; left: 0; right: 0; height: 68px;
+  position: fixed; bottom: 0; left: 0; right: 0; height: 80px;
   background: var(--nav-bg, rgba(255,255,255,0.97));
   backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
   border-top: 1px solid var(--nav-border, rgba(155,111,196,0.12));
   display: flex; align-items: center; justify-content: space-around;
-  padding-bottom: env(safe-area-inset-bottom, 0); z-index: 50;
+  padding: 0 8px env(safe-area-inset-bottom, 0);
+  z-index: 50;
+  overflow: visible;
 }
 
 .nav-item {
-  display: flex; flex-direction: column; align-items: center; gap: 3px;
-  background: none; border: none; cursor: pointer; padding: 6px 10px;
-  color: var(--muted); transition: color 0.2s, transform 0.18s;
-  border-radius: var(--radius-sm);
-  span { font-size: 0.53rem; font-weight: 700; font-family: 'Nunito','Poppins',sans-serif; letter-spacing: 0.2px; }
-  &.active { color: var(--pink); transform: translateY(-1px); span { color: var(--pink); } }
-  &:hover:not(.active) { color: var(--purple); span { color: var(--purple); } }
+  display: flex; align-items: center; justify-content: center;
+  width: 55px; height: 55px;
+  background: none; border: none; cursor: pointer;
+  border-radius: 16px;
+  color: var(--muted);
+  transition: color 0.2s, background 0.2s, transform 0.18s;
+
+  &:active { transform: scale(0.92); }
+
+  &.active:not(.nav-item--center) {
+    color: var(--pink);
+    background: rgba(224, 126, 184, 0.12);
+  }
+  &:hover:not(.active):not(.nav-item--center) { color: var(--purple); }
+}
+
+/* Snapshot — center, raised, circular gradient highlight */
+.nav-item--center {
+  width: auto; height: auto;
+  margin-top: -30px;
+  background: none;
+  border-radius: 0;
+  &:hover { background: none; }
+}
+
+.nav-item-circle {
+  width: 68px; height: 68px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  background: linear-gradient(135deg, var(--pink), var(--purple));
+  box-shadow: 0 8px 22px rgba(224, 126, 184, 0.45), 0 0 0 4px var(--nav-bg, rgba(255,255,255,0.97));
+  transition: box-shadow 0.2s, transform 0.2s;
+}
+.nav-item--center:active .nav-item-circle { transform: scale(0.93); }
+.nav-item--center.active .nav-item-circle {
+  box-shadow: 0 10px 28px rgba(224, 126, 184, 0.58), 0 0 0 4px var(--nav-bg, rgba(255,255,255,0.97));
+}
+
+@media (max-width: 340px) {
+  .nav-item { width: 50px; height: 50px; }
+  .nav-item-circle { width: 62px; height: 62px; }
 }
 
 /* ══════════════════════════════════════════

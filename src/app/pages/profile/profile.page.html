@@ -262,50 +262,50 @@
 
   </div>
 
-  <!-- ══════════════════════════════════════
-       BOTTOM NAVIGATION (Profile = active, Snapshot tab added)
-  ══════════════════════════════════════ -->
+  <!-- ══════════════════════════════════════════
+       BOTTOM NAVIGATION — icon-only, Snapshot centered + highlighted
+       (matches Home/Insights/Snapshot/Appointments exactly)
+  ══════════════════════════════════════════ -->
   <div class="bottom-nav">
-    <button class="nav-item" (click)="navigate('/home')">
-      <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
-        <path d="M3 9.5L11 3L19 9.5V19a1 1 0 01-1 1H4a1 1 0 01-1-1V9.5Z"
-              stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>
-        <path d="M8 20v-6h6v6" stroke="currentColor" stroke-width="1.7"
-              stroke-linecap="round" stroke-linejoin="round"/>
+    <button class="nav-item" [class.active]="activeTab === 'home'" (click)="navigate('/home')" aria-label="Home">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+        <path d="M4 10.5L12 4l8 6.5V19a1.5 1.5 0 01-1.5 1.5h-3.25a.75.75 0 01-.75-.75V15a1.5 1.5 0 00-1.5-1.5h-2a1.5 1.5 0 00-1.5 1.5v4.75a.75.75 0 01-.75.75H5.5A1.5 1.5 0 014 19V10.5z"
+              stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/>
       </svg>
-      <span>Today</span>
     </button>
 
-    <button class="nav-item" (click)="navigate('/insights')">
-      <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
-        <rect x="3" y="3" width="7" height="7" rx="2" stroke="currentColor" stroke-width="1.7"/>
-        <rect x="12" y="3" width="7" height="7" rx="2" stroke="currentColor" stroke-width="1.7"/>
-        <rect x="3" y="12" width="7" height="7" rx="2" stroke="currentColor" stroke-width="1.7"/>
-        <rect x="12" y="12" width="7" height="7" rx="2" stroke="currentColor" stroke-width="1.7"/>
+    <button class="nav-item" [class.active]="activeTab === 'insights'"
+            (click)="navigate('/insights')" aria-label="Insights">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+        <path d="M5 19V11M12 19V5M19 19v-7" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/>
       </svg>
-      <span>Insights</span>
     </button>
 
-    <button class="nav-item" (click)="navigate('/appointments')">
-      <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
-        <path d="M8 9h6M8 13h4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
-        <rect x="3" y="4" width="16" height="15" rx="2" stroke="currentColor" stroke-width="1.7"/>
-        <path d="M8 2v3M14 2v3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
-      </svg>
-      <span>Appointments</span>
+    <button class="nav-item nav-item--center" [class.active]="activeTab === 'snapshot'"
+            (click)="navigate('/snapshot')" aria-label="Snapshot">
+      <span class="nav-item-circle">
+        <svg width="27" height="27" viewBox="0 0 24 24" fill="none">
+          <path d="M4 8.5a1.5 1.5 0 011.5-1.5h1.4l1-1.6a1.5 1.5 0 011.27-.7h5.66a1.5 1.5 0 011.27.7l1 1.6h1.4A1.5 1.5 0 0120 8.5V18a1.5 1.5 0 01-1.5 1.5h-13A1.5 1.5 0 014 18V8.5z"
+                stroke="white" stroke-width="1.7" stroke-linejoin="round"/>
+          <circle cx="12" cy="13" r="3.4" stroke="white" stroke-width="1.7"/>
+        </svg>
+      </span>
     </button>
 
-    <!-- Pregnancy Snapshot tab (placeholder) -->
-    <button class="nav-item" (click)="navigate('/snapshot')">
-      <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
-        <circle cx="11" cy="11" r="4" stroke="currentColor" stroke-width="1.7"/>
-        <path d="M2 9V7a2 2 0 012-2h1.5l1.5-2h8l1.5 2H18a2 2 0 012 2v9a2 2 0 01-2 2H4a2 2 0 01-2-2v-7z"
-              stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>
+    <button class="nav-item" [class.active]="activeTab === 'appts'"
+            (click)="navigate('/appointments')" aria-label="Appointments">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+        <rect x="4" y="5.5" width="16" height="14.5" rx="2.5" stroke="currentColor" stroke-width="1.7"/>
+        <path d="M4 10h16M8 3.5v3M16 3.5v3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
       </svg>
-      <span>Snapshot</span>
     </button>
 
-    <!-- Profile (active) -->
+    <button class="nav-item" [class.active]="activeTab === 'profile'" aria-label="Profile">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+        <circle cx="12" cy="8.5" r="3.5" stroke="currentColor" stroke-width="1.7"/>
+        <path d="M4.5 20c0-4.14 3.36-7.5 7.5-7.5s7.5 3.36 7.5 7.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+      </svg>
+    </button>
   </div>
 
 </ion-content>

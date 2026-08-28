@@ -23,6 +23,9 @@ export class ProfilePage implements OnInit, OnDestroy {
 
   private themeSub!: Subscription;
 
+  // ── Bottom nav active state (Profile is now reachable from the nav bar) ──
+  activeTab = 'profile';
+
   // ── Selected avatar (reads from localStorage) ──
   get selectedAvatar() {
     try {

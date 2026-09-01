@@ -1,10 +1,12 @@
 // login.page.ts
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { Router } from '@angular/router';
 import { IonicModule } from '@ionic/angular';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AuthService } from '../../services/auth.service';
+import { ThemeService } from '../../services/theme';
+import { Subscription } from 'rxjs';
 
 @Component({
   selector: 'app-login',
@@ -13,8 +15,10 @@ import { AuthService } from '../../services/auth.service';
   standalone: true,
   imports: [IonicModule, CommonModule, FormsModule],
 })
-export class LoginPage implements OnInit {
+export class LoginPage implements OnInit, OnDestroy {
   animReady = false;
+  darkMode  = false;
+  private themeSub!: Subscription;
 
   loginForm    = { email: '', password: '' };
   emailFocused = false;
@@ -36,21 +40,28 @@ export class LoginPage implements OnInit {
 
   constructor(
     private router: Router,
-    private authService: AuthService
+    private authService: AuthService,
+    private theme: ThemeService
   ) {}
 
   ngOnInit(): void {
+    this.themeSub = this.theme.isDark$.subscribe(val => (this.darkMode = val));
     requestAnimationFrame(() => {
       setTimeout(() => (this.animReady = true), 80);
     });
   }
 
+  ngOnDestroy(): void {
+    this.themeSub?.unsubscribe();
+  }
+
   // ── Validation ─────────────────────────────────
   validateEmail(): void {
     this.touched.email = true;
-    if (!this.loginForm.email.trim()) {
+    const email = this.loginForm.email.trim();
+    if (!email) {
       this.errors.email = 'Email is required.';
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(this.loginForm.email)) {
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) {
       this.errors.email = 'Please enter a valid email address.';
     } else {
       this.errors.email = '';

@@ -9,9 +9,11 @@ import {
 } from '@angular/animations';
 import { AuthService } from '../../services/auth.service';
 import { OtpService } from '../../services/otp.service';
+import { ThemeService } from '../../services/theme';
 import { Auth, fetchSignInMethodsForEmail } from '@angular/fire/auth';
 import { Firestore, collection, query, where, getDocs } from '@angular/fire/firestore';
 import { runInInjectionContext, EnvironmentInjector, inject } from '@angular/core';
+import { Subscription } from 'rxjs';
 
 interface CalCell {
   day: number | null;
@@ -20,6 +22,11 @@ interface CalCell {
   selected: boolean;
   disabled: boolean;
 }
+
+// Bounded wait times so no step of signup can spin forever — see
+// withTimeout() below for details.
+const PRECHECK_TIMEOUT_MS = 20000;
+const OTP_SEND_TIMEOUT_MS = 25000;
 
 @Component({
   selector: 'app-signup',
@@ -46,7 +53,9 @@ export class SignupPage implements OnInit, OnDestroy, AfterViewInit {
   @ViewChild('drumList') drumListRef!: ElementRef<HTMLElement>;
 
   animReady = false;
+  darkMode  = false;
   isLoading = false;
+  private themeSub!: Subscription;
 
   // Step numbering:
   // 1 = Account info
@@ -56,11 +65,9 @@ export class SignupPage implements OnInit, OnDestroy, AfterViewInit {
   // 32 = Calc method (LMP or weeks)
   // 33 = LMP calendar picker
   // 34 = Weeks drum picker
-  // 4 = First-time mom + show calculated result
-  // 5 = Clinic connection
+  // 4 = First-time mom + finish
   step = 1;
 
-  // Progress bar: map steps to a 0–100 value
   get stepPercent(): number {
     const map: Record<number, number> = {
       1: 14, 2: 28, 3: 42, 31: 55, 32: 55, 33: 65, 34: 65, 4: 90,
@@ -76,22 +83,17 @@ export class SignupPage implements OnInit, OnDestroy, AfterViewInit {
     password:        '',
     confirmPassword: '',
     agreed:          false,
-    dueDate:         '' as string,        // ISO string
-    lmpDate:         '' as string,        // ISO string
+    dueDate:         '' as string,
+    lmpDate:         '' as string,
     weeksPregnant:   null as number | null,
     firstTimeMom:    null as boolean | null,
   };
 
-  // Key used to preserve in-progress signup data in sessionStorage while
-  // the user is away on the Terms/Privacy pages, so they don't lose
-  // anything they've already typed.
   private readonly DRAFT_KEY = 'momscare_signup_draft';
 
-  // Pregnancy flow state
   knowsDueDate: boolean | null = null;
   calcMethod: 'lmp' | 'weeks' | null = null;
 
-  /* ── Focus / errors ── */
   focus = {
     name: false, email: false, mobile: false,
     password: false, confirm: false, dueDate: false,
@@ -115,7 +117,7 @@ export class SignupPage implements OnInit, OnDestroy, AfterViewInit {
 
   /* ── Calendar ── */
   calYear  = new Date().getFullYear();
-  calMonth = new Date().getMonth(); // 0-indexed
+  calMonth = new Date().getMonth();
   calCells: CalCell[] = [];
 
   readonly MONTHS = [
@@ -127,12 +129,17 @@ export class SignupPage implements OnInit, OnDestroy, AfterViewInit {
     return `${this.MONTHS[this.calMonth]} ${this.calYear}`;
   }
 
-  /* ── Weeks drum picker ── */
   readonly weekOptions: number[] = Array.from({ length: 40 }, (_, i) => i + 1);
   private drumScrollTimer: any;
 
   generalError = '';
   checkingEmail = false;
+
+  /** True when Firebase Auth account creation succeeded but the
+   *  Firestore profile write failed. In this state, tapping the action
+   *  button retries ONLY the profile save (registering again would fail
+   *  with "email already in use" since the account already exists). */
+  accountCreatedPendingProfile = false;
 
   private envInjector = inject(EnvironmentInjector);
 
@@ -140,11 +147,13 @@ export class SignupPage implements OnInit, OnDestroy, AfterViewInit {
     private router: Router,
     private authService: AuthService,
     private otpService: OtpService,
+    private theme: ThemeService,
     private auth: Auth,
     private firestore: Firestore
   ) {}
 
   ngOnInit(): void {
+    this.themeSub = this.theme.isDark$.subscribe(val => (this.darkMode = val));
     requestAnimationFrame(() => {
       setTimeout(() => (this.animReady = true), 80);
     });
@@ -156,6 +165,24 @@ export class SignupPage implements OnInit, OnDestroy, AfterViewInit {
 
   ngOnDestroy(): void {
     if (this.resendInterval) clearInterval(this.resendInterval);
+    this.themeSub?.unsubscribe();
+  }
+
+  /** Races `promise` against a timer so an await on it can never hang
+   *  the UI forever — see the same helper in auth.service.ts for the
+   *  full rationale. Used here for the Step-1 uniqueness pre-checks and
+   *  the OTP send, which have the exact same "unresolved Firebase
+   *  promise" hang risk as account creation does. */
+  private withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
+    let handle: any;
+    const timeout = new Promise<never>((_, reject) => {
+      handle = setTimeout(() => {
+        const err: any = new Error(message);
+        err.code = 'timeout';
+        reject(err);
+      }, ms);
+    });
+    return Promise.race([promise, timeout]).finally(() => clearTimeout(handle)) as Promise<T>;
   }
 
   // ───────────────────────────────────────────────
@@ -166,12 +193,11 @@ export class SignupPage implements OnInit, OnDestroy, AfterViewInit {
     today.setHours(0, 0, 0, 0);
 
     const firstDay = new Date(this.calYear, this.calMonth, 1);
-    const startDow  = firstDay.getDay(); // 0=Sun
+    const startDow  = firstDay.getDay();
     const daysInMonth = new Date(this.calYear, this.calMonth + 1, 0).getDate();
 
     const cells: CalCell[] = [];
 
-    // Leading empty cells
     for (let i = 0; i < startDow; i++) {
       cells.push({ day: null, date: null, isToday: false, selected: false, disabled: false });
     }
@@ -204,9 +230,7 @@ export class SignupPage implements OnInit, OnDestroy, AfterViewInit {
   private isCellDisabled(date: Date): boolean {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    // Due date picker: must be in the future (at least today)
     if (this.step === 31) return date < today;
-    // LMP picker: must be in the past (up to today)
     if (this.step === 33) return date > today;
     return false;
   }
@@ -226,7 +250,6 @@ export class SignupPage implements OnInit, OnDestroy, AfterViewInit {
   selectDueDate(cell: CalCell): void {
     if (!cell.date || cell.disabled) return;
     this.form.dueDate = cell.date.toISOString();
-    // Compute weeks pregnant from due date
     const today = new Date();
     const weeksLeft = Math.round((cell.date.getTime() - today.getTime()) / (1000 * 60 * 60 * 24 * 7));
     this.form.weeksPregnant = Math.max(0, 40 - weeksLeft);
@@ -321,31 +344,77 @@ export class SignupPage implements OnInit, OnDestroy, AfterViewInit {
     this.step = 4;
   }
 
+  /** Assembles the pregnancy/profile payload from the current form state.
+   *  Shared by both onFinish() and onRetryProfileSave() so the two never
+   *  drift out of sync. */
+  private buildProfilePayload() {
+    return {
+      fullName:      this.form.fullName.trim(),
+      mobile:        this.form.mobile.trim(),
+      dueDate:       this.form.dueDate       || '',
+      weeksPregnant: this.form.weeksPregnant !== null ? this.form.weeksPregnant : 0,
+      lmpDate:       this.form.lmpDate       || '',
+      firstTimeMom:  this.form.firstTimeMom  === true,
+      clinicName:    '',
+    };
+  }
+
+  /** Final step. `isLoading` is reset in `finally` — guaranteed to run
+   *  regardless of which branch executes — rather than being duplicated
+   *  in both the try and catch blocks, which is what allowed earlier
+   *  versions to silently miss resetting it on some paths. Combined with
+   *  the timeout guard inside AuthService.register(), this function is
+   *  now guaranteed to always either navigate to Home or show an error —
+   *  it can never spin forever. */
   async onFinish(): Promise<void> {
+    if (this.form.firstTimeMom === null || this.isLoading) return;
+
     this.isLoading    = true;
     this.generalError = '';
+
     try {
       await this.authService.register(
         this.form.email.trim(),
         this.form.password,
-        {
-          fullName:      this.form.fullName.trim(),
-          mobile:        this.form.mobile.trim(),
-          dueDate:       this.form.dueDate       || '',
-          weeksPregnant: this.form.weeksPregnant !== null ? this.form.weeksPregnant : 0,
-          lmpDate:       this.form.lmpDate       || '',
-          firstTimeMom:  this.form.firstTimeMom  === true,
-          // Connect Clinic is disabled for now — left blank until that
-          // feature is implemented.
-          clinicName:    '',
-        }
+        this.buildProfilePayload()
       );
-      this.isLoading = false;
       this.router.navigate(['/home'], { replaceUrl: true });
     } catch (err: any) {
-      this.isLoading = false;
       console.error('Registration error:', err);
+
+      if (err?.code === 'profile-save-failed') {
+        // The Firebase Auth account WAS created — only the Firestore
+        // profile write failed. Offer a retry that doesn't re-register.
+        this.accountCreatedPendingProfile = true;
+        this.generalError = err.message ||
+          "We created your account, but couldn't save your pregnancy details.";
+      } else {
+        // Nothing was created (or we can't tell) — stay on this step,
+        // show the error, do NOT navigate.
+        this.generalError = err?.message || 'Something went wrong while creating your account. Please try again.';
+      }
+    } finally {
+      this.isLoading = false;
+    }
+  }
+
+  /** Used only when accountCreatedPendingProfile is true: retries saving
+   *  the Firestore profile for the already-created Auth account. */
+  async onRetryProfileSave(): Promise<void> {
+    if (this.isLoading) return;
+    this.isLoading    = true;
+    this.generalError = '';
+
+    try {
+      await this.authService.retryProfileSave(this.buildProfilePayload());
+      this.accountCreatedPendingProfile = false;
       this.router.navigate(['/home'], { replaceUrl: true });
+    } catch (err: any) {
+      console.error('Profile retry error:', err);
+      this.generalError = err?.message ||
+        'Still unable to save your details. Please check your connection and try again.';
+    } finally {
+      this.isLoading = false;
     }
   }
 
@@ -361,17 +430,45 @@ export class SignupPage implements OnInit, OnDestroy, AfterViewInit {
   }
 
   // ───────────────────────────────────────────────
-  // STEP 1
+  // STEP 1 — VALIDATION
   // ───────────────────────────────────────────────
   validateName(): void {
     this.errors.name = this.form.fullName.trim().length < 2
       ? 'Please enter your full name' : '';
   }
+
   validateEmail(): void {
-    const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    this.errors.email = !re.test(this.form.email)
-      ? 'Please enter a valid email address' : '';
+    const email = this.form.email.trim();
+    this.form.email = email;
+
+    if (!email) {
+      this.errors.email = 'Email address is required.';
+      return;
+    }
+    if (/\s/.test(email)) {
+      this.errors.email = 'Email address cannot contain spaces.';
+      return;
+    }
+    if (!email.includes('@')) {
+      this.errors.email = 'Email address must include an "@".';
+      return;
+    }
+
+    const re = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+$/;
+    const [local, domain] = email.split('@');
+
+    if (!re.test(email) || local.startsWith('.') || local.endsWith('.') || email.includes('..')) {
+      this.errors.email = 'Please enter a valid email address.';
+      return;
+    }
+    if (!domain || !domain.includes('.')) {
+      this.errors.email = 'Email address must include a domain (e.g. example.com).';
+      return;
+    }
+
+    this.errors.email = '';
   }
+
   validateMobile(): void {
     const digits = this.form.mobile.replace(/\D/g, '');
     this.errors.mobile = digits.length < 10
@@ -402,30 +499,28 @@ export class SignupPage implements OnInit, OnDestroy, AfterViewInit {
     return !Object.values(this.errors).some(e => e);
   }
 
-  /** Checks whether the email's domain has valid MX records (i.e. can
-   *  receive mail at all). This catches typo'd/fake domains but — by the
-   *  nature of how email works — cannot confirm a *specific mailbox*
-   *  (e.g. "aljohnoit2004") actually exists at a real provider like Gmail.
-   *  That level of verification isn't reliably possible for any app,
-   *  including paid enterprise tools, due to providers blocking that kind
-   *  of probing. The OTP step itself is what proves the mailbox is real
-   *  and reachable by the user. */
   private async isDomainDeliverable(email: string): Promise<boolean> {
     const domain = email.split('@')[1]?.trim().toLowerCase();
     if (!domain) return false;
 
     try {
       const res = await fetch(`https://dns.google/resolve?name=${encodeURIComponent(domain)}&type=MX`);
-      if (!res.ok) return true; // fail open — don't block signups if the DNS API itself is down
+      if (!res.ok) return true;
       const data = await res.json();
       return Array.isArray(data.Answer) && data.Answer.length > 0;
     } catch (err) {
       console.warn('MX lookup failed, allowing signup to proceed:', err);
-      return true; // fail open on network errors
+      return true;
     }
   }
 
+  /** Step 1 already reset isLoading/checkingEmail in a finally block, but
+   *  that only protects against the checksPromise REJECTING — a hang
+   *  (never settling) would still have frozen this screen forever before
+   *  this fix. checksPromise is now timeout-guarded the same way. */
   async onStep1(): Promise<void> {
+    this.form.email = this.form.email.trim();
+
     if (!this.isStep1Valid()) return;
 
     this.isLoading     = true;
@@ -434,7 +529,7 @@ export class SignupPage implements OnInit, OnDestroy, AfterViewInit {
     this.errors.email  = '';
     this.errors.name   = '';
 
-    const domainOk = await this.isDomainDeliverable(this.form.email.trim());
+    const domainOk = await this.isDomainDeliverable(this.form.email);
     if (!domainOk) {
       this.errors.email  = "This email domain doesn't appear to accept email. Please check for typos.";
       this.isLoading     = false;
@@ -445,26 +540,27 @@ export class SignupPage implements OnInit, OnDestroy, AfterViewInit {
     this.otp = ['', '', '', '', '', ''];
 
     try {
-      const checksPromise = runInInjectionContext(this.envInjector, () =>
-        Promise.all([
-          fetchSignInMethodsForEmail(this.auth, this.form.email.trim()),
-          getDocs(query(
-            collection(this.firestore, 'users'),
-            where('fullName', '==', this.form.fullName.trim())
-          ))
-        ])
+      const checksPromise = this.withTimeout(
+        runInInjectionContext(this.envInjector, () =>
+          Promise.all([
+            fetchSignInMethodsForEmail(this.auth, this.form.email),
+            getDocs(query(
+              collection(this.firestore, 'users'),
+              where('fullName', '==', this.form.fullName.trim())
+            ))
+          ])
+        ),
+        PRECHECK_TIMEOUT_MS,
+        'Checking availability is taking too long.'
       );
 
-      // Fire the OTP email at the same time as the uniqueness checks
-      // instead of waiting for them to finish first — this overlaps
-      // the two network round-trips instead of stacking them.
       const otpPromise = this.sendOtpEmail();
 
       const [methods, nameSnap] = await checksPromise;
 
       if (methods && methods.length > 0) {
         this.errors.email = 'This email is already registered. Please sign in instead.';
-        return; // otpPromise still resolves quietly in the background — no UI shown for it
+        return;
       }
 
       if (!nameSnap.empty) {
@@ -474,9 +570,13 @@ export class SignupPage implements OnInit, OnDestroy, AfterViewInit {
 
       this.step = 2;
       this.beginResendCountdown();
-      await otpPromise; // make sure emailSent/isSendingEmail have settled before dropping the loading state
+      await otpPromise;
 
     } catch (err: any) {
+      // Best-effort pre-check: a timeout or any other failure here is
+      // not fatal — fall through to the OTP step regardless, exactly as
+      // before. The timeout guard's job is only to guarantee this catch
+      // is actually reached instead of hanging forever first.
       console.warn('Pre-check error, proceeding anyway:', err);
       this.step = 2;
       this.beginResendCountdown();
@@ -504,21 +604,26 @@ export class SignupPage implements OnInit, OnDestroy, AfterViewInit {
     }
   }
 
-  /** Sends the OTP email and updates the sending/sent UI flags. Can be
-   *  fired in parallel with other work (e.g. uniqueness checks) rather
-   *  than always awaited sequentially — this is what makes Step 1 → 2
-   *  feel faster, since the email is already in flight by the time the
-   *  uniqueness checks resolve. */
+  /** Wrapped with a timeout for the same reason as everything else here:
+   *  without it, an unresolving otpService.sendOtp() call would leave
+   *  isSendingEmail=true forever, since .finally() only runs once the
+   *  promise settles. */
   private sendOtpEmail(): Promise<void> {
     this.otpError       = '';
     this.otpVerified     = false;
     this.isSendingEmail = true;
 
-    return this.otpService.sendOtp(this.form.email.trim(), this.form.fullName.trim())
+    return this.withTimeout(
+      this.otpService.sendOtp(this.form.email.trim(), this.form.fullName.trim()),
+      OTP_SEND_TIMEOUT_MS,
+      'Sending the verification code is taking too long.'
+    )
       .then(() => { this.emailSent = true; })
       .catch(err => {
         console.error('OTP email error:', err);
-        this.otpError = 'Failed to send verification code. Please check your email and try again.';
+        this.otpError = err?.code === 'timeout'
+          ? `${err.message} Please check your connection and try again.`
+          : 'Failed to send verification code. Please check your email and try again.';
         this.emailSent = false;
       })
       .finally(() => { this.isSendingEmail = false; });
@@ -533,8 +638,6 @@ export class SignupPage implements OnInit, OnDestroy, AfterViewInit {
     }, 1000);
   }
 
-  /** Used by the standalone "Resend Code" flow (Step 2 already visible),
-   *  where there's nothing else to parallelize against. */
   async onResend(): Promise<void> {
     this.otp      = ['', '', '', '', '', ''];
     this.otpError = '';
@@ -591,12 +694,8 @@ export class SignupPage implements OnInit, OnDestroy, AfterViewInit {
   }
 
   // ───────────────────────────────────────────────
-  // DRAFT PERSISTENCE (so Terms/Privacy don't lose signup progress)
+  // DRAFT PERSISTENCE
   // ───────────────────────────────────────────────
-  /** Note: this briefly stores the password in sessionStorage (cleared
-   *  the moment the user returns to Signup, and scoped to this browser
-   *  tab only). This is a reasonable tradeoff for preserving the user's
-   *  progress, but flagging it here for transparency. */
   private saveDraft(): void {
     try {
       sessionStorage.setItem(this.DRAFT_KEY, JSON.stringify({
@@ -612,7 +711,7 @@ export class SignupPage implements OnInit, OnDestroy, AfterViewInit {
       if (!raw) return;
       const parsed = JSON.parse(raw);
       if (parsed.form) this.form = { ...this.form, ...parsed.form };
-      if (parsed.step === 1) this.step = parsed.step; // only step 1 is relevant here
+      if (parsed.step === 1) this.step = parsed.step;
       sessionStorage.removeItem(this.DRAFT_KEY);
     } catch { /* ignore corrupt/missing draft */ }
   }

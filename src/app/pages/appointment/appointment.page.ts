@@ -1,10 +1,10 @@
-// appointments.page.ts
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { IonicModule } from '@ionic/angular';
 import { ThemeService } from '../../services/theme';
+import { AppointmentsService, AppointmentRecord } from '../../services/appointments.service';
 import { Subscription } from 'rxjs';
 
 export interface Appointment {
@@ -17,11 +17,14 @@ export interface Appointment {
   location?: string;
   notes?: string;
   icon: string;
-  isVideo: boolean;
   accentColor: 'green' | 'pink' | 'purple' | 'blue' | 'orange';
   advice?: string[];
   files?: string[];
+  id?: string;
 }
+
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const DAYS   = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 
 @Component({
   selector: 'app-appointments',
@@ -35,6 +38,7 @@ export class AppointmentsPage implements OnInit, OnDestroy {
   animReady = false;
   darkMode = false;
   private themeSub!: Subscription;
+  private apptSub!: Subscription;
 
   pregnancyWeek = 20;
 
@@ -42,12 +46,8 @@ export class AppointmentsPage implements OnInit, OnDestroy {
   expandedCard: number | null = null;
   expandedPast: number | null = null;
 
-  // ── Bottom nav active state ──────────────────
-  // Kept separate from `activeTab` above, since that property already
-  // drives the Upcoming/Past tab switcher on this page.
   navActiveTab = 'appts';
 
-  // ── Modal State ──────────────────────────────
   showModal = false;
   selectedIcon = '🩺';
   selectedColor: 'green' | 'pink' | 'purple' | 'blue' | 'orange' = 'green';
@@ -62,138 +62,45 @@ export class AppointmentsPage implements OnInit, OnDestroy {
     time: '',
     location: '',
     notes: '',
-    isVideo: false,
   };
 
-  // ── Upcoming Appointments ────────────────────
-  upcomingAppointments: Appointment[] = [
-    {
-      date: 'May 10',
-      day: 'Sat',
-      time: '8:00 – 8:30 AM',
-      label: 'Prenatal Checkup',
-      type: 'Obstetrics',
-      doctor: 'Dr. Reyes',
-      location: 'St. Luke\'s Medical Center, Rm 204',
-      notes: 'Bring your previous lab results and insurance card.',
-      icon: '🩺',
-      isVideo: false,
-      accentColor: 'green',
-      advice: [
-        'Drink plenty of water before the appointment',
-        'Prepare a list of questions for Dr. Reyes',
-        'Avoid caffeine 2 hours before',
-      ],
-    },
-    {
-      date: 'May 18',
-      day: 'Sun',
-      time: '10:00 – 11:00 AM',
-      label: 'Anatomy Ultrasound',
-      type: 'Radiology',
-      doctor: 'St. Luke\'s Radiology Dept.',
-      location: 'St. Luke\'s Medical Center, Ground Floor',
-      notes: 'Drink 32 oz of water 1 hour before and do not empty your bladder.',
-      icon: '🔬',
-      isVideo: false,
-      accentColor: 'purple',
-      advice: [
-        'Full bladder required — drink water 1 hr before',
-        'Wear loose, comfortable clothing',
-      ],
-    },
-    {
-      date: 'Jun 3',
-      day: 'Tue',
-      time: '7:30 – 8:00 AM',
-      label: 'Blood Work & Labs',
-      type: 'Laboratory',
-      doctor: 'Dr. Santos',
-      location: 'HealthPath Diagnostics, Branch 3',
-      notes: 'Fasting required for 8 hours before the test.',
-      icon: '🩸',
-      isVideo: false,
-      accentColor: 'pink',
-      advice: [
-        'Fast for at least 8 hours beforehand',
-        'Stay hydrated with water only',
-        'Bring referral slip from Dr. Reyes',
-      ],
-    },
-    {
-      date: 'Jun 15',
-      day: 'Sun',
-      time: '2:00 – 2:30 PM',
-      label: 'Nutrition Consultation',
-      type: 'Dietitian',
-      doctor: 'Dr. Lim',
-      location: 'Video Call',
-      notes: 'Keep a 3-day food diary to share during the session.',
-      icon: '🥗',
-      isVideo: true,
-      accentColor: 'blue',
-      advice: [
-        'Track your meals 3 days prior',
-        'Prepare questions about your diet',
-      ],
-    },
-  ];
+  upcomingAppointments: Appointment[] = [];
+  pastAppointments: Appointment[] = [];
 
   get upcomingCount(): number {
     return this.upcomingAppointments.length;
   }
 
-  // ── Past Appointments ────────────────────────
-  pastAppointments: Appointment[] = [
-    {
-      date: 'Apr 22',
-      day: 'Tue',
-      time: '9:00 – 9:30 AM',
-      label: 'Prenatal Checkup',
-      type: 'Obstetrics',
-      doctor: 'Dr. Priya Garh',
-      location: 'St. Luke\'s Medical Center',
-      icon: '🩺',
-      isVideo: false,
-      accentColor: 'green',
-      advice: [
-        'Drink 4 liters of water a day',
-        'No smoking',
-        'Sleep for 8 hours a day',
-      ],
-      files: ['Discharge Summary', 'Lab Results'],
-    },
-    {
-      date: 'Apr 5',
-      day: 'Sat',
-      time: '8:00 – 8:30 AM',
-      label: 'First Trimester Scan',
-      type: 'Radiology',
-      doctor: 'Dr. Santos',
-      location: 'HealthPath Diagnostics',
-      icon: '🔬',
-      isVideo: false,
-      accentColor: 'purple',
-      advice: ['Continue prenatal vitamins', 'Mild exercise recommended'],
-      files: ['Ultrasound Report'],
-    },
-    {
-      date: 'Mar 18',
-      day: 'Tue',
-      time: '10:00 – 10:30 AM',
-      label: 'OB-GYN Consultation',
-      type: 'OB-GYN',
-      doctor: 'Dr. Reyes',
-      location: 'St. Luke\'s Medical Center',
-      icon: '👩‍⚕️',
-      isVideo: false,
-      accentColor: 'pink',
-      advice: ['Take iron supplements daily', 'Rest adequately'],
-      files: ['Consultation Notes'],
-    },
-  ];
+  private toDisplay(rec: AppointmentRecord): Appointment {
+    const d = new Date(rec.date + 'T00:00:00');
+    return {
+      id: rec.id,
+      label: rec.label,
+      type: rec.type,
+      doctor: rec.doctor,
+      date: `${MONTHS[d.getMonth()]} ${d.getDate()}`,
+      day: DAYS[d.getDay()],
+      time: rec.time,
+      location: rec.location,
+      notes: rec.notes,
+      icon: rec.icon,
+      accentColor: rec.accentColor,
+      advice: rec.advice || [],
+      files: rec.files || [],
+    };
+  }
 
-  // ── Card Toggle ──────────────────────────────
+  private applyRecords(records: AppointmentRecord[]): void {
+    const todayIso = new Date().toISOString().slice(0, 10);
+    this.upcomingAppointments = records
+      .filter(r => r.status === 'upcoming' && r.date >= todayIso)
+      .map(r => this.toDisplay(r));
+    this.pastAppointments = records
+      .filter(r => r.status !== 'upcoming' || r.date < todayIso)
+      .map(r => this.toDisplay(r))
+      .reverse();
+  }
+
   toggleCard(index: number): void {
     this.expandedCard = this.expandedCard === index ? null : index;
   }
@@ -202,21 +109,18 @@ export class AppointmentsPage implements OnInit, OnDestroy {
     this.expandedPast = this.expandedPast === index ? null : index;
   }
 
-  // ── Tab ──────────────────────────────────────
   setTab(tab: 'upcoming' | 'past'): void {
     this.activeTab = tab;
     this.expandedCard = null;
     this.expandedPast = null;
   }
 
-  // ── Modal ────────────────────────────────────
   addAppointment(): void {
     this.openModal();
   }
 
   openModal(): void {
     this.showModal = true;
-    // default date to today
     const today = new Date().toISOString().split('T')[0];
     this.newAppt.date = today;
   }
@@ -227,7 +131,7 @@ export class AppointmentsPage implements OnInit, OnDestroy {
   }
 
   resetForm(): void {
-    this.newAppt = { name: '', type: '', doctor: '', date: '', time: '', location: '', notes: '', isVideo: false };
+    this.newAppt = { name: '', type: '', doctor: '', date: '', time: '', location: '', notes: '' };
     this.selectedIcon = '🩺';
     this.selectedColor = 'green';
   }
@@ -240,49 +144,66 @@ export class AppointmentsPage implements OnInit, OnDestroy {
     this.selectedColor = color;
   }
 
-  submitAppointment(): void {
+  async submitAppointment(): Promise<void> {
     if (!this.newAppt.name || !this.newAppt.type || !this.newAppt.doctor || !this.newAppt.date || !this.newAppt.time) {
       return;
     }
 
-    const d = new Date(this.newAppt.date + 'T00:00:00');
-    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-    const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
     const [h, m] = this.newAppt.time.split(':').map(Number);
     const suffix = h >= 12 ? 'PM' : 'AM';
     const hour = h % 12 || 12;
 
-    const appt: Appointment = {
+    const record: Omit<AppointmentRecord, 'id' | 'createdAt'> = {
       label: this.newAppt.name,
       type: this.newAppt.type,
       doctor: this.newAppt.doctor,
-      date: `${months[d.getMonth()]} ${d.getDate()}`,
-      day: days[d.getDay()],
+      date: this.newAppt.date,
       time: `${hour}:${m.toString().padStart(2, '0')} ${suffix}`,
       location: this.newAppt.location || undefined,
       notes: this.newAppt.notes || undefined,
       icon: this.selectedIcon,
-      isVideo: this.newAppt.isVideo,
       accentColor: this.selectedColor,
       advice: [],
+      status: 'upcoming',
     };
 
-    this.upcomingAppointments.unshift(appt);
+    try {
+      await this.appointmentsService.addAppointment(record);
+    } catch (err) {
+      console.error('Failed to save appointment:', err);
+    }
     this.closeModal();
     this.setTab('upcoming');
   }
 
-  constructor(private router: Router, private theme: ThemeService) {}
+  async cancelAppointment(id?: string): Promise<void> {
+    if (!id) return;
+    try {
+      await this.appointmentsService.cancelAppointment(id);
+    } catch (err) {
+      console.error('Failed to cancel appointment:', err);
+    }
+  }
+
+  constructor(
+    private router: Router,
+    private theme: ThemeService,
+    private appointmentsService: AppointmentsService,
+  ) {}
 
   ngOnInit(): void {
     this.themeSub = this.theme.isDark$.subscribe((val: boolean) => (this.darkMode = val));
+    this.apptSub = this.appointmentsService.getAppointments$()
+      .subscribe((records: AppointmentRecord[]) => this.applyRecords(records));
+
     requestAnimationFrame(() => {
       setTimeout(() => (this.animReady = true), 80);
     });
   }
 
   ngOnDestroy(): void {
-    this.themeSub.unsubscribe();
+    this.themeSub?.unsubscribe();
+    this.apptSub?.unsubscribe();
   }
 
   navigate(route: string, tab?: string): void {

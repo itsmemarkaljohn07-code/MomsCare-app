@@ -397,6 +397,37 @@ ion-content[data-theme="dark"] {
   &:hover { background: rgba(181,127,212,0.18); }
 }
 
+.hero-carousel {
+  margin: 0 16px 24px; position: relative; overflow: hidden;
+  border-radius: 24px; box-shadow: var(--shadow-card);
+  opacity: 0; transform: translateY(16px);
+  transition: opacity 0.5s ease 0.08s, transform 0.5s cubic-bezier(0.22,1,0.36,1) 0.08s;
+  &.visible { opacity: 1; transform: translateY(0); }
+}
+.hero-track {
+  display: flex;
+  transition: transform 0.6s cubic-bezier(0.65, 0, 0.35, 1);
+}
+.hero-track .hero-card {
+  flex: 0 0 100%;
+  margin: 0; border-radius: 0; box-shadow: none;
+  opacity: 1; transform: none; transition: none;
+}
+.hero-dots {
+  position: absolute; bottom: 12px; left: 0; right: 0;
+  display: flex; justify-content: center; gap: 6px;
+}
+.hero-dot {
+  width: 7px; height: 7px; border-radius: 99px; border: none;
+  background: rgba(255,255,255,0.55); cursor: pointer; padding: 0;
+  transition: width 0.25s, background 0.25s;
+  &.active { width: 20px; background: #fff; }
+}
+
+@media (min-width: 600px) {
+  .hero-carousel { margin: 0 24px 28px; }
+}
+
 /* ── Responsive ── */
 @media (min-width: 600px) {
   .insights-top-bar { padding: 56px 28px 16px; }
@@ -413,4 +444,35 @@ ion-content[data-theme="dark"] {
   .blob-top, .blob-mid, .blob-bottom { animation: none; }
   .hero-card, .section-block, .insight-banner, .tips-strip, .progress-strip { transition: opacity 0.2s ease; }
   .article-reader-overlay { transition: transform 0.2s ease; }
+}
+
+.hero-carousel {
+  margin: 0 16px 24px; position: relative; overflow: hidden;
+  border-radius: 24px; box-shadow: var(--shadow-card);
+  opacity: 0; transform: translateY(16px);
+  transition: opacity 0.5s ease 0.08s, transform 0.5s cubic-bezier(0.22,1,0.36,1) 0.08s;
+  &.visible { opacity: 1; transform: translateY(0); }
+}
+.hero-track {
+  display: flex;
+  transition: transform 0.6s cubic-bezier(0.65, 0, 0.35, 1);
+}
+.hero-track .hero-card {
+  flex: 0 0 100%;
+  margin: 0; border-radius: 0; box-shadow: none;
+  opacity: 1; transform: none; transition: none;
+}
+.hero-dots {
+  position: absolute; bottom: 12px; left: 0; right: 0;
+  display: flex; justify-content: center; gap: 6px;
+}
+.hero-dot {
+  width: 7px; height: 7px; border-radius: 99px; border: none;
+  background: rgba(255,255,255,0.55); cursor: pointer; padding: 0;
+  transition: width 0.25s, background 0.25s;
+  &.active { width: 20px; background: #fff; }
+}
+
+@media (min-width: 600px) {
+  .hero-carousel { margin: 0 24px 28px; }
 }

@@ -1,4 +1,3 @@
-<!-- insights.page.html -->
 <ion-content [fullscreen]="true" class="insights-content" [attr.data-theme]="darkMode ? 'dark' : 'light'">
 
   <div class="insights-wrap">
@@ -7,7 +6,6 @@
     <div class="blob blob-mid"></div>
     <div class="blob blob-bottom"></div>
 
-    <!-- ── Top Bar ── -->
     <div class="insights-top-bar">
       <div class="top-bar-inner">
         <div>
@@ -17,28 +15,30 @@
       </div>
     </div>
 
-
-
-    <!-- ── Featured Article (Hero) ── -->
-    <div class="hero-card" [class.visible]="animReady" (click)="openArticle('body')">
-      <img src="assets/icon/yourchangingbody.jpg" class="hero-image" alt="What's happening inside you"/>
-      <div class="hero-overlay"></div>
-      <div class="hero-body">
-        <span class="hero-tag">This Week</span>
-        <h2 class="hero-title">What's happening inside you at Week {{ pregnancyWeek }}</h2>
-        <p class="hero-excerpt">Your baby is the size of a {{ babySize.fruit }} and developing rapidly. Here's everything your body is doing right now.</p>
-        <div class="hero-meta">
-          <span class="hero-read-time">
-            <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><circle cx="6" cy="6" r="5" stroke="currentColor" stroke-width="1.3"/><path d="M6 3v3l2 1.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
-            5 min read
-          </span>
-          <span class="hero-dot">·</span>
-          <span class="hero-category">Body Changes</span>
+    <div class="hero-carousel" [class.visible]="animReady">
+      <div class="hero-track" [style.transform]="'translateX(-' + (currentSlide * 100) + '%)'">
+        <div class="hero-card" *ngFor="let slide of weekHighlights" (click)="openArticle(slide.key)">
+          <img [src]="slide.image" class="hero-image" [alt]="slide.title"/>
+          <div class="hero-overlay"></div>
+          <div class="hero-body">
+            <span class="hero-tag">{{ slide.tag }}</span>
+            <h2 class="hero-title">{{ slide.title }}</h2>
+            <p class="hero-excerpt">{{ slide.excerpt }}</p>
+            <div class="hero-meta">
+              <span class="hero-read-time">
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><circle cx="6" cy="6" r="5" stroke="currentColor" stroke-width="1.3"/><path d="M6 3v3l2 1.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+                {{ articles[slide.key].readTime }} min read
+              </span>
+            </div>
+          </div>
         </div>
+      </div>
+      <div class="hero-dots" *ngIf="weekHighlights.length > 1">
+        <button class="hero-dot" *ngFor="let slide of weekHighlights; let i = index"
+                [class.active]="i === currentSlide" (click)="goToSlide(i)" aria-label="Go to slide"></button>
       </div>
     </div>
 
-    <!-- ── Most Popular ── -->
     <div class="section-block" [class.visible]="animReady">
       <div class="section-header-row">
         <div>
@@ -70,7 +70,6 @@
       </div>
     </div>
 
-    <!-- ── Daily Insight Banner ── -->
     <div class="insight-banner" [class.visible]="animReady">
       <div class="banner-icon-wrap">
         <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
@@ -85,7 +84,6 @@
       </div>
     </div>
 
-    <!-- ── Understanding Your Body ── -->
     <div class="section-block" [class.visible]="animReady">
       <div class="section-header-row">
         <div>
@@ -114,7 +112,6 @@
       </div>
     </div>
 
-    <!-- ── Baby Development ── -->
     <div class="section-block" [class.visible]="animReady">
       <div class="section-header-row">
         <div>
@@ -143,7 +140,6 @@
       </div>
     </div>
 
-    <!-- ── Quick Tips ── -->
     <div class="tips-strip" [class.visible]="animReady">
       <div class="tips-strip-header">
         <h3 class="section-heading">Quick tips for week {{ pregnancyWeek }}</h3>
@@ -155,7 +151,6 @@
       </div>
     </div>
 
-    <!-- ── Nutrition & Wellness ── -->
     <div class="section-block" [class.visible]="animReady">
       <div class="section-header-row">
         <div>
@@ -184,7 +179,6 @@
       </div>
     </div>
 
-    <!-- ── Mind & Emotions ── -->
     <div class="section-block" [class.visible]="animReady">
       <div class="section-header-row">
         <div>
@@ -213,7 +207,6 @@
       </div>
     </div>
 
-    <!-- ── Preparing for Birth ── -->
     <div class="section-block" [class.visible]="animReady">
       <div class="section-header-row">
         <div>
@@ -245,9 +238,6 @@
     <div style="height: 88px;"></div>
   </div>
 
-  <!-- ══════════════════════════════════════════
-       BOTTOM NAVIGATION — icon-only, Snapshot centered + highlighted
-  ══════════════════════════════════════════ -->
   <div class="bottom-nav">
     <button class="nav-item" [class.active]="activeTab === 'home'" (click)="navigate('/home')" aria-label="Home">
       <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
@@ -290,9 +280,6 @@
     </button>
   </div>
 
-  <!-- ══════════════════════════════════════════
-       ARTICLE READER OVERLAY
-  ══════════════════════════════════════════ -->
   <div class="article-reader-overlay"
        *ngIf="articleOpen"
        [class.slide-in]="articleAnimIn"
@@ -300,7 +287,6 @@
 
     <ng-container *ngIf="activeArticleData">
 
-      <!-- Hero -->
       <div class="ar-hero" [style.background]="activeArticleData.heroBg">
         <button class="ar-back-btn" (click)="closeArticle()" aria-label="Back">
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none"
@@ -319,7 +305,6 @@
         </div>
       </div>
 
-      <!-- Scrollable content -->
       <div class="ar-scroll">
         <div class="ar-title-block">
           <h1 class="ar-title">{{ activeArticleData.title }}</h1>
@@ -330,7 +315,6 @@
           </div>
         </div>
 
-        <!-- Tab selector -->
         <div class="ar-week-tabs" *ngIf="activeArticleData.tabs && activeArticleData.tabs.length > 1">
           <button class="ar-week-btn"
                   *ngFor="let tab of activeArticleData.tabs"
@@ -341,7 +325,6 @@
           </button>
         </div>
 
-        <!-- Active panel -->
         <div class="ar-panel" *ngIf="activePanelData">
           <div class="ar-section">
             <div class="ar-trimester-tag"
@@ -419,10 +402,7 @@
 
         <div class="ar-divider"></div>
 
-        <!-- ── YouTube & Citation ── -->
         <div class="ar-resources" *ngIf="activeArticleData">
-
-          <!-- YouTube button -->
           <button class="ar-yt-btn"
                   (click)="openUrl(activeArticleData.youTubeUrl)"
                   *ngIf="activeArticleData.youTubeUrl">
@@ -443,7 +423,6 @@
             </svg>
           </button>
 
-          <!-- Citation -->
           <div class="ar-citation" *ngIf="activeArticleData.citation">
             <div class="ar-citation-icon">
               <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
@@ -471,7 +450,6 @@
               </button>
             </div>
           </div>
-
         </div>
 
         <p class="ar-disclaimer">Always discuss any concerns with your midwife or OB-GYN. Every pregnancy is unique.</p>

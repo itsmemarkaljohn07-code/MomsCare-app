@@ -19,18 +19,14 @@
     <div class="content-body" [class.visible]="animReady">
 
       <!-- Appearance -->
+            <!-- Appearance -->
       <p class="section-label">Appearance</p>
       <div class="card">
         <div class="toggle-row">
           <div class="toggle-info">
-            <p class="toggle-title">Dark Mode</p>
-            <p class="toggle-sub">Easier on the eyes at night</p>
+            <p class="toggle-title">{{ darkMode ? 'Dark Mode' : 'Light Mode' }}</p>
+            <p class="toggle-sub">Automatically matches your device settings</p>
           </div>
-          <button class="mini-toggle" (click)="toggleDarkMode()">
-            <div class="mini-toggle-track" [class.on]="darkMode">
-              <div class="mini-toggle-thumb"></div>
-            </div>
-          </button>
         </div>
         <div class="field-group" style="padding-top:12px">
           <label class="field-label">Language</label>

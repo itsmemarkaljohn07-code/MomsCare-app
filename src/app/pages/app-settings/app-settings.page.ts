@@ -1,5 +1,5 @@
 // app-settings.page.ts
-import { Component, OnInit , OnDestroy } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { Location } from '@angular/common';
 import { IonicModule } from '@ionic/angular';
 import { CommonModule } from '@angular/common';
@@ -43,7 +43,8 @@ export class AppSettingsPage implements OnInit, OnDestroy {
   changePassword(): void { alert('Password change feature coming soon.'); }
   deleteAccount(): void { alert('Please contact support@momscare.app to delete your account.'); }
 
-  toggleDarkMode(): void { this.theme.toggle(); }
+  // Manual dark-mode toggle removed — theme now always follows the
+  // device's system setting via ThemeService (no manual override).
 
   constructor(private location: Location, private theme: ThemeService) {}
   ngOnInit(): void {

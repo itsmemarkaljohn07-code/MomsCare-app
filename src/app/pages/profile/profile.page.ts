@@ -1,4 +1,3 @@
-// profile.page.ts
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
@@ -23,10 +22,8 @@ export class ProfilePage implements OnInit, OnDestroy {
 
   private themeSub!: Subscription;
 
-  // ── Bottom nav active state (Profile is now reachable from the nav bar) ──
   activeTab = 'profile';
 
-  // ── Selected avatar (reads from localStorage) ──
   get selectedAvatar() {
     try {
       const saved = localStorage.getItem('momscare_avatar');
@@ -35,7 +32,6 @@ export class ProfilePage implements OnInit, OnDestroy {
     return { emoji: '🐻', bgColor: '#e07eb8' };
   }
 
-  // ── Days until due ──
   get daysUntilDue(): number {
     const diff = this.dueDate.getTime() - Date.now();
     return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
@@ -76,10 +72,6 @@ export class ProfilePage implements OnInit, OnDestroy {
     if (this.pregnancyWeek <= 13) return '1st Trimester';
     if (this.pregnancyWeek <= 26) return '2nd Trimester';
     return '3rd Trimester';
-  }
-
-  toggleDarkMode(): void {
-    this.theme.toggle();
   }
 
   async signOut(): Promise<void> {

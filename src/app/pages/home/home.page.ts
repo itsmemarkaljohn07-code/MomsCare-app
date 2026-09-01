@@ -1,4 +1,3 @@
-// home.page.ts
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { Router, ActivatedRoute } from '@angular/router';
 import { CommonModule, DatePipe } from '@angular/common';
@@ -6,30 +5,14 @@ import { FormsModule } from '@angular/forms';
 import { IonicModule } from '@ionic/angular';
 import { ThemeService } from '../../services/theme';
 import { AuthService } from '../../services/auth.service';
+import { NotificationsService, AppNotification } from '../../services/notifications.service';
 import { Subscription } from 'rxjs';
 
-// ─── User model ──────────────────────────────────────────────────────────────
-// Populated from the authenticated user's Firestore profile (see
-// AuthService.getProfile()). pregnancyWeek/pregnancyDays are NOT stored
-// directly — they're derived live from dueDate each time the page loads,
-// so they stay accurate as real time passes rather than freezing at
-// whatever value was true on signup day.
 export interface AppUser {
   fullName:     string;
   email:        string;
   dueDate:      Date;
   firstTimeMom: boolean | null;
-}
-
-// ─── Notification model ───────────────────────────────────────────────────────
-export interface AppNotification {
-  id:      string;
-  icon:    string;
-  title:   string;
-  message: string;
-  time:    string;
-  read:    boolean;
-  route?:  string;
 }
 
 @Component({
@@ -49,14 +32,13 @@ export class HomePage implements OnInit, OnDestroy {
   isLoadingUser = true;
   private themeSub!: Subscription;
   private userSub!: Subscription;
+  private notifSub!: Subscription;
+  private currentUid: string | null = null;
 
   private clockInterval:    any;
   private countdownInterval: any;
   private midnightTimeout:  any;
 
-  // ── Selected avatar (synced from avatar customization page) ──
-  // NOTE: still used elsewhere (e.g. Profile page), just no longer
-  // rendered in the Home top bar since Profile access moved to the nav bar.
   get selectedAvatar() {
     try {
       const saved = localStorage.getItem('momscare_avatar');
@@ -65,12 +47,6 @@ export class HomePage implements OnInit, OnDestroy {
     return { emoji: '🐻', bgColor: '#e07eb8' };
   }
 
-  // ════════════════════════════════════════════════════════
-  // CURRENT USER — loaded from AuthService in ngOnInit().
-  // Defaults here only matter for the brief moment before the real
-  // profile loads; dueDate defaults to today so countdown/progress
-  // math never divides by an invalid date while loading.
-  // ════════════════════════════════════════════════════════
   currentUser: AppUser = {
     fullName:     '',
     email:        '',
@@ -78,13 +54,11 @@ export class HomePage implements OnInit, OnDestroy {
     firstTimeMom: null,
   };
 
-  // Pregnancy week/days are computed live from the stored due date —
-  // not stored as static fields, so they stay correct as time passes.
   pregnancyWeek = 0;
   pregnancyDays = 0;
 
   private recomputePregnancyFromDueDate(): void {
-    const TOTAL_PREGNANCY_DAYS = 280; // 40 weeks
+    const TOTAL_PREGNANCY_DAYS = 280;
     const msPerDay = 24 * 60 * 60 * 1000;
     const now = new Date();
     const daysUntilDue = Math.round((this.currentUser.dueDate.getTime() - now.getTime()) / msPerDay);
@@ -95,7 +69,6 @@ export class HomePage implements OnInit, OnDestroy {
 
   get dueDate(): Date { return this.currentUser.dueDate; }
 
-  // Week strip (shows 5 weeks centred on current week)
   weekStripOffset = 0;
   get visibleWeeks(): number[] {
     const center = this.pregnancyWeek + this.weekStripOffset;
@@ -111,11 +84,9 @@ export class HomePage implements OnInit, OnDestroy {
   }
 
   selectWeek(w: number): void {
-    // In production, this could open a week-detail modal
     console.log('Selected week', w);
   }
 
-  // ── Baby size data ──
   babySizes: Record<number, { emoji: string; fruit: string; length: string; weight: string }> = {
     4:  { emoji: '🫐', fruit: 'poppy seed',      length: '0.1 cm',  weight: '<1 g' },
     6:  { emoji: '🫐', fruit: 'lentil',          length: '0.6 cm',  weight: '<1 g' },
@@ -184,34 +155,22 @@ export class HomePage implements OnInit, OnDestroy {
     return '3rd Trimester';
   }
 
-  // ── Fetal SVG — womb visualization ──────────────────────
-  // A single smooth "C-curve" silhouette (head tucked toward chest,
-  // knees drawn up) is generated as one continuous path, scaled by
-  // pregnancy week. This reads as a recognisable curled fetus rather
-  // than a collection of separate shapes.
-
   private get s(): number {
-    // scale factor 0.32 at week 4 → 1.0 at week 40
     return Math.max(0.32, Math.min(1.0, 0.32 + (this.pregnancyWeek / 40) * 0.68));
   }
 
-  // Centre point the whole silhouette is built around
   private get origin() {
     return { cx: 110, cy: 128 };
   }
 
-  // Core proportions (used by body silhouette, head, limbs)
   get fetal() {
     const s = this.s;
     const { cx, cy } = this.origin;
-
     return {
       cx, cy, s,
-      // Head circle
       hx: cx + s * 22,
       hy: cy - s * 34,
       hr: s * 23,
-      // Torso reference (used for limb anchoring)
       bx: cx - s * 2,
       by: cy + s * 6,
       bw: s * 17,
@@ -219,10 +178,8 @@ export class HomePage implements OnInit, OnDestroy {
     };
   }
 
-  // Main body silhouette — head, neck, curled spine, rounded bottom, all in one path
   get bodyPath(): string {
     const f = this.fetal;
-    const s = f.s;
     return `
       M ${f.hx - f.hr * 0.95} ${f.hy + f.hr * 0.55}
       C ${f.hx - f.hr * 1.25} ${f.hy - f.hr * 0.3}
@@ -247,7 +204,6 @@ export class HomePage implements OnInit, OnDestroy {
     `.replace(/\s+/g, ' ').trim();
   }
 
-  // Curled arm — shoulder to tucked hand near chin
   get armPath(): string {
     const f = this.fetal;
     const shx = f.bx + f.bw * 0.55, shy = f.by - f.bh * 0.55;
@@ -256,7 +212,6 @@ export class HomePage implements OnInit, OnDestroy {
     return `M ${shx} ${shy} Q ${elx} ${ely} ${hax} ${hay}`;
   }
 
-  // Curled legs — hips to tucked knees to feet near chest
   get legsPath(): string {
     const f = this.fetal;
     const hipx = f.bx - f.bw * 0.5, hipy = f.by + f.bh * 0.85;
@@ -265,7 +220,6 @@ export class HomePage implements OnInit, OnDestroy {
     return `M ${hipx} ${hipy} Q ${kneex} ${kneey} ${footx} ${footy}`;
   }
 
-  // Umbilical cord cubic bezier — from belly to placenta at top
   get umbilicalPath(): string {
     const f  = this.fetal;
     const sx = f.bx - f.bw * 0.2;
@@ -273,7 +227,6 @@ export class HomePage implements OnInit, OnDestroy {
     return `M ${sx} ${sy} C ${sx - 22} ${sy - 36} ${sx + 30} 78 110 56`;
   }
 
-  // Spine curve suggestion (subtle shading line along the back)
   get spinalPath(): string {
     const f = this.fetal;
     return `M ${f.hx - f.hr * 0.4} ${f.hy + f.hr * 0.3}
@@ -281,9 +234,6 @@ export class HomePage implements OnInit, OnDestroy {
               ${f.bx - f.bw * 0.6} ${f.by + f.bh * 0.9}`;
   }
 
-
-
-  // ── Navigation tabs ─────────────────────────────────────
   activeTab = 'home';
 
   setTab(tab: string): void { this.activeTab = tab; }
@@ -292,9 +242,6 @@ export class HomePage implements OnInit, OnDestroy {
     this.router.navigate([route]);
   }
 
-  // ════════════════════════════════════════════════════════
-  // DUE DATE COUNTDOWN (live, ticks every minute)
-  // ════════════════════════════════════════════════════════
   countdownDays  = 0;
   countdownHours = 0;
   countdownMins  = 0;
@@ -311,41 +258,8 @@ export class HomePage implements OnInit, OnDestroy {
 
   get daysRemaining(): number { return this.countdownDays; }
 
-  // ════════════════════════════════════════════════════════
-  // NOTIFICATIONS
-  // NOTE: still local/sample data — these aren't part of registration,
-  // so there's no "real" source for them yet. Left as-is per the scope
-  // of this fix (registration-derived fields only); wire these up to a
-  // real notifications collection/service separately when ready.
-  // ════════════════════════════════════════════════════════
   showNotifPanel = false;
-
-  notifications: AppNotification[] = [
-    {
-      id: 'n1', icon: '🩺', read: false,
-      title: 'Appointment Reminder',
-      message: 'Prenatal Checkup with Dr. Reyes tomorrow at 10:00 AM.',
-      time: '2 hours ago', route: '/appointments',
-    },
-    {
-      id: 'n2', icon: '💊', read: false,
-      title: 'Daily Vitamins',
-      message: "Don't forget to take your prenatal vitamins today!",
-      time: '8:00 AM', route: '',
-    },
-    {
-      id: 'n3', icon: '📊', read: true,
-      title: 'Week 20 Milestone',
-      message: "You're halfway through your pregnancy! Check your baby's development.",
-      time: 'Yesterday', route: '',
-    },
-    {
-      id: 'n4', icon: '💧', read: true,
-      title: 'Hydration Check',
-      message: 'Have you had 8 glasses of water today? Stay hydrated, Mama! 💕',
-      time: '2 days ago', route: '',
-    },
-  ];
+  notifications: AppNotification[] = [];
 
   get unreadCount(): number { return this.notifications.filter(n => !n.read).length; }
 
@@ -357,7 +271,9 @@ export class HomePage implements OnInit, OnDestroy {
   }
 
   onNotifTap(n: AppNotification): void {
-    n.read = true;
+    if (!n.read && this.currentUid) {
+      this.notificationsService.markRead(this.currentUid, n.id);
+    }
     if (n.route) {
       this.closeNotifPanel();
       this.router.navigate([n.route]);
@@ -365,23 +281,16 @@ export class HomePage implements OnInit, OnDestroy {
   }
 
   clearAllNotifs(): void {
-    this.notifications.forEach(n => (n.read = true));
-    this.notifications = [];
+    if (!this.currentUid || this.notifications.length === 0) return;
+    this.notificationsService.markAllRead(this.currentUid, this.notifications.map(n => n.id));
   }
 
-  // ════════════════════════════════════════════════════════
-  // APPOINTMENTS
-  // NOTE: same as notifications above — not part of registration data,
-  // left as sample data for now; wire to a real appointments
-  // collection separately.
-  // ════════════════════════════════════════════════════════
   appointments = [
     { date: 'May 10',  day: 'Sat', label: 'Prenatal Checkup',   doctor: 'Dr. Reyes',  type: 'checkup',    icon: '🩺' },
     { date: 'May 18',  day: 'Sun', label: 'Anatomy Ultrasound', doctor: "St. Luke's", type: 'ultrasound', icon: '🔬' },
     { date: 'Jun 3',   day: 'Tue', label: 'Blood Work',         doctor: 'Dr. Santos', type: 'lab',        icon: '🩸' },
   ];
 
-  // Show only the next 2 on homepage
   get upcomingAppointments() {
     return this.appointments.slice(0, 2);
   }
@@ -390,13 +299,6 @@ export class HomePage implements OnInit, OnDestroy {
     this.router.navigate(['/appointments']);
   }
 
-  // ════════════════════════════════════════════════════════
-  // HEALTH SNAPSHOT
-  // NOTE: this is user-logged data entered through the "Log data" modal
-  // in this same session — it's not registration data, so it's left
-  // exactly as before. A real implementation would persist this to
-  // Firestore per-day; out of scope for this fix.
-  // ════════════════════════════════════════════════════════
   health = {
     weight: 0,
     bp:     '--/--',
@@ -439,9 +341,6 @@ export class HomePage implements OnInit, OnDestroy {
   moodLabels = ['😢', '😕', '😊', '😄', '🤩'];
   setMood(idx: number): void { this.health.mood = idx; }
 
-  // ════════════════════════════════════════════════════════
-  // DAILY CHECKLIST — auto-resets every 24h at midnight
-  // ════════════════════════════════════════════════════════
   private readonly CHECKLIST_KEY = 'momscare_checklist_date';
 
   checklist = [
@@ -456,7 +355,7 @@ export class HomePage implements OnInit, OnDestroy {
   get checklistPercent(): number { return Math.round((this.checklistDone / this.checklist.length) * 100); }
 
   private getTodayDateString(): string {
-    return new Date().toISOString().split('T')[0]; // 'YYYY-MM-DD'
+    return new Date().toISOString().split('T')[0];
   }
 
   private loadChecklist(): void {
@@ -472,7 +371,6 @@ export class HomePage implements OnInit, OnDestroy {
           if (match) item.done = match.done;
         });
       } else {
-        // New day — reset all items
         this.checklist.forEach(item => (item.done = false));
         localStorage.setItem(this.CHECKLIST_KEY, today);
         this.saveChecklistState();
@@ -494,7 +392,6 @@ export class HomePage implements OnInit, OnDestroy {
     this.saveChecklistState();
   }
 
-  // Schedule auto-reset at next midnight
   private scheduleMidnightReset(): void {
     const now       = new Date();
     const midnight  = new Date(now);
@@ -505,12 +402,10 @@ export class HomePage implements OnInit, OnDestroy {
       this.checklist.forEach(item => (item.done = false));
       localStorage.setItem(this.CHECKLIST_KEY, this.getTodayDateString());
       this.saveChecklistState();
-      // Schedule next reset
       this.scheduleMidnightReset();
     }, msUntilMidnight);
   }
 
-  // "Resets in X h Ym" label
   get timeUntilMidnight(): string {
     const now      = new Date();
     const midnight = new Date(now);
@@ -528,9 +423,6 @@ export class HomePage implements OnInit, OnDestroy {
     return diff > 0 ? `in ${diff}h` : 'soon';
   }
 
-  // ════════════════════════════════════════════════════════
-  // GREETING — first name derived from the stored full name
-  // ════════════════════════════════════════════════════════
   get greetingName(): string {
     const first = this.currentUser.fullName?.trim().split(/\s+/)[0];
     return first || 'Mama';
@@ -543,14 +435,12 @@ export class HomePage implements OnInit, OnDestroy {
     return 'Good evening';
   }
 
-  // ════════════════════════════════════════════════════════
-  // LIFECYCLE
-  // ════════════════════════════════════════════════════════
   constructor(
     private router: Router,
     private route: ActivatedRoute,
     private theme: ThemeService,
     private authService: AuthService,
+    private notificationsService: NotificationsService,
   ) {}
 
   private async loadUserProfile(): Promise<void> {
@@ -577,33 +467,30 @@ export class HomePage implements OnInit, OnDestroy {
   ngOnInit(): void {
     this.themeSub = this.theme.isDark$.subscribe(val => (this.darkMode = val));
 
-    // Load the real signed-in user's profile (replaces the old mock
-    // currentUser object). authService.user$ tells us once Firebase Auth
-    // has resolved who's signed in; we then fetch their Firestore profile.
     this.userSub = this.authService.user$.subscribe(fbUser => {
+      this.currentUid = fbUser?.uid ?? null;
       if (fbUser) {
         this.loadUserProfile();
       }
     });
 
+    this.notifSub = this.notificationsService.notifications$()
+      .subscribe((list: AppNotification[]) => (this.notifications = list));
+
     requestAnimationFrame(() => {
       setTimeout(() => (this.animReady = true), 80);
     });
 
-    // Live clock
     this.clockInterval = setInterval(() => {
       this.currentTime = new Date();
     }, 60000);
 
-    // Live countdown (ticks every minute) — also recompute pregnancy
-    // week/days here so both stay in sync as time passes.
     this.updateCountdown();
     this.countdownInterval = setInterval(() => {
       this.updateCountdown();
       this.recomputePregnancyFromDueDate();
     }, 60000);
 
-    // Checklist with 24h reset
     this.loadChecklist();
     this.scheduleMidnightReset();
   }
@@ -611,6 +498,7 @@ export class HomePage implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     this.themeSub?.unsubscribe();
     this.userSub?.unsubscribe();
+    this.notifSub?.unsubscribe();
     if (this.clockInterval)     clearInterval(this.clockInterval);
     if (this.countdownInterval) clearInterval(this.countdownInterval);
     if (this.midnightTimeout)   clearTimeout(this.midnightTimeout);

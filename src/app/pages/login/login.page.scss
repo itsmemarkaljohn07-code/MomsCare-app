@@ -17,6 +17,28 @@
   --error:         #e05580;
 }
 
+/* ══════════════════════════════
+   DARK THEME
+══════════════════════════════ */
+ion-content[data-theme="dark"] {
+  --bg-grad-start: #3a1a3e;
+  --bg-grad-mid:   #2a1a4e;
+  --bg-grad-end:   #1a1a3e;
+  --card-bg:       #201530;
+  --field-bg:      rgba(255, 255, 255, 0.06);
+  --field-border:  rgba(181, 127, 212, 0.30);
+  --text-dark:     #f0e4fa;
+  --text-muted:    #a888c4;
+  --shadow-card:   0 -8px 40px rgba(0, 0, 0, 0.45);
+
+  .field-input { color: var(--text-dark); }
+  .social-btn {
+    background: #2a1a3a;
+    border-color: rgba(181, 127, 212, 0.25);
+    color: #f0e4fa;
+  }
+}
+
 .login-content {
   --background: linear-gradient(160deg, var(--bg-grad-start) 0%, var(--bg-grad-mid) 50%, var(--bg-grad-end) 100%);
 }
@@ -117,7 +139,7 @@
   z-index: 2;
   opacity: 0;
   transform: translateY(40px);
-  transition: opacity 0.7s ease 0.25s, transform 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) 0.25s;
+  transition: opacity 0.7s ease 0.25s, transform 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) 0.25s, background 0.3s;
 
   &.visible {
     opacity: 1;
@@ -166,7 +188,7 @@
   border: 1.5px solid var(--field-border);
   border-radius: 14px;
   padding: 0 14px;
-  transition: border-color 0.25s, box-shadow 0.25s;
+  transition: border-color 0.25s, box-shadow 0.25s, background 0.3s;
 
   .field-group.focused & {
     border-color: var(--field-focus);
@@ -396,7 +418,7 @@
   color: var(--text-dark);
   font-family: 'Nunito', 'Poppins', sans-serif;
   cursor: pointer;
-  transition: border-color 0.2s, box-shadow 0.2s, transform 0.18s;
+  transition: border-color 0.2s, box-shadow 0.2s, transform 0.18s, background 0.3s;
 
   &:hover {
     border-color: var(--pink);

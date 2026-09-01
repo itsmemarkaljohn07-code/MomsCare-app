@@ -1,55 +1,46 @@
-// services/theme.ts
-import { Injectable } from '@angular/core';
+import { Injectable, OnDestroy } from '@angular/core';
 import { BehaviorSubject } from 'rxjs';
 
-const THEME_KEY = 'momscare_dark_mode';
-
+/**
+ * Follows the device/OS color scheme automatically (prefers-color-scheme).
+ * There is no manual override — MomsCare always mirrors the system theme.
+ */
 @Injectable({ providedIn: 'root' })
-export class ThemeService {
+export class ThemeService implements OnDestroy {
+  private darkSubject = new BehaviorSubject<boolean>(false);
+  isDark$ = this.darkSubject.asObservable();
 
-  private _isDark$ = new BehaviorSubject<boolean>(this.loadInitial());
-  readonly isDark$ = this._isDark$.asObservable();
-
-  get isDark(): boolean {
-    return this._isDark$.value;
-  }
+  private mediaQuery: MediaQueryList | null = null;
+  private mediaQueryListener = (e: MediaQueryListEvent) => this.applyDark(e.matches);
 
   constructor() {
-    this.apply(this.isDark);
+    if (typeof window !== 'undefined' && window.matchMedia) {
+      this.mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+      this.applyDark(this.mediaQuery.matches);
+
+      if (this.mediaQuery.addEventListener) {
+        this.mediaQuery.addEventListener('change', this.mediaQueryListener);
+      } else {
+        (this.mediaQuery as any).addListener(this.mediaQueryListener);
+      }
+    }
   }
 
-  private loadInitial(): boolean {
-    try {
-      const saved = localStorage.getItem(THEME_KEY);
-      if (saved !== null) return saved === 'true';
-    } catch {}
-    // Fall back to system preference if nothing saved yet
-    return typeof window !== 'undefined' &&
-           window.matchMedia &&
-           window.matchMedia('(prefers-color-scheme: dark)').matches;
+  get isDark(): boolean {
+    return this.darkSubject.value;
   }
 
-  toggle(): void {
-    this.set(!this.isDark);
+  private applyDark(isDark: boolean): void {
+    this.darkSubject.next(isDark);
+    document.body.classList.toggle('dark', isDark);
   }
 
-  set(value: boolean): void {
-    this._isDark$.next(value);
-    this.apply(value);
-    try { localStorage.setItem(THEME_KEY, String(value)); } catch {}
-  }
-
-  /** Applies/removes the 'dark' class on <html> and <body> so global CSS variables can react. */
-  private apply(isDark: boolean): void {
-    if (typeof document === 'undefined') return;
-    const root = document.documentElement;
-    const body = document.body;
-    if (isDark) {
-      root.classList.add('dark');
-      body.classList.add('dark');
+  ngOnDestroy(): void {
+    if (!this.mediaQuery) return;
+    if (this.mediaQuery.removeEventListener) {
+      this.mediaQuery.removeEventListener('change', this.mediaQueryListener);
     } else {
-      root.classList.remove('dark');
-      body.classList.remove('dark');
+      (this.mediaQuery as any).removeListener(this.mediaQueryListener);
     }
   }
 }

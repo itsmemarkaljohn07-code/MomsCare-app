@@ -78,6 +78,39 @@ export class InsightsPage implements OnInit, OnDestroy {
   currentArticle: string | null = null;
   activeTabId    = 1;
 
+  // ── "Specialized for this week" auto-sliding carousel ──
+  // Sourced from the existing articles library, filtered to the most
+  // relevant keys for now. Swap this getter's source for a Firestore
+  // query keyed by pregnancyWeek once weekly-tagged content exists —
+  // the carousel template/logic below does not need to change.
+  get weekHighlights() {
+    const keys = ['body', 'checkups', 'senses', 'movement', 'braxton'].filter(k => this.articles[k]);
+    return keys.slice(0, 5).map(key => ({
+      key,
+      tag: 'This Week',
+      title: this.articles[key].title,
+      excerpt: `Week ${this.pregnancyWeek} · ${this.articles[key].heroTag}`,
+      image: this.articles[key].heroImage,
+    }));
+  }
+
+  currentSlide = 0;
+  private carouselTimer: any;
+
+  private startCarousel(): void {
+    clearInterval(this.carouselTimer);
+    this.carouselTimer = setInterval(() => {
+      const total = this.weekHighlights.length;
+      if (total === 0) return;
+      this.currentSlide = (this.currentSlide + 1) % total;
+    }, 5000);
+  }
+
+  goToSlide(i: number): void {
+    this.currentSlide = i;
+    this.startCarousel();
+  }
+
   get activeArticleData(): ArticleDefinition | null {
     return this.currentArticle ? (this.articles[this.currentArticle] ?? null) : null;
   }
@@ -1259,9 +1292,13 @@ export class InsightsPage implements OnInit, OnDestroy {
   ngOnInit(): void {
     this.themeSub = this.theme.isDark$.subscribe(val => (this.darkMode = val));
     requestAnimationFrame(() => setTimeout(() => (this.animReady = true), 80));
+    this.startCarousel();
   }
 
-  ngOnDestroy(): void { this.themeSub?.unsubscribe(); }
+  ngOnDestroy(): void {
+    this.themeSub?.unsubscribe();
+    clearInterval(this.carouselTimer);
+  }
 
   navigate(route: string): void { this.router.navigate([route]); }
 

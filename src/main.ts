@@ -1,9 +1,9 @@
 import { bootstrapApplication } from '@angular/platform-browser';
 import { RouteReuseStrategy, provideRouter, withPreloading, PreloadAllModules } from '@angular/router';
 import { IonicRouteStrategy, provideIonicAngular } from '@ionic/angular/standalone';
-import { provideFirebaseApp, initializeApp } from '@angular/fire/app';
+import { provideFirebaseApp, initializeApp, getApp } from '@angular/fire/app';
 import { provideAuth, getAuth } from '@angular/fire/auth';
-import { provideFirestore, getFirestore } from '@angular/fire/firestore';
+import { provideFirestore, initializeFirestore } from '@angular/fire/firestore';
 import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
 
 import { routes } from './app/app.routes';
@@ -18,6 +18,18 @@ bootstrapApplication(AppComponent, {
     provideAnimationsAsync(),
     provideFirebaseApp(() => initializeApp(environment.firebase)),
     provideAuth(() => getAuth()),
-    provideFirestore(() => getFirestore()),
+    // Firestore's default transport (WebChannel/streaming) can hang
+    // indefinitely behind certain antivirus HTTPS scanners, corporate
+    // proxies, or restrictive networks — even when the browser itself
+    // isn't blocking anything. Forcing long-polling makes Firestore use
+    // plain, well-understood HTTP requests instead, which is immune to
+    // that entire class of interference. This is the officially
+    // documented fix for Firestore requests that hang/never resolve
+    // while everything else (Auth, REST calls) works fine.
+    provideFirestore(() =>
+      initializeFirestore(getApp(), {
+        experimentalForceLongPolling: true,
+      })
+    ),
   ],
 });

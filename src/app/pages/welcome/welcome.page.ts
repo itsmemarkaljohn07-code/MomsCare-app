@@ -1,8 +1,10 @@
 // welcome.page.ts
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { Router } from '@angular/router';
 import { IonicModule } from '@ionic/angular';
 import { CommonModule } from '@angular/common';
+import { ThemeService } from '../../services/theme';
+import { Subscription } from 'rxjs';
 
 @Component({
   selector: 'app-welcome',
@@ -11,15 +13,22 @@ import { CommonModule } from '@angular/common';
   standalone: true,
   imports: [IonicModule, CommonModule],
 })
-export class WelcomePage implements OnInit {
+export class WelcomePage implements OnInit, OnDestroy {
   animReady = false;
+  darkMode  = false;
+  private themeSub!: Subscription;
 
-  constructor(private router: Router) {}
+  constructor(private router: Router, private theme: ThemeService) {}
 
   ngOnInit(): void {
+    this.themeSub = this.theme.isDark$.subscribe(val => (this.darkMode = val));
     requestAnimationFrame(() => {
       setTimeout(() => (this.animReady = true), 80);
     });
+  }
+
+  ngOnDestroy(): void {
+    this.themeSub?.unsubscribe();
   }
 
   onCreateAccount(): void {

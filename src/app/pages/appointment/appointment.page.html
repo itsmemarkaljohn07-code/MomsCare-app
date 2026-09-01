@@ -1,14 +1,11 @@
-<!-- appointments.page.html -->
 <ion-content [fullscreen]="true" class="appts-content"
              [attr.data-theme]="darkMode ? 'dark' : 'light'">
 
   <div class="appts-wrap">
 
-    <!-- Ambient blobs -->
     <div class="blob blob-top"></div>
     <div class="blob blob-bottom"></div>
 
-    <!-- ── Top Bar (notification bell removed) ── -->
     <div class="appts-top-bar" [class.visible]="animReady">
       <div>
         <h1 class="appts-title">Appointments</h1>
@@ -16,7 +13,6 @@
       </div>
     </div>
 
-    <!-- ── Tab Switcher ── -->
     <div class="tab-switcher" [class.visible]="animReady">
       <button class="tab-btn" [class.active]="activeTab === 'upcoming'"
               (click)="setTab('upcoming')">Upcoming</button>
@@ -25,16 +21,13 @@
       <div class="tab-indicator" [class.right]="activeTab === 'past'"></div>
     </div>
 
-    <!-- ══ UPCOMING TAB ══ -->
     <div class="tab-content" [class.visible]="animReady" *ngIf="activeTab === 'upcoming'">
 
-      <!-- Next appointment label -->
       <div class="next-label" *ngIf="upcomingAppointments.length > 0">
         <span class="next-dot"></span>
         NEXT APPOINTMENT
       </div>
 
-      <!-- Appointment Cards -->
       <div class="appt-cards">
         <div class="appt-card"
              *ngFor="let appt of upcomingAppointments; let i = index"
@@ -43,15 +36,9 @@
              (click)="toggleCard(i)"
              [style.animation-delay]="(i * 0.07) + 's'">
 
-          <!-- Card Main Row -->
           <div class="card-main">
             <div class="card-avatar">
               <span class="card-emoji">{{ appt.icon }}</span>
-              <span class="video-dot" *ngIf="appt.isVideo">
-                <svg width="8" height="8" viewBox="0 0 10 10" fill="white">
-                  <path d="M1 3h5a1 1 0 011 1v2a1 1 0 01-1 1H1a1 1 0 01-1-1V4a1 1 0 011-1zM7 4.5l2.5-1.5v4L7 5.5z"/>
-                </svg>
-              </span>
             </div>
 
             <div class="card-info">
@@ -65,9 +52,7 @@
                   </svg>
                   {{ appt.day }}, {{ appt.date }} · {{ appt.time }}
                 </span>
-                <span class="card-tag" [class]="'tag-' + appt.accentColor">
-                  {{ appt.isVideo ? 'Video' : 'In-Person' }}
-                </span>
+                <span class="card-tag" [class]="'tag-' + appt.accentColor">In-Person</span>
               </div>
             </div>
 
@@ -78,7 +63,6 @@
             </div>
           </div>
 
-          <!-- Expanded Summary Panel -->
           <div class="card-summary" *ngIf="expandedCard === i">
             <div class="summary-divider"></div>
 
@@ -118,7 +102,7 @@
                 </svg>
                 Reschedule
               </button>
-              <button class="action-btn action-cancel" (click)="$event.stopPropagation()">
+              <button class="action-btn action-cancel" (click)="$event.stopPropagation(); cancelAppointment(appt.id)">
                 <svg width="14" height="14" viewBox="0 0 22 22" fill="none">
                   <circle cx="11" cy="11" r="9" stroke="currentColor" stroke-width="1.7"/>
                   <path d="M7 7l8 8M15 7l-8 8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
@@ -130,7 +114,6 @@
 
         </div>
 
-        <!-- Empty state -->
         <div class="empty-state" *ngIf="upcomingAppointments.length === 0">
           <span class="empty-emoji">📅</span>
           <h3 class="empty-title">No upcoming appointments</h3>
@@ -139,7 +122,6 @@
       </div>
     </div>
 
-    <!-- ══ PAST TAB ══ -->
     <div class="tab-content" [class.visible]="animReady" *ngIf="activeTab === 'past'">
       <div class="next-label">
         <span class="next-dot past-dot"></span>
@@ -180,7 +162,6 @@
             </div>
           </div>
 
-          <!-- Past expanded: show doctor summary + files -->
           <div class="card-summary" *ngIf="expandedPast === i">
             <div class="summary-divider"></div>
 
@@ -202,7 +183,6 @@
               </div>
             </div>
 
-            <!-- Discharge files -->
             <div class="summary-section" *ngIf="appt.files && appt.files.length > 0">
               <p class="summary-label">Discharge Documents</p>
               <div class="file-row">
@@ -225,17 +205,12 @@
     <div style="height: 96px;"></div>
   </div>
 
-  <!-- ── FAB Add Button ── -->
   <button class="fab-add" (click)="addAppointment()" [class.visible]="animReady" aria-label="Add appointment">
     <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
       <path d="M11 4v14M4 11h14" stroke="white" stroke-width="2.2" stroke-linecap="round"/>
     </svg>
   </button>
 
-  <!-- ══════════════════════════════════════════
-       BOTTOM NAVIGATION — icon-only, Snapshot centered + highlighted
-       (uses navActiveTab — distinct from the Upcoming/Past `activeTab` above)
-  ══════════════════════════════════════════ -->
   <div class="bottom-nav">
     <button class="nav-item" [class.active]="navActiveTab === 'home'" (click)="navigate('/home')" aria-label="Home">
       <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
@@ -278,7 +253,6 @@
     </button>
   </div>
 
-  <!-- ══ ADD APPOINTMENT MODAL ══ -->
   <div class="modal-overlay" [class.open]="showModal" (click)="closeModal()">
     <div class="modal-sheet" (click)="$event.stopPropagation()">
       <div class="modal-handle"></div>
@@ -294,14 +268,12 @@
 
       <div class="modal-body">
 
-        <!-- Appointment Name -->
         <div class="field-group">
           <label class="field-label">Appointment Name *</label>
           <input class="field-input" [(ngModel)]="newAppt.name" type="text"
                  placeholder="e.g. Prenatal Checkup"/>
         </div>
 
-        <!-- Type + Doctor -->
         <div class="field-row">
           <div class="field-group">
             <label class="field-label">Type *</label>
@@ -324,7 +296,6 @@
           </div>
         </div>
 
-        <!-- Date + Time -->
         <div class="field-row">
           <div class="field-group">
             <label class="field-label">Date *</label>
@@ -336,21 +307,18 @@
           </div>
         </div>
 
-        <!-- Location -->
         <div class="field-group">
           <label class="field-label">Location</label>
           <input class="field-input" [(ngModel)]="newAppt.location" type="text"
-                 placeholder="Clinic, hospital, or Video Call"/>
+                 placeholder="Clinic or hospital"/>
         </div>
 
-        <!-- Notes -->
         <div class="field-group">
           <label class="field-label">Notes</label>
           <textarea class="field-textarea" [(ngModel)]="newAppt.notes"
                     placeholder="Any instructions or reminders…"></textarea>
         </div>
 
-        <!-- Icon Picker -->
         <div class="field-group">
           <label class="field-label">Icon</label>
           <div class="icon-picker">
@@ -361,7 +329,6 @@
           </div>
         </div>
 
-        <!-- Color + Video -->
         <div class="field-row field-row-bottom">
           <div class="field-group">
             <label class="field-label">Color</label>
@@ -374,16 +341,8 @@
                       [attr.aria-label]="c"></button>
             </div>
           </div>
-          <div class="field-group field-group-video">
-            <label class="field-label">Video Call</label>
-            <label class="toggle">
-              <input type="checkbox" [(ngModel)]="newAppt.isVideo"/>
-              <span class="toggle-slider"></span>
-            </label>
-          </div>
         </div>
 
-        <!-- Submit -->
         <button class="modal-submit" (click)="submitAppointment()">
           <svg width="18" height="18" viewBox="0 0 22 22" fill="none">
             <path d="M11 4v14M4 11h14" stroke="white" stroke-width="2.2" stroke-linecap="round"/>

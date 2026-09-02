@@ -1,11 +1,15 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
+// home.page.ts
+import { Component, OnInit, OnDestroy, inject, EnvironmentInjector, runInInjectionContext } from '@angular/core';
 import { Router, ActivatedRoute } from '@angular/router';
 import { CommonModule, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { IonicModule } from '@ionic/angular';
+import { Firestore, doc, getDoc, setDoc, Timestamp } from '@angular/fire/firestore';
 import { ThemeService } from '../../services/theme';
 import { AuthService } from '../../services/auth.service';
 import { NotificationsService, AppNotification } from '../../services/notifications.service';
+import { AppointmentsService, AppointmentRecord } from '../../services/appointments.service';
+import { HealthService, HealthData } from '../../services/health.service';
 import { Subscription } from 'rxjs';
 
 export interface AppUser {
@@ -14,6 +18,8 @@ export interface AppUser {
   dueDate:      Date;
   firstTimeMom: boolean | null;
 }
+
+const CHECKLIST_REMINDER_ID = 991001;
 
 @Component({
   selector: 'app-home',
@@ -33,11 +39,15 @@ export class HomePage implements OnInit, OnDestroy {
   private themeSub!: Subscription;
   private userSub!: Subscription;
   private notifSub!: Subscription;
+  private apptSub!: Subscription;
+  private healthSub!: Subscription;
   private currentUid: string | null = null;
 
   private clockInterval:    any;
   private countdownInterval: any;
   private midnightTimeout:  any;
+
+  private envInjector = inject(EnvironmentInjector);
 
   get selectedAvatar() {
     try {
@@ -285,26 +295,53 @@ export class HomePage implements OnInit, OnDestroy {
     this.notificationsService.markAllRead(this.currentUid, this.notifications.map(n => n.id));
   }
 
-  appointments = [
-    { date: 'May 10',  day: 'Sat', label: 'Prenatal Checkup',   doctor: 'Dr. Reyes',  type: 'checkup',    icon: '🩺' },
-    { date: 'May 18',  day: 'Sun', label: 'Anatomy Ultrasound', doctor: "St. Luke's", type: 'ultrasound', icon: '🔬' },
-    { date: 'Jun 3',   day: 'Tue', label: 'Blood Work',         doctor: 'Dr. Santos', type: 'lab',        icon: '🩸' },
-  ];
+  // ════════════════════════════════════════════════════════
+  // APPOINTMENTS — real-time from Firestore via AppointmentsService.
+  // Shows the 2 nearest upcoming appointments; re-evaluated on every
+  // change-detection tick (including the existing 60s clockInterval),
+  // so a passed appointment automatically rolls off without any extra
+  // polling code.
+  // ════════════════════════════════════════════════════════
+  private readonly MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  private readonly DAYS   = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  private allAppointments: AppointmentRecord[] = [];
+
+  private toApptDisplay(rec: AppointmentRecord) {
+    const d = new Date(rec.date + 'T00:00:00');
+    return {
+      id: rec.id,
+      date: `${this.MONTHS[d.getMonth()]} ${d.getDate()}`,
+      day: this.DAYS[d.getDay()],
+      label: rec.label,
+      doctor: rec.doctor,
+      icon: rec.icon,
+      accentColor: rec.accentColor,
+    };
+  }
 
   get upcomingAppointments() {
-    return this.appointments.slice(0, 2);
+    const todayIso = new Date().toISOString().slice(0, 10);
+    return this.allAppointments
+      .filter(r => r.status === 'upcoming' && r.date >= todayIso)
+      .slice(0, 2)
+      .map(r => this.toApptDisplay(r));
   }
 
   goToAppointments(): void {
     this.router.navigate(['/appointments']);
   }
 
-  health = {
-    weight: 0,
-    bp:     '--/--',
-    mood:   null as number | null,
-    kicks:  0,
-  };
+  // ════════════════════════════════════════════════════════
+  // HEALTH SNAPSHOT — shared with Snapshot Page's Health Tracker via
+  // HealthService, keyed by the user's UID, always in sync.
+  // ════════════════════════════════════════════════════════
+  health: HealthData = { weight: 0, bpSys: 0, bpDia: 0, kicks: 0, mood: 2 };
+
+  get bpDisplay(): string {
+    return this.health.bpSys && this.health.bpDia
+      ? `${this.health.bpSys}/${this.health.bpDia}`
+      : '--/--';
+  }
 
   healthDraft = { weight: 0, bpSys: 120, bpDia: 80, kicks: 0 };
   showHealthModal = false;
@@ -315,11 +352,10 @@ export class HomePage implements OnInit, OnDestroy {
   }
 
   openHealthModal(): void {
-    const bpParts = this.health.bp.split('/');
     this.healthDraft = {
       weight: this.health.weight,
-      bpSys:  parseInt(bpParts[0]) || 120,
-      bpDia:  parseInt(bpParts[1]) || 80,
+      bpSys:  this.health.bpSys || 120,
+      bpDia:  this.health.bpDia || 80,
       kicks:  this.health.kicks,
     };
     this.showHealthModal = true;
@@ -327,10 +363,19 @@ export class HomePage implements OnInit, OnDestroy {
 
   closeHealthModal(): void { this.showHealthModal = false; this.activeField = ''; }
 
-  saveHealth(): void {
-    this.health.weight = this.healthDraft.weight;
-    this.health.bp     = `${this.healthDraft.bpSys}/${this.healthDraft.bpDia}`;
-    this.health.kicks  = this.healthDraft.kicks;
+  async saveHealth(): Promise<void> {
+    if (!this.currentUid) { this.closeHealthModal(); return; }
+    try {
+      await this.healthService.saveHealth(this.currentUid, {
+        weight: this.healthDraft.weight,
+        bpSys:  this.healthDraft.bpSys,
+        bpDia:  this.healthDraft.bpDia,
+        kicks:  this.healthDraft.kicks,
+        mood:   this.health.mood,
+      });
+    } catch (err) {
+      console.error('Failed to save health data:', err);
+    }
     this.closeHealthModal();
   }
 
@@ -339,10 +384,28 @@ export class HomePage implements OnInit, OnDestroy {
   }
 
   moodLabels = ['😢', '😕', '😊', '😄', '🤩'];
-  setMood(idx: number): void { this.health.mood = idx; }
 
-  private readonly CHECKLIST_KEY = 'momscare_checklist_date';
+  async setMood(idx: number): Promise<void> {
+    this.health.mood = idx;
+    if (!this.currentUid) return;
+    try {
+      await this.healthService.saveHealth(this.currentUid, {
+        weight: this.health.weight,
+        bpSys:  this.health.bpSys,
+        bpDia:  this.health.bpDia,
+        kicks:  this.health.kicks,
+        mood:   idx,
+      });
+    } catch (err) {
+      console.error('Failed to save mood:', err);
+    }
+  }
 
+  // ════════════════════════════════════════════════════════
+  // DAILY CHECKLIST — stored per-user in Firestore
+  // (users/{uid}/checklist/current), auto-resets daily, and drives a
+  // reminder that repeats every 24h until all items are done.
+  // ════════════════════════════════════════════════════════
   checklist = [
     { id: 1, task: 'Take prenatal vitamins',   done: false, icon: '💊' },
     { id: 2, task: 'Drink 8 glasses of water', done: false, icon: '💧' },
@@ -358,38 +421,122 @@ export class HomePage implements OnInit, OnDestroy {
     return new Date().toISOString().split('T')[0];
   }
 
-  private loadChecklist(): void {
-    try {
-      const savedDate  = localStorage.getItem(this.CHECKLIST_KEY);
-      const savedItems = localStorage.getItem('momscare_checklist_items');
-      const today      = this.getTodayDateString();
+  private checklistDocRef() {
+    return doc(this.firestore, `users/${this.currentUid}/checklist/current`);
+  }
 
-      if (savedDate === today && savedItems) {
-        const saved: { id: number; done: boolean }[] = JSON.parse(savedItems);
+  private async loadChecklistFromFirestore(): Promise<void> {
+    if (!this.currentUid) return;
+    const today = this.getTodayDateString();
+    try {
+      const snap = await runInInjectionContext(this.envInjector, () => getDoc(this.checklistDocRef()));
+      const data = snap.exists() ? (snap.data() as any) : null;
+
+      if (data && data.date === today && Array.isArray(data.items)) {
         this.checklist.forEach(item => {
-          const match = saved.find(s => s.id === item.id);
+          const match = data.items.find((s: any) => s.id === item.id);
           if (match) item.done = match.done;
         });
       } else {
         this.checklist.forEach(item => (item.done = false));
-        localStorage.setItem(this.CHECKLIST_KEY, today);
-        this.saveChecklistState();
+        await this.saveChecklistState();
       }
-    } catch { /* localStorage unavailable */ }
+    } catch (err) {
+      console.error('Failed to load checklist:', err);
+    }
+    this.updateChecklistReminders();
   }
 
-  private saveChecklistState(): void {
+  private async saveChecklistState(): Promise<void> {
+    if (!this.currentUid) return;
     try {
-      localStorage.setItem(
-        'momscare_checklist_items',
-        JSON.stringify(this.checklist.map(c => ({ id: c.id, done: c.done })))
+      await runInInjectionContext(this.envInjector, () =>
+        setDoc(this.checklistDocRef(), {
+          date: this.getTodayDateString(),
+          items: this.checklist.map(c => ({ id: c.id, done: c.done })),
+          updatedAt: Timestamp.now(),
+        })
       );
-    } catch { /* ignore */ }
+    } catch (err) {
+      console.error('Failed to save checklist:', err);
+    }
   }
 
-  toggleChecklist(item: any): void {
+  async toggleChecklist(item: any): Promise<void> {
     item.done = !item.done;
-    this.saveChecklistState();
+    await this.saveChecklistState();
+    this.updateChecklistReminders();
+  }
+
+  private async updateChecklistReminders(): Promise<void> {
+    const allDone = this.checklistDone === this.checklist.length;
+    if (allDone) {
+      await this.cancelChecklistReminder();
+    } else {
+      await this.scheduleChecklistReminder();
+    }
+  }
+
+  /** Schedules a 24h-repeating reminder. On native builds (Capacitor +
+   *  @capacitor/local-notifications installed), this is a true
+   *  OS-scheduled local notification that fires even if the app is
+   *  fully closed. If that plugin isn't available (e.g. running in a
+   *  plain browser), it falls back to placing one reminder per day in
+   *  the app's own in-app notification list instead — never crashes
+   *  either way. */
+  private async scheduleChecklistReminder(): Promise<void> {
+    try {
+      const { Capacitor } = await import('@capacitor/core');
+      if (Capacitor.isNativePlatform()) {
+        const { LocalNotifications } = await import('@capacitor/local-notifications');
+        const perm = await LocalNotifications.checkPermissions();
+        if (perm.display !== 'granted') {
+          const req = await LocalNotifications.requestPermissions();
+          if (req.display !== 'granted') return;
+        }
+        await LocalNotifications.schedule({
+          notifications: [{
+            id: CHECKLIST_REMINDER_ID,
+            title: 'Daily Checklist Reminder',
+            body: "You still have items on today's checklist — take a moment for you and baby 💕",
+            schedule: { at: new Date(Date.now() + 24 * 60 * 60 * 1000), repeats: true, every: 'day' },
+          }],
+        });
+        return;
+      }
+    } catch {
+      // @capacitor/local-notifications not installed, or running on
+      // web — fall through to the in-app fallback below.
+    }
+
+    if (!this.currentUid) return;
+    const today   = this.getTodayDateString();
+    const flagKey = `momscare_checklist_reminder_sent_${today}`;
+    if (localStorage.getItem(flagKey)) return; // avoid duplicate same-day reminder
+
+    try {
+      await this.notificationsService.createNotification(this.currentUid, {
+        icon: '✅',
+        title: 'Daily Checklist Reminder',
+        message: "You still have items to complete on today's checklist.",
+        route: '/home',
+      });
+      localStorage.setItem(flagKey, '1');
+    } catch (err) {
+      console.error('Failed to send checklist reminder notification:', err);
+    }
+  }
+
+  private async cancelChecklistReminder(): Promise<void> {
+    try {
+      const { Capacitor } = await import('@capacitor/core');
+      if (Capacitor.isNativePlatform()) {
+        const { LocalNotifications } = await import('@capacitor/local-notifications');
+        await LocalNotifications.cancel({ notifications: [{ id: CHECKLIST_REMINDER_ID }] });
+      }
+    } catch {
+      // Plugin not installed — nothing to cancel.
+    }
   }
 
   private scheduleMidnightReset(): void {
@@ -400,8 +547,8 @@ export class HomePage implements OnInit, OnDestroy {
 
     this.midnightTimeout = setTimeout(() => {
       this.checklist.forEach(item => (item.done = false));
-      localStorage.setItem(this.CHECKLIST_KEY, this.getTodayDateString());
       this.saveChecklistState();
+      this.updateChecklistReminders(); // begins a fresh 24h reminder cycle
       this.scheduleMidnightReset();
     }, msUntilMidnight);
   }
@@ -441,6 +588,9 @@ export class HomePage implements OnInit, OnDestroy {
     private theme: ThemeService,
     private authService: AuthService,
     private notificationsService: NotificationsService,
+    private appointmentsService: AppointmentsService,
+    private healthService: HealthService,
+    private firestore: Firestore,
   ) {}
 
   private async loadUserProfile(): Promise<void> {
@@ -471,11 +621,27 @@ export class HomePage implements OnInit, OnDestroy {
       this.currentUid = fbUser?.uid ?? null;
       if (fbUser) {
         this.loadUserProfile();
+        this.loadChecklistFromFirestore();
       }
     });
 
     this.notifSub = this.notificationsService.notifications$()
       .subscribe((list: AppNotification[]) => (this.notifications = list));
+
+    this.apptSub = this.appointmentsService.getAppointments$()
+      .subscribe((records: AppointmentRecord[]) => (this.allAppointments = records));
+
+    this.healthSub = this.healthService.getCurrentHealth$().subscribe(data => {
+      if (data) {
+        this.health = {
+          weight: data.weight ?? 0,
+          bpSys:  data.bpSys  ?? 0,
+          bpDia:  data.bpDia  ?? 0,
+          kicks:  data.kicks  ?? 0,
+          mood:   data.mood   ?? 2,
+        };
+      }
+    });
 
     requestAnimationFrame(() => {
       setTimeout(() => (this.animReady = true), 80);
@@ -491,7 +657,6 @@ export class HomePage implements OnInit, OnDestroy {
       this.recomputePregnancyFromDueDate();
     }, 60000);
 
-    this.loadChecklist();
     this.scheduleMidnightReset();
   }
 
@@ -499,6 +664,8 @@ export class HomePage implements OnInit, OnDestroy {
     this.themeSub?.unsubscribe();
     this.userSub?.unsubscribe();
     this.notifSub?.unsubscribe();
+    this.apptSub?.unsubscribe();
+    this.healthSub?.unsubscribe();
     if (this.clockInterval)     clearInterval(this.clockInterval);
     if (this.countdownInterval) clearInterval(this.countdownInterval);
     if (this.midnightTimeout)   clearTimeout(this.midnightTimeout);

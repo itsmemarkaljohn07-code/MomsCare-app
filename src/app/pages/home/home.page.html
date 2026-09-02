@@ -37,7 +37,7 @@
   </div>
 
   <!-- ══════════════════════════════════════════
-       HEALTH INPUT MODAL (unchanged)
+       HEALTH INPUT MODAL
   ══════════════════════════════════════════ -->
   <div class="modal-overlay" *ngIf="showHealthModal" (click)="closeHealthModal()">
     <div class="modal-sheet" (click)="$event.stopPropagation()">
@@ -115,10 +115,9 @@
     <div class="ambient-orb orb-a"></div>
     <div class="ambient-orb orb-b"></div>
 
-    <!-- ── Top Bar (profile avatar removed — Profile now lives in the nav bar) ── -->
+    <!-- ── Top Bar ── -->
     <div class="top-bar" [class.visible]="animReady">
 
-      <!-- Date chip (left) -->
       <div class="date-chip">
         <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
           <rect x="1.5" y="2" width="9" height="9" rx="1.5"
@@ -129,7 +128,6 @@
         <span>{{ currentTime | date:'EEEE, MMM d' }}</span>
       </div>
 
-      <!-- Notification bell (right) -->
       <button class="icon-btn notif-btn"
               aria-label="Notifications"
               (click)="toggleNotifPanel()">
@@ -144,9 +142,15 @@
       </button>
     </div>
 
-    <!-- ── Greeting (dynamic user name) ── -->
+    <!-- ── Greeting ── -->
     <div class="greeting-area" [class.visible]="animReady">
-      <p class="greeting-text">{{ greeting }}, {{ greetingName }} 👋</p>
+      <p class="greeting-text">
+        {{ greeting }}, {{ greetingName }}
+        <svg class="greeting-icon" width="17" height="15" viewBox="0 0 20 18" fill="none" aria-hidden="true">
+          <path d="M10 16S2 11 2 5.5A4.5 4.5 0 0110 3a4.5 4.5 0 018 2.5C18 11 10 16 10 16Z"
+                fill="var(--pink)" opacity="0.85"/>
+        </svg>
+      </p>
       <div class="greeting-pills">
         <span class="pill pill-week">Week {{ pregnancyWeek }}</span>
         <span class="pill pill-trim">{{ trimester }}</span>
@@ -187,7 +191,6 @@
       <!-- Womb visualization stage -->
       <div class="womb-stage">
 
-        <!-- Floating measurement chips -->
         <div class="measure-chip measure-chip--left">
           <span class="measure-chip-label">LENGTH</span>
           <span class="measure-chip-val">{{ babySize.length }}</span>
@@ -197,15 +200,20 @@
           <span class="measure-chip-val">{{ babySize.weight }}</span>
         </div>
 
-        <!-- Central womb + fetal SVG illustration -->
         <div class="womb-visual">
-          <!-- Outer womb glow -->
           <div class="womb-glow"></div>
 
-          <!-- Womb silhouette SVG — fetal size & posture scale with week -->
           <svg class="womb-svg" viewBox="0 0 220 260"
                fill="none" xmlns="http://www.w3.org/2000/svg"
                aria-label="Fetal development illustration">
+
+            <defs>
+              <radialGradient id="bodyGradient" cx="35%" cy="30%" r="75%">
+                <stop offset="0%" stop-color="rgba(245,205,225,0.95)"/>
+                <stop offset="55%" stop-color="rgba(224,168,196,0.88)"/>
+                <stop offset="100%" stop-color="rgba(196,132,162,0.80)"/>
+              </radialGradient>
+            </defs>
 
             <!-- Amniotic sac (outer) -->
             <ellipse cx="110" cy="132" rx="88" ry="108"
@@ -222,68 +230,61 @@
                   stroke="rgba(195,130,160,0.55)" stroke-width="2.5"
                   stroke-linecap="round" fill="none"/>
 
-            <!-- ══════════════════════════════════════════
-                 FETUS — single smooth silhouette, scales with week
-            ══════════════════════════════════════════ -->
+            <!-- FETUS -->
 
-            <!-- Soft drop shadow beneath the body for depth -->
             <ellipse [attr.cx]="fetal.bx" [attr.cy]="fetal.by + fetal.bh * 0.9"
                      [attr.rx]="fetal.bw * 1.3" [attr.ry]="fetal.bh * 0.35"
                      fill="rgba(160,90,120,0.10)"/>
 
-            <!-- Curled legs (drawn first, sits behind torso) -->
             <path [attr.d]="legsPath"
                   fill="none" stroke="rgba(205,145,170,0.62)"
                   [attr.stroke-width]="fetal.bw * 0.62"
                   stroke-linecap="round"/>
 
-            <!-- Curled arm (drawn before torso so hand tucks near chin) -->
             <path [attr.d]="armPath"
                   fill="none" stroke="rgba(210,150,175,0.60)"
                   [attr.stroke-width]="fetal.bw * 0.42"
                   stroke-linecap="round"/>
 
-            <!-- Main body silhouette: head + neck + torso + hips in one continuous shape -->
             <path [attr.d]="bodyPath"
-                  fill="rgba(216,156,182,0.82)"
+                  fill="url(#bodyGradient)"
                   stroke="rgba(180,115,145,0.20)" stroke-width="0.75"/>
 
-            <!-- Belly / chest highlight for soft dimensionality -->
             <ellipse [attr.cx]="fetal.bx + fetal.bw * 0.25"
                      [attr.cy]="fetal.by - fetal.bh * 0.1"
                      [attr.rx]="fetal.bw * 0.55" [attr.ry]="fetal.bh * 0.45"
                      fill="rgba(240,195,215,0.32)"/>
 
-            <!-- Spine shading line -->
+            <!-- Gentle heartbeat pulse -->
+            <circle class="heartbeat-dot"
+                    [attr.cx]="fetal.bx + fetal.bw * 0.15"
+                    [attr.cy]="fetal.by - fetal.bh * 0.25"
+                    [attr.r]="fetal.bw * 0.09"
+                    fill="#e0507a"/>
+
             <path [attr.d]="spinalPath"
                   stroke="rgba(170,105,135,0.22)" stroke-width="1.6"
                   stroke-linecap="round" fill="none"/>
 
-            <!-- Head highlight (cranium curve) -->
             <ellipse [attr.cx]="fetal.hx - fetal.hr * 0.1"
                      [attr.cy]="fetal.hy - fetal.hr * 0.35"
                      [attr.rx]="fetal.hr * 0.55" [attr.ry]="fetal.hr * 0.42"
                      fill="rgba(242,198,220,0.42)"/>
 
-            <!-- Ear -->
             <ellipse [attr.cx]="fetal.hx - fetal.hr * 0.75"
                      [attr.cy]="fetal.hy + fetal.hr * 0.05"
                      [attr.rx]="fetal.hr * 0.16" [attr.ry]="fetal.hr * 0.22"
                      fill="rgba(195,135,165,0.55)"/>
 
-            <!-- Eye (closed, gentle curve) -->
             <path [attr.d]="'M ' + (fetal.hx + fetal.hr*0.05) + ' ' + (fetal.hy + fetal.hr*0.05) + ' Q ' + (fetal.hx + fetal.hr*0.28) + ' ' + (fetal.hy + fetal.hr*0.18) + ' ' + (fetal.hx + fetal.hr*0.48) + ' ' + (fetal.hy + fetal.hr*0.08)"
                   stroke="rgba(120,60,90,0.55)" [attr.stroke-width]="fetal.hr * 0.07"
                   stroke-linecap="round" fill="none"/>
 
-            <!-- Nose bump -->
             <ellipse [attr.cx]="fetal.hx + fetal.hr * 0.55"
                      [attr.cy]="fetal.hy + fetal.hr * 0.28"
                      [attr.rx]="fetal.hr * 0.1" [attr.ry]="fetal.hr * 0.13"
                      fill="rgba(200,140,170,0.45)"/>
 
-
-            <!-- Placenta blob (top) -->
             <ellipse cx="110" cy="42" rx="42" ry="18"
                      fill="rgba(195,130,158,0.35)"/>
             <ellipse cx="110" cy="42" rx="32" ry="11"
@@ -292,7 +293,7 @@
         </div>
       </div>
 
-      <!-- Week info below illustration -->
+      <!-- Week info -->
       <div class="fetal-info">
         <p class="fetal-week-big">
           {{ pregnancyWeek }} weeks
@@ -308,6 +309,8 @@
           <div class="fetal-progress-track">
             <div class="fetal-progress-fill"
                  [style.width.%]="pregnancyProgress"></div>
+            <div class="fetal-progress-tick" style="left: 33%;"></div>
+            <div class="fetal-progress-tick" style="left: 66%;"></div>
           </div>
           <span class="fetal-progress-pct">{{ pregnancyProgress }}%</span>
         </div>
@@ -316,7 +319,7 @@
     </div>
 
     <!-- ════════════════════════════════════════
-         DUE DATE COUNTDOWN (fully functional)
+         DUE DATE COUNTDOWN
     ════════════════════════════════════════ -->
     <div class="due-countdown" [class.visible]="animReady">
       <div class="due-countdown-left">
@@ -360,7 +363,7 @@
 
     <div class="appt-list" [class.visible]="animReady">
       <div class="appt-row" *ngFor="let appt of upcomingAppointments; let i = index"
-           [class]="'appt-type-' + appt.type">
+           [class]="'appt-accent-' + appt.accentColor">
         <div class="appt-date-col">
           <span class="appt-month">{{ appt.date.split(' ')[0] }}</span>
           <span class="appt-day-num">{{ appt.date.split(' ')[1] }}</span>
@@ -380,7 +383,6 @@
         </div>
       </div>
 
-      <!-- Empty state -->
       <div class="appt-empty" *ngIf="upcomingAppointments.length === 0">
         <span>📅</span>
         <p>No upcoming appointments</p>
@@ -389,7 +391,7 @@
     </div>
 
     <!-- ════════════════════════════════════════
-         HEALTH SNAPSHOT (unchanged)
+         HEALTH SNAPSHOT
     ════════════════════════════════════════ -->
     <div class="section-header" [class.visible]="animReady">
       <p class="section-title">Health Snapshot</p>
@@ -421,7 +423,7 @@
           <span class="health-tile-ico">❤️</span>
           <span class="health-tile-label">Blood Pressure</span>
         </div>
-        <p class="health-tile-val bp-val">{{ health.bp }}</p>
+        <p class="health-tile-val bp-val">{{ bpDisplay }}</p>
         <p class="health-tile-sub">mmHg</p>
         <p class="health-tile-note">Tap to update</p>
       </div>
@@ -455,7 +457,7 @@
     </div>
 
     <!-- ════════════════════════════════════════
-         DAILY CHECKLIST (auto-reset every 24h)
+         DAILY CHECKLIST (auto-reset every 24h + reminders)
     ════════════════════════════════════════ -->
     <div class="section-header" [class.visible]="animReady">
       <p class="section-title">Daily Checklist</p>
@@ -468,7 +470,6 @@
     </div>
 
     <div class="checklist-card" [class.visible]="animReady">
-      <!-- All-done celebration state -->
       <div class="checklist-complete" *ngIf="checklistDone === checklist.length">
         <span class="checklist-complete-icon">🎉</span>
         <p class="checklist-complete-title">All done for today!</p>
@@ -509,7 +510,7 @@
   </div>
 
   <!-- ══════════════════════════════════════════
-       BOTTOM NAVIGATION — icon-only, Snapshot centered + highlighted
+       BOTTOM NAVIGATION
   ══════════════════════════════════════════ -->
   <div class="bottom-nav">
     <button class="nav-item" [class.active]="activeTab === 'home'" (click)="setTab('home')" aria-label="Home">

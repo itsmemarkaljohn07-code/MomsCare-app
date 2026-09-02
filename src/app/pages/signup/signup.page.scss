@@ -21,6 +21,35 @@
   --background: #fdf0f7;
 }
 
+/* ══════════════════════════════
+   DARK THEME
+══════════════════════════════ */
+ion-content[data-theme="dark"] {
+  --bg-grad-start: #3a1a3e;
+  --bg-grad-mid:   #2a1a4e;
+  --bg-grad-end:   #1a1a3e;
+  --dark:          #f0e4fa;
+  --muted:         #a888c4;
+  --card-bg:       #201530;
+  --field-bg:      rgba(255, 255, 255, 0.06);
+  --field-bd:      rgba(181, 127, 212, 0.30);
+  --background:    #1a0f24;
+
+  .flo-page { background: #1a0f24; }
+  .flo-sub { color: #a888c4; }
+  .flo-option-btn { background: #2a1a3a; color: #f0e4fa; }
+  .cal-nav-btn { background: #2a1a3a; }
+  .cal-dow-row span { color: #7a6a90; }
+  .cal-cell.disabled { color: #55486a; }
+  .cal-cell:hover:not(.disabled):not(.selected) { background: rgba(181, 127, 212, 0.18); }
+  .drum-fade--top { background: linear-gradient(to bottom, #1a0f24 20%, rgba(26,15,36,0)); }
+  .drum-fade--bottom { background: linear-gradient(to top, #1a0f24 20%, rgba(26,15,36,0)); }
+  .drum-item { color: #55486a; }
+  .checkbox { background: #2a1a3a; border-color: rgba(181, 127, 212, 0.4); }
+  .btn-google { background: #2a1a3a; border-color: rgba(181, 127, 212, 0.25); color: #f0e4fa; }
+  .otp-box { background: var(--field-bg); color: #f0e4fa; }
+}
+
 .signup-wrap {
   position: relative;
   min-height: 100%;
@@ -150,7 +179,7 @@
   min-height: 100vh;
   background: #ffffff;
   opacity: 0;
-  transition: opacity 0.4s ease 0.05s;
+  transition: opacity 0.4s ease 0.05s, background 0.3s;
   &.visible { opacity: 1; }
 }
 

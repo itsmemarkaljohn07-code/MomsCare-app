@@ -5,6 +5,8 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { IonicModule } from '@ionic/angular';
 import { ThemeService } from '../../services/theme';
+import { AuthService } from '../../services/auth.service';
+import { HealthService, HealthData } from '../../services/health.service';
 import { Subscription } from 'rxjs';
 
 export type PhotoType = 'bump' | 'ultrasound' | 'milestone';
@@ -39,15 +41,16 @@ export class SnapshotPage implements OnInit, OnDestroy {
   animReady = false;
   darkMode  = false;
   private themeSub!: Subscription;
+  private userSub!: Subscription;
+  private healthSub!: Subscription;
+  private historySub!: Subscription;
+  private currentUid: string | null = null;
 
   pregnancyWeek = 20;
   today = new Date();
   Math = Math;
 
-  // ── Internal Gallery/Health tab switcher (unrelated to bottom nav) ──
   activeTab: 'gallery' | 'health' = 'gallery';
-
-  // ── Bottom nav active state (kept distinct from the tab switcher above) ──
   activeNavTab = 'snapshot';
 
   navigate(route: string): void {
@@ -55,7 +58,8 @@ export class SnapshotPage implements OnInit, OnDestroy {
   }
 
   // ════════════════════════════════════════════════════════
-  // PHOTO GALLERY
+  // PHOTO GALLERY (unchanged — no Firestore requirement was given
+  // for photos in this request)
   // ════════════════════════════════════════════════════════
   photoTypes: PhotoType[] = ['bump', 'ultrasound', 'milestone'];
   typeLabels: Record<PhotoType, string> = {
@@ -85,12 +89,10 @@ export class SnapshotPage implements OnInit, OnDestroy {
   }
 
   openCamera(): void {
-    // Hook up to Capacitor Camera plugin in production.
     console.log('Open camera for snapshot capture');
   }
 
   openFilePicker(): void {
-    // Hook up to a hidden <input type="file"> or Capacitor Filesystem in production.
     console.log('Open gallery file picker');
   }
 
@@ -108,7 +110,10 @@ export class SnapshotPage implements OnInit, OnDestroy {
   }
 
   // ════════════════════════════════════════════════════════
-  // HEALTH TRACKER
+  // HEALTH TRACKER — now backed by the shared HealthService, so this
+  // is always in sync with the Homepage's Health Snapshot. Property
+  // and method names are kept identical to the original so the
+  // existing template and styles work unchanged.
   // ════════════════════════════════════════════════════════
   health: HealthLog = {
     date: new Date(),
@@ -162,16 +167,20 @@ export class SnapshotPage implements OnInit, OnDestroy {
     this.healthDraft.mood = idx;
   }
 
-  saveHealth(): void {
-    this.health = {
-      date: new Date(),
+  async saveHealth(): Promise<void> {
+    if (!this.currentUid) { this.closeHealthForm(); return; }
+    const payload: HealthData = {
       weight: this.healthDraft.weight,
       bpSys:  this.healthDraft.bpSys,
       bpDia:  this.healthDraft.bpDia,
       kicks:  this.healthDraft.kicks,
       mood:   this.healthDraft.mood,
     };
-    this.healthHistory.unshift({ ...this.health });
+    try {
+      await this.healthService.saveHealth(this.currentUid, payload);
+    } catch (err) {
+      console.error('Failed to save health data:', err);
+    }
     this.closeHealthForm();
   }
 
@@ -181,14 +190,48 @@ export class SnapshotPage implements OnInit, OnDestroy {
   constructor(
     private router: Router,
     private theme: ThemeService,
+    private authService: AuthService,
+    private healthService: HealthService,
   ) {}
 
   ngOnInit(): void {
     this.themeSub = this.theme.isDark$.subscribe(val => (this.darkMode = val));
+
+    this.userSub = this.authService.user$.subscribe(u => {
+      this.currentUid = u?.uid ?? null;
+    });
+
+    this.healthSub = this.healthService.getCurrentHealth$().subscribe(data => {
+      if (data) {
+        this.health = {
+          date: new Date(),
+          weight: data.weight ?? 0,
+          bpSys:  data.bpSys  ?? 120,
+          bpDia:  data.bpDia  ?? 80,
+          kicks:  data.kicks  ?? 0,
+          mood:   data.mood   ?? 2,
+        };
+      }
+    });
+
+    this.historySub = this.healthService.getHistory$().subscribe(list => {
+      this.healthHistory = list.map(h => ({
+        date:   h.loggedAt?.toDate ? h.loggedAt.toDate() : new Date(),
+        weight: h.weight,
+        bpSys:  h.bpSys,
+        bpDia:  h.bpDia,
+        kicks:  h.kicks,
+        mood:   h.mood,
+      }));
+    });
+
     requestAnimationFrame(() => setTimeout(() => (this.animReady = true), 80));
   }
 
   ngOnDestroy(): void {
     this.themeSub?.unsubscribe();
+    this.userSub?.unsubscribe();
+    this.healthSub?.unsubscribe();
+    this.historySub?.unsubscribe();
   }
 }

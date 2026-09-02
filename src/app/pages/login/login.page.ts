@@ -46,6 +46,16 @@ export class LoginPage implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.themeSub = this.theme.isDark$.subscribe(val => (this.darkMode = val));
+
+    // If a previous login had "Remember me" checked, prefill the email
+    // and restore the checkbox state (only the email is ever stored —
+    // the password itself is never persisted anywhere by this app).
+    const remembered = this.authService.getRememberedEmail();
+    if (remembered) {
+      this.loginForm.email = remembered;
+      this.rememberMe = true;
+    }
+
     requestAnimationFrame(() => {
       setTimeout(() => (this.animReady = true), 80);
     });
@@ -97,8 +107,16 @@ export class LoginPage implements OnInit, OnDestroy {
     try {
       await this.authService.login(
         this.loginForm.email.trim(),
-        this.loginForm.password
+        this.loginForm.password,
+        this.rememberMe
       );
+
+      if (this.rememberMe) {
+        this.authService.rememberEmail(this.loginForm.email.trim());
+      } else {
+        this.authService.forgetRememberedEmail();
+      }
+
       // Login successful — navigate to home
       this.router.navigate(['/home'], { replaceUrl: true });
     } catch (err: any) {
@@ -123,8 +141,14 @@ export class LoginPage implements OnInit, OnDestroy {
     }
   }
 
-  onBack(): void    { this.router.navigate(['/welcome']); }
-  onForgot(): void  { this.router.navigate(['/forgot-password']); }
+  onBack(): void { this.router.navigate(['/welcome']); }
+
+  onForgot(): void {
+    this.router.navigate(['/forgot-password'], {
+      state: { email: this.loginForm.email.trim() || undefined }
+    });
+  }
+
   onRegister(): void { this.router.navigate(['/signup']); }
   onFacebook(): void { console.log('Facebook sign-in'); }
   onGoogle(): void   { console.log('Google sign-in'); }

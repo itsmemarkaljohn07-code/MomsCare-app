@@ -28,6 +28,13 @@ export const routes: Routes = [
       import('./pages/signup/signup.page').then(m => m.SignupPage),
   },
   {
+    // No authGuard — a user must be able to request a password reset
+    // while signed out, i.e. before they have an active session.
+    path: 'forgot-password',
+    loadComponent: () =>
+      import('./pages/forgot-password/forgot-password.page').then(m => m.ForgotPasswordPage),
+  },
+  {
     path: 'home',
     canActivate: [authGuard],
     loadComponent: () =>

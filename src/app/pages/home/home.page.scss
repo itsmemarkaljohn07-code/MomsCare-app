@@ -96,7 +96,7 @@ ion-content[data-theme="dark"] {
 }
 
 /* ══════════════════════════════════════════
-   TOP BAR (profile avatar removed; date chip left, bell right)
+   TOP BAR
 ══════════════════════════════════════════ */
 .top-bar {
   width: 100%; max-width: 440px;
@@ -160,6 +160,10 @@ ion-content[data-theme="dark"] {
   font-size: 1.22rem; font-weight: 800; color: var(--dark);
   font-family: 'Nunito', 'Poppins', sans-serif; margin: 0 0 8px;
 }
+.greeting-icon {
+  vertical-align: -1px;
+  margin-left: 4px;
+}
 .greeting-pills { display: flex; gap: 6px; flex-wrap: wrap; }
 .pill {
   font-size: 0.67rem; font-weight: 700;
@@ -188,7 +192,6 @@ ion-content[data-theme="dark"] {
   &.visible { opacity: 1; transform: translateY(0); }
 }
 
-/* Week strip */
 .week-strip {
   display: flex; align-items: center; gap: 6px;
   padding: 14px 16px 10px;
@@ -267,10 +270,23 @@ ion-content[data-theme="dark"] {
 }
 
 .womb-svg {
-  width: 200px; height: 240px;
+  width: 100%;
+  max-width: 200px;
+  height: auto;
+  aspect-ratio: 220 / 260;
   filter:
     drop-shadow(0 8px 28px rgba(190, 120, 160, 0.28))
     drop-shadow(0 2px 8px rgba(155, 90, 130, 0.15));
+}
+
+.heartbeat-dot {
+  animation: heartbeatPulse 1.15s ease-in-out infinite;
+  transform-origin: center;
+  transform-box: fill-box;
+}
+@keyframes heartbeatPulse {
+  0%, 100% { opacity: 0.55; transform: scale(0.85); }
+  50%       { opacity: 1;    transform: scale(1.15); }
 }
 
 /* Measurement chips */
@@ -344,6 +360,7 @@ ion-content[data-theme="dark"] {
   max-width: 280px; margin: 0 auto 4px;
 }
 .fetal-progress-track {
+  position: relative;
   flex: 1; height: 5px;
   background: rgba(155,111,196,0.15);
   border-radius: 99px; overflow: hidden;
@@ -353,6 +370,10 @@ ion-content[data-theme="dark"] {
   background: linear-gradient(90deg, var(--pink), var(--purple));
   border-radius: 99px;
   transition: width 1.2s cubic-bezier(0.4,0,0.2,1);
+}
+.fetal-progress-tick {
+  position: absolute; top: 0; bottom: 0; width: 1px;
+  background: rgba(255,255,255,0.55);
 }
 .fetal-progress-pct {
   font-size: 0.72rem; font-weight: 800;
@@ -368,75 +389,49 @@ ion-content[data-theme="dark"] {
    DUE DATE COUNTDOWN
 ══════════════════════════════════════════ */
 .due-countdown {
-  width: 100%; max-width: 440px;
-  display: flex; align-items: center; justify-content: space-between;
-  background: var(--card-bg);
-  border: 1px solid var(--card-border);
+  width: calc(100% - 32px); max-width: 440px;
+  background: var(--card-bg); border: 1px solid var(--card-border);
   border-radius: var(--radius-md);
-  padding: 16px 18px;
-  box-shadow: var(--shadow-sm);
-  z-index: 2; margin: 14px 16px 0;
-  width: calc(100% - 32px);
-  opacity: 0; transform: translateY(10px);
-  transition: opacity 0.5s ease 0.2s, transform 0.5s ease 0.2s;
-  &.visible { opacity: 1; transform: translateY(0); }
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 16px; margin: 14px 16px 18px;
+  box-shadow: var(--shadow-sm); z-index: 2;
+  opacity: 0; transition: opacity 0.5s ease 0.2s;
+  &.visible { opacity: 1; }
 }
-
 .due-countdown-left {
   display: flex; align-items: center; gap: 10px;
 }
-.due-label {
-  font-size: 0.62rem; font-weight: 700;
-  color: var(--muted); text-transform: uppercase;
-  letter-spacing: 0.5px; margin: 0 0 2px;
-  font-family: 'Nunito', 'Poppins', sans-serif;
-}
-.due-date-text {
-  font-size: 0.82rem; font-weight: 800; color: var(--dark);
-  font-family: 'Nunito', 'Poppins', sans-serif; margin: 0;
-}
-
-.countdown-blocks {
-  display: flex; align-items: center; gap: 4px;
-}
+.due-label { font-size: 0.62rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin: 0; font-family: 'Nunito', 'Poppins', sans-serif; }
+.due-date-text { font-size: 0.85rem; font-weight: 800; color: var(--dark); margin: 2px 0 0; font-family: 'Nunito', 'Poppins', sans-serif; }
+.countdown-blocks { display: flex; align-items: center; gap: 4px; }
 .countdown-block {
   display: flex; flex-direction: column; align-items: center;
-  background: rgba(155,111,196,0.08);
-  border-radius: 8px; padding: 5px 8px;
-  min-width: 38px;
+  background: rgba(155,111,196,0.08); border-radius: 10px;
+  padding: 4px 7px; min-width: 34px;
 }
-.countdown-num {
-  font-size: 1.15rem; font-weight: 900; color: var(--dark);
-  font-family: 'Nunito', 'Poppins', sans-serif; line-height: 1;
-}
-.countdown-unit {
-  font-size: 0.52rem; font-weight: 700; color: var(--muted);
-  font-family: 'Nunito', 'Poppins', sans-serif;
-}
-.countdown-sep {
-  font-size: 1rem; font-weight: 800; color: var(--muted);
-  margin-bottom: 8px;
-}
+.countdown-num { font-size: 1rem; font-weight: 900; color: var(--purple); font-family: 'Nunito', 'Poppins', sans-serif; line-height: 1; }
+.countdown-unit { font-size: 0.52rem; font-weight: 700; color: var(--muted); text-transform: uppercase; margin-top: 1px; }
+.countdown-sep { font-size: 0.9rem; font-weight: 700; color: var(--muted-light); }
 
 /* ══════════════════════════════════════════
-   SECTION HEADERS
+   SECTION HEADER (shared)
 ══════════════════════════════════════════ */
 .section-header {
   width: calc(100% - 32px); max-width: 440px;
   display: flex; align-items: center; justify-content: space-between;
-  margin: 18px 16px 10px;
-  z-index: 2; opacity: 0; transition: opacity 0.45s ease 0.2s;
+  margin: 4px 16px 10px; z-index: 2;
+  opacity: 0; transition: opacity 0.45s ease;
   &.visible { opacity: 1; }
 }
 .section-title {
-  font-size: 0.88rem; font-weight: 800; color: var(--dark);
+  font-size: 0.98rem; font-weight: 900; color: var(--dark);
   font-family: 'Nunito', 'Poppins', sans-serif; margin: 0;
 }
 .section-link {
-  font-size: 0.72rem; font-weight: 700; color: var(--purple);
+  font-size: 0.75rem; font-weight: 700; color: var(--purple);
+  background: none; border: none; cursor: pointer; padding: 0;
+  display: flex; align-items: center; gap: 4px;
   font-family: 'Nunito', 'Poppins', sans-serif;
-  background: none; border: none; cursor: pointer;
-  display: flex; align-items: center; gap: 4px; padding: 0;
   transition: opacity 0.2s;
   &:hover { opacity: 0.75; }
 }
@@ -480,9 +475,11 @@ ion-content[data-theme="dark"] {
     content: ''; position: absolute; left: 0; top: 0; bottom: 0;
     width: 3px; border-radius: 99px;
   }
-  &.appt-type-checkup::before    { background: var(--pink); }
-  &.appt-type-ultrasound::before { background: var(--purple); }
-  &.appt-type-lab::before        { background: #d44b7a; }
+  &.appt-accent-green::before  { background: #00c9a7; }
+  &.appt-accent-pink::before   { background: var(--pink); }
+  &.appt-accent-purple::before { background: var(--purple); }
+  &.appt-accent-blue::before   { background: #5b8fd4; }
+  &.appt-accent-orange::before { background: #f0a050; }
 }
 .appt-date-col {
   display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -530,7 +527,7 @@ ion-content[data-theme="dark"] {
 }
 
 /* ══════════════════════════════════════════
-   HEALTH GRID (unchanged)
+   HEALTH GRID
 ══════════════════════════════════════════ */
 .health-grid {
   width: calc(100% - 32px); max-width: 440px;
@@ -646,7 +643,7 @@ ion-content[data-theme="dark"] {
 }
 
 /* ══════════════════════════════════════════
-   BOTTOM NAVIGATION — icon-only, Snapshot centered + highlighted
+   BOTTOM NAVIGATION
 ══════════════════════════════════════════ */
 .bottom-nav {
   position: fixed; bottom: 0; left: 0; right: 0; height: 80px;
@@ -676,7 +673,6 @@ ion-content[data-theme="dark"] {
   &:hover:not(.active):not(.nav-item--center) { color: var(--purple); }
 }
 
-/* Snapshot — center, raised, circular gradient highlight */
 .nav-item--center {
   width: auto; height: auto;
   margin-top: -30px;
@@ -793,7 +789,7 @@ ion-content[data-theme="dark"] {
 }
 
 /* ══════════════════════════════════════════
-   HEALTH MODAL (unchanged)
+   HEALTH MODAL
 ══════════════════════════════════════════ */
 .modal-overlay {
   position: fixed; inset: 0;

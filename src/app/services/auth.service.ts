@@ -6,6 +6,9 @@ import {
   signInWithEmailAndPassword,
   signOut,
   sendPasswordResetEmail,
+  setPersistence,
+  browserLocalPersistence,
+  browserSessionPersistence,
   user
 } from '@angular/fire/auth';
 import {
@@ -33,6 +36,7 @@ export interface UserProfile {
 
 const FIRESTORE_SAVE_TIMEOUT_MS = 45000;
 const PENDING_KEY = 'momscare_pending_profile';
+const REMEMBERED_EMAIL_KEY = 'momscare_remembered_email';
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
@@ -69,7 +73,12 @@ export class AuthService {
 
   /**
    * Registration flow:
-   *  1. Create the Firebase Auth account.
+   *  1. Create the Firebase Auth account. Persistence is explicitly set
+   *     to LOCAL first — this guarantees a brand-new account always
+   *     stays signed in long-term, even if the Auth instance previously
+   *     had SESSION persistence left over from an earlier "Remember Me
+   *     unchecked" login (setPersistence() is sticky on the Auth
+   *     instance until changed again).
    *  2. Save the full pregnancy profile (including dueDate) to
    *     users/{uid} in Firestore, timeout-guarded and retried.
    *  3. Only if step 2 genuinely succeeds does this resolve normally —
@@ -87,9 +96,10 @@ export class AuthService {
   ): Promise<void> {
     let cred;
     try {
-      cred = await runInInjectionContext(this.envInjector, () =>
-        createUserWithEmailAndPassword(this.auth, email, password)
-      );
+      cred = await runInInjectionContext(this.envInjector, async () => {
+        await setPersistence(this.auth, browserLocalPersistence);
+        return createUserWithEmailAndPassword(this.auth, email, password);
+      });
     } catch (err: any) {
       console.error('[AuthService] Registration (Auth) error code:', err?.code);
       throw new Error(this.mapAuthError(err));
@@ -225,16 +235,37 @@ export class AuthService {
     }
   }
 
-  async login(email: string, password: string): Promise<void> {
-    try {
-      await runInInjectionContext(this.envInjector, () =>
-        signInWithEmailAndPassword(this.auth, email, password)
-      );
-    } catch (err: any) {
-      console.error('[AuthService] Login error code:', err?.code);
-      throw err;
-    }
+  /**
+   * Signs in with Firebase Auth's own secure persistence system —
+   * no email or password is ever written to localStorage directly.
+   * rememberMe = true  → browserLocalPersistence  (stays signed in
+   *                       across browser restarts, until explicit logout)
+   * rememberMe = false → browserSessionPersistence (signed out once the
+   *                       browser/tab is closed)
+   */
+  async login(email: string, password: string, rememberMe: boolean = false): Promise<void> {
+  try {
+    await runInInjectionContext(this.envInjector, async () => {
+      try {
+        await setPersistence(
+          this.auth,
+          rememberMe ? browserLocalPersistence : browserSessionPersistence
+        );
+      } catch (persistErr) {
+        // Some environments (private browsing, restrictive storage
+        // settings/extensions) can block IndexedDB, which
+        // setPersistence relies on. Don't let that block sign-in
+        // entirely — fall back to the SDK's default persistence and
+        // continue with the actual login attempt.
+        console.warn('[AuthService] setPersistence failed, continuing with default persistence:', persistErr);
+      }
+      await signInWithEmailAndPassword(this.auth, email, password);
+    });
+  } catch (err: any) {
+    console.error('[AuthService] Login error code:', err?.code, '| message:', err?.message);
+    throw err;
   }
+}
 
   async logout(): Promise<void> {
     await runInInjectionContext(this.envInjector, () => signOut(this.auth));
@@ -260,9 +291,52 @@ export class AuthService {
     );
   }
 
+  /**
+   * Sends a Firebase password-reset email. Errors are mapped to
+   * friendly messages and the original Firebase error code is attached
+   * to the thrown Error (as `.code`) so the calling page can decide how
+   * to handle specific cases (e.g. treating "no such account" as a
+   * generic success message, to avoid revealing which emails are
+   * registered).
+   */
   async resetPassword(email: string): Promise<void> {
-    await runInInjectionContext(this.envInjector, () =>
-      sendPasswordResetEmail(this.auth, email)
-    );
+    try {
+      await runInInjectionContext(this.envInjector, () =>
+        sendPasswordResetEmail(this.auth, email)
+      );
+    } catch (err: any) {
+      console.error('[AuthService] resetPassword error code:', err?.code);
+      const wrapped: any = new Error(this.mapResetError(err));
+      wrapped.code = err?.code || 'unknown';
+      throw wrapped;
+    }
+  }
+
+  private mapResetError(err: any): string {
+    switch (err?.code) {
+      case 'auth/user-not-found':
+        return 'No account found with that email address.';
+      case 'auth/invalid-email':
+        return 'Please enter a valid email address.';
+      case 'auth/too-many-requests':
+        return 'Too many requests. Please wait a moment and try again.';
+      case 'auth/network-request-failed':
+        return 'Network error. Please check your connection and try again.';
+      default:
+        return "We couldn't send the reset email. Please try again.";
+    }
+  }
+
+  // ── Remembered email (Remember Me) — email only, NEVER the password ──
+  rememberEmail(email: string): void {
+    try { localStorage.setItem(REMEMBERED_EMAIL_KEY, email); } catch { /* ignore */ }
+  }
+
+  forgetRememberedEmail(): void {
+    try { localStorage.removeItem(REMEMBERED_EMAIL_KEY); } catch { /* ignore */ }
+  }
+
+  getRememberedEmail(): string | null {
+    try { return localStorage.getItem(REMEMBERED_EMAIL_KEY); } catch { return null; }
   }
 }

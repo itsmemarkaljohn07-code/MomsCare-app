@@ -6,6 +6,7 @@ import { IonicModule } from '@ionic/angular';
 import { ThemeService } from '../../services/theme';
 import { AuthService } from '../../services/auth.service';
 import { AppointmentsService, AppointmentRecord } from '../../services/appointments.service';
+import { AppointmentRemindersService } from '../../services/appointment-reminders.service';
 import { Subscription } from 'rxjs';
 
 export interface Appointment {
@@ -40,6 +41,8 @@ export class AppointmentsPage implements OnInit, OnDestroy {
   darkMode = false;
   private themeSub!: Subscription;
   private apptSub!: Subscription;
+  private userSub!: Subscription;
+  private currentUid: string | null = null;
 
   /** Computed from the user's real stored due date (same source and
    *  formula as the Homepage), not hardcoded — stays in sync with the
@@ -52,22 +55,6 @@ export class AppointmentsPage implements OnInit, OnDestroy {
   expandedPast: number | null = null;
 
   navActiveTab = 'appts';
-
-  showModal = false;
-  selectedIcon = '🩺';
-  selectedColor: 'green' | 'pink' | 'purple' | 'blue' | 'orange' = 'green';
-  iconOptions = ['🩺', '🔬', '🩸', '🥗', '👩‍⚕️', '💊', '🫀', '🧬'];
-  colorOptions: Array<'green' | 'pink' | 'purple' | 'blue' | 'orange'> = ['green', 'pink', 'purple', 'blue', 'orange'];
-
-  newAppt = {
-    name: '',
-    type: '',
-    doctor: '',
-    date: '',
-    time: '',
-    location: '',
-    notes: '',
-  };
 
   upcomingAppointments: Appointment[] = [];
   pastAppointments: Appointment[] = [];
@@ -108,6 +95,10 @@ export class AppointmentsPage implements OnInit, OnDestroy {
       .filter(r => r.status !== 'upcoming' || r.date < todayIso)
       .map(r => this.toDisplay(r))
       .reverse();
+
+    // Recompute reminders whenever the appointment list changes — from
+    // this device, the admin dashboard, or anywhere else.
+    this.appointmentReminders.syncReminders(records);
   }
 
   toggleCard(index: number): void {
@@ -124,67 +115,9 @@ export class AppointmentsPage implements OnInit, OnDestroy {
     this.expandedPast = null;
   }
 
-  addAppointment(): void {
-    this.openModal();
-  }
-
-  openModal(): void {
-    this.showModal = true;
-    const today = new Date().toISOString().split('T')[0];
-    this.newAppt.date = today;
-  }
-
-  closeModal(): void {
-    this.showModal = false;
-    this.resetForm();
-  }
-
-  resetForm(): void {
-    this.newAppt = { name: '', type: '', doctor: '', date: '', time: '', location: '', notes: '' };
-    this.selectedIcon = '🩺';
-    this.selectedColor = 'green';
-  }
-
-  selectIcon(icon: string): void {
-    this.selectedIcon = icon;
-  }
-
-  selectColor(color: 'green' | 'pink' | 'purple' | 'blue' | 'orange'): void {
-    this.selectedColor = color;
-  }
-
-  async submitAppointment(): Promise<void> {
-    if (!this.newAppt.name || !this.newAppt.type || !this.newAppt.doctor || !this.newAppt.date || !this.newAppt.time) {
-      return;
-    }
-
-    const [h, m] = this.newAppt.time.split(':').map(Number);
-    const suffix = h >= 12 ? 'PM' : 'AM';
-    const hour = h % 12 || 12;
-
-    const record: Omit<AppointmentRecord, 'id' | 'createdAt'> = {
-      label: this.newAppt.name,
-      type: this.newAppt.type,
-      doctor: this.newAppt.doctor,
-      date: this.newAppt.date,
-      time: `${hour}:${m.toString().padStart(2, '0')} ${suffix}`,
-      location: this.newAppt.location || undefined,
-      notes: this.newAppt.notes || undefined,
-      icon: this.selectedIcon,
-      accentColor: this.selectedColor,
-      advice: [],
-      status: 'upcoming',
-    };
-
-    try {
-      await this.appointmentsService.addAppointment(record);
-    } catch (err) {
-      console.error('Failed to save appointment:', err);
-    }
-    this.closeModal();
-    this.setTab('upcoming');
-  }
-
+  /** Patients can still cancel their own appointment — creation and
+   *  rescheduling now happen exclusively through the admin dashboard,
+   *  but cancellation remains a normal patient action. */
   async cancelAppointment(id?: string): Promise<void> {
     if (!id) return;
     try {
@@ -199,6 +132,7 @@ export class AppointmentsPage implements OnInit, OnDestroy {
     private theme: ThemeService,
     private authService: AuthService,
     private appointmentsService: AppointmentsService,
+    private appointmentReminders: AppointmentRemindersService,
   ) {}
 
   /** Same formula as Home's recomputePregnancyFromDueDate() — reads the
@@ -229,6 +163,12 @@ export class AppointmentsPage implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.themeSub = this.theme.isDark$.subscribe((val: boolean) => (this.darkMode = val));
+
+    this.userSub = this.authService.user$.subscribe(fbUser => {
+      this.currentUid = fbUser?.uid ?? null;
+      this.appointmentReminders.setUid(this.currentUid);
+    });
+
     this.apptSub = this.appointmentsService.getAppointments$()
       .subscribe((records: AppointmentRecord[]) => this.applyRecords(records));
 
@@ -242,6 +182,7 @@ export class AppointmentsPage implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     this.themeSub?.unsubscribe();
     this.apptSub?.unsubscribe();
+    this.userSub?.unsubscribe();
   }
 
   navigate(route: string, tab?: string): void {

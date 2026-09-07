@@ -94,15 +94,9 @@
               </div>
             </div>
 
-            <div class="summary-actions">
-              <button class="action-btn action-reschedule" (click)="$event.stopPropagation()">
-                <svg width="14" height="14" viewBox="0 0 22 22" fill="none">
-                  <rect x="3" y="4" width="16" height="15" rx="2" stroke="currentColor" stroke-width="1.7"/>
-                  <path d="M8 2v3M14 2v3M3 9h16" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
-                </svg>
-                Reschedule
-              </button>
+                        <div class="summary-actions">
               <button class="action-btn action-cancel" (click)="$event.stopPropagation(); cancelAppointment(appt.id)">
+
                 <svg width="14" height="14" viewBox="0 0 22 22" fill="none">
                   <circle cx="11" cy="11" r="9" stroke="currentColor" stroke-width="1.7"/>
                   <path d="M7 7l8 8M15 7l-8 8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
@@ -114,7 +108,7 @@
 
         </div>
 
-                <div class="empty-state" *ngIf="upcomingAppointments.length === 0">
+                        <div class="empty-state" *ngIf="upcomingAppointments.length === 0">
           <span class="empty-emoji">
             <svg width="34" height="34" viewBox="0 0 24 24" fill="none">
               <rect x="4" y="5.5" width="16" height="14.5" rx="2.5" stroke="currentColor" stroke-width="1.6"/>
@@ -122,7 +116,7 @@
             </svg>
           </span>
           <h3 class="empty-title">No upcoming appointments</h3>
-          <p class="empty-sub">Tap the + button to schedule one</p>
+          <p class="empty-sub">Your care team will schedule your next appointment</p>
         </div>
       </div>
     </div>
@@ -210,12 +204,6 @@
     <div style="height: 96px;"></div>
   </div>
 
-  <button class="fab-add" (click)="addAppointment()" [class.visible]="animReady" aria-label="Add appointment">
-    <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
-      <path d="M11 4v14M4 11h14" stroke="white" stroke-width="2.2" stroke-linecap="round"/>
-    </svg>
-  </button>
-
     <div class="bottom-nav">
     <button class="nav-item" [class.active]="navActiveTab === 'home'" (click)="navigate('/home')" aria-label="Home">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
@@ -262,106 +250,4 @@
       <span class="nav-label">Profile</span>
     </button>
   </div>
-
-  <div class="modal-overlay" [class.open]="showModal" (click)="closeModal()">
-    <div class="modal-sheet" (click)="$event.stopPropagation()">
-      <div class="modal-handle"></div>
-
-      <div class="modal-header">
-        <h2 class="modal-title">New Appointment</h2>
-        <button class="modal-close" (click)="closeModal()" aria-label="Close">
-          <svg width="16" height="16" viewBox="0 0 22 22" fill="none">
-            <path d="M5 5l12 12M17 5L5 17" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-          </svg>
-        </button>
-      </div>
-
-      <div class="modal-body">
-
-        <div class="field-group">
-          <label class="field-label">Appointment Name *</label>
-          <input class="field-input" [(ngModel)]="newAppt.name" type="text"
-                 placeholder="e.g. Prenatal Checkup"/>
-        </div>
-
-        <div class="field-row">
-          <div class="field-group">
-            <label class="field-label">Type *</label>
-            <select class="field-select" [(ngModel)]="newAppt.type">
-              <option value="">Select…</option>
-              <option>Obstetrics</option>
-              <option>Radiology</option>
-              <option>Laboratory</option>
-              <option>Dietitian</option>
-              <option>OB-GYN</option>
-              <option>Cardiology</option>
-              <option>Pediatrics</option>
-              <option>Other</option>
-            </select>
-          </div>
-          <div class="field-group">
-            <label class="field-label">Doctor *</label>
-            <input class="field-input" [(ngModel)]="newAppt.doctor" type="text"
-                   placeholder="Dr. Name"/>
-          </div>
-        </div>
-
-        <div class="field-row">
-          <div class="field-group">
-            <label class="field-label">Date *</label>
-            <input class="field-input" [(ngModel)]="newAppt.date" type="date"/>
-          </div>
-          <div class="field-group">
-            <label class="field-label">Time *</label>
-            <input class="field-input" [(ngModel)]="newAppt.time" type="time"/>
-          </div>
-        </div>
-
-        <div class="field-group">
-          <label class="field-label">Location</label>
-          <input class="field-input" [(ngModel)]="newAppt.location" type="text"
-                 placeholder="Clinic or hospital"/>
-        </div>
-
-        <div class="field-group">
-          <label class="field-label">Notes</label>
-          <textarea class="field-textarea" [(ngModel)]="newAppt.notes"
-                    placeholder="Any instructions or reminders…"></textarea>
-        </div>
-
-        <div class="field-group">
-          <label class="field-label">Icon</label>
-          <div class="icon-picker">
-            <button *ngFor="let ic of iconOptions"
-                    class="icon-btn"
-                    [class.selected]="selectedIcon === ic"
-                    (click)="selectIcon(ic)">{{ ic }}</button>
-          </div>
-        </div>
-
-        <div class="field-row field-row-bottom">
-          <div class="field-group">
-            <label class="field-label">Color</label>
-            <div class="color-picker">
-              <button *ngFor="let c of colorOptions"
-                      class="color-btn"
-                      [class]="'color-' + c"
-                      [class.selected]="selectedColor === c"
-                      (click)="selectColor(c)"
-                      [attr.aria-label]="c"></button>
-            </div>
-          </div>
-        </div>
-
-        <button class="modal-submit" (click)="submitAppointment()">
-          <svg width="18" height="18" viewBox="0 0 22 22" fill="none">
-            <path d="M11 4v14M4 11h14" stroke="white" stroke-width="2.2" stroke-linecap="round"/>
-          </svg>
-          Add Appointment
-        </button>
-
-      </div>
-    </div>
-  </div>
-
 </ion-content>

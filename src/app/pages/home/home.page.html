@@ -37,77 +37,6 @@
   </div>
 
   <!-- ══════════════════════════════════════════
-       HEALTH INPUT MODAL
-  ══════════════════════════════════════════ -->
-  <div class="modal-overlay" *ngIf="showHealthModal" (click)="closeHealthModal()">
-    <div class="modal-sheet" (click)="$event.stopPropagation()">
-      <div class="modal-handle"></div>
-      <div class="modal-header">
-        <h3 class="modal-title">Log Health Data</h3>
-        <p class="modal-sub">{{ today | date:'MMMM d, yyyy' }}</p>
-      </div>
-
-      <div class="input-group" [class.active]="activeField === 'weight'">
-        <div class="input-label-row">
-          <span class="input-ico">⚖️</span>
-          <label class="input-label">Current Weight</label>
-        </div>
-        <div class="input-row">
-          <input class="health-input" type="number" step="0.1"
-                 [(ngModel)]="healthDraft.weight"
-                 (focus)="activeField='weight'" (blur)="activeField=''"
-                 placeholder="e.g. 62.4" />
-          <span class="input-unit">kg</span>
-        </div>
-      </div>
-
-      <div class="input-group" [class.active]="activeField === 'bp'">
-        <div class="input-label-row">
-          <span class="input-ico">❤️</span>
-          <label class="input-label">Blood Pressure</label>
-        </div>
-        <div class="input-row bp-row">
-          <input class="health-input bp-input" type="number"
-                 [(ngModel)]="healthDraft.bpSys"
-                 (focus)="activeField='bp'" (blur)="activeField=''"
-                 placeholder="120" maxlength="3" />
-          <span class="bp-slash">/</span>
-          <input class="health-input bp-input" type="number"
-                 [(ngModel)]="healthDraft.bpDia"
-                 (focus)="activeField='bp'" (blur)="activeField=''"
-                 placeholder="80" maxlength="3" />
-          <span class="input-unit">mmHg</span>
-        </div>
-        <p class="input-hint">Systolic / Diastolic</p>
-      </div>
-
-      <div class="input-group" [class.active]="activeField === 'kicks'">
-        <div class="input-label-row">
-          <span class="input-ico">👣</span>
-          <label class="input-label">Fetal Kicks Today</label>
-        </div>
-        <div class="kick-counter">
-          <button class="kick-btn minus" (click)="adjustKicks(-1)">−</button>
-          <div class="kick-display">
-            <span class="kick-num">{{ healthDraft.kicks }}</span>
-            <span class="kick-unit">kicks</span>
-          </div>
-          <button class="kick-btn plus" (click)="adjustKicks(1)">+</button>
-        </div>
-        <p class="input-hint">Tap + each time you feel a movement</p>
-      </div>
-
-      <button class="modal-save-btn" (click)="saveHealth()">
-        <span>Save Health Data</span>
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-          <path d="M3 8h10M9 4l4 4-4 4" stroke="white" stroke-width="1.8"
-                stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-      </button>
-    </div>
-  </div>
-
-  <!-- ══════════════════════════════════════════
        HOME CONTENT
   ══════════════════════════════════════════ -->
   <div class="home-wrap">
@@ -174,7 +103,8 @@
         <div class="week-cells">
           <div *ngFor="let w of visibleWeeks"
                class="week-cell"
-               [class.week-cell--active]="w === pregnancyWeek"
+               [class.week-cell--active]="w === viewingWeek"
+               [class.week-cell--today]="w === pregnancyWeek"
                (click)="selectWeek(w)">
             <span class="week-cell-label">W{{ w }}</span>
             <div class="week-cell-dot"></div>
@@ -214,16 +144,6 @@
                 <stop offset="100%" stop-color="rgba(196,132,162,0.80)"/>
               </radialGradient>
             </defs>
-
-            <!-- Amniotic sac (outer) -->
-            <ellipse cx="110" cy="132" rx="88" ry="108"
-                     fill="rgba(230,180,210,0.18)"
-                     stroke="rgba(210,150,190,0.30)" stroke-width="1.5"/>
-
-            <!-- Amniotic sac (inner) -->
-            <ellipse cx="110" cy="132" rx="72" ry="90"
-                     fill="rgba(240,200,225,0.22)"
-                     stroke="rgba(200,140,175,0.25)" stroke-width="1"/>
 
             <!-- Umbilical cord -->
             <path [attr.d]="umbilicalPath"
@@ -296,10 +216,16 @@
       <!-- Week info -->
       <div class="fetal-info">
         <p class="fetal-week-big">
-          {{ pregnancyWeek }} weeks
-          <span class="fetal-days-sub">, {{ pregnancyDays }} days</span>
+          {{ viewingWeek }} weeks
+          <span class="fetal-days-sub" *ngIf="isViewingCurrentWeek">, {{ pregnancyDays }} days</span>
           <button class="fetal-info-btn" aria-label="More info">ⓘ</button>
         </p>
+
+        <div class="viewing-badge" *ngIf="!isViewingCurrentWeek">
+          <span>Viewing Week {{ viewingWeek }}</span>
+          <button class="viewing-back-btn" (click)="resetToCurrentWeek()">Back to Today</button>
+        </div>
+
         <p class="fetal-size-label">
           About the size of a <strong>{{ babySize.fruit }}</strong> {{ babySize.emoji }}
         </p>
@@ -314,7 +240,7 @@
           </div>
           <span class="fetal-progress-pct">{{ pregnancyProgress }}%</span>
         </div>
-        <p class="fetal-progress-label">{{ 40 - pregnancyWeek }} weeks until your due date</p>
+        <p class="fetal-progress-label" *ngIf="isViewingCurrentWeek">{{ 40 - pregnancyWeek }} weeks until your due date</p>
       </div>
     </div>
 
@@ -383,76 +309,101 @@
         </div>
       </div>
 
-      <div class="appt-empty" *ngIf="upcomingAppointments.length === 0">
-        <span>📅</span>
+            <div class="appt-empty" *ngIf="upcomingAppointments.length === 0">
+        <span class="appt-empty-icon">
+          <svg width="30" height="30" viewBox="0 0 24 24" fill="none">
+            <rect x="4" y="5.5" width="16" height="14.5" rx="2.5" stroke="currentColor" stroke-width="1.6"/>
+            <path d="M4 10h16M8 3.5v3M16 3.5v3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+          </svg>
+        </span>
         <p>No upcoming appointments</p>
         <button class="appt-add-btn" (click)="goToAppointments()">Schedule one</button>
       </div>
     </div>
 
     <!-- ════════════════════════════════════════
-         HEALTH SNAPSHOT
+         HEALTH TRACKER (compact shortcut → Snapshot)
     ════════════════════════════════════════ -->
     <div class="section-header" [class.visible]="animReady">
-      <p class="section-title">Health Snapshot</p>
-      <button class="section-link log-btn" (click)="openHealthModal()">
+      <p class="section-title">Health Tracker</p>
+      <button class="section-link" (click)="goToHealthTracker()">
+        View all
         <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-          <path d="M6 2v8M2 6h8" stroke="currentColor" stroke-width="1.8"
-                stroke-linecap="round"/>
+          <path d="M4.5 2.5L8 6l-3.5 3.5" stroke="currentColor" stroke-width="1.6"
+                stroke-linecap="round" stroke-linejoin="round"/>
         </svg>
-        Log data
       </button>
     </div>
 
-    <div class="health-grid" [class.visible]="animReady">
-      <div class="health-tile" (click)="openHealthModal()">
-        <div class="health-tile-top">
-          <span class="health-tile-ico">⚖️</span>
-          <span class="health-tile-label">Weight</span>
-        </div>
-        <p class="health-tile-val">{{ health.weight }}<span class="health-tile-unit">kg</span></p>
-        <div class="health-tile-bar">
-          <div class="health-tile-fill weight-fill"
-               [style.width.%]="(health.weight / 90) * 100"></div>
-        </div>
-        <p class="health-tile-note">Tap to update</p>
-      </div>
+    <div class="health-summary-card" [class.visible]="animReady" (click)="goToHealthTracker()">
+      <div class="health-summary-grid">
 
-      <div class="health-tile" (click)="openHealthModal()">
-        <div class="health-tile-top">
-          <span class="health-tile-ico">❤️</span>
-          <span class="health-tile-label">Blood Pressure</span>
-        </div>
-        <p class="health-tile-val bp-val">{{ bpDisplay }}</p>
-        <p class="health-tile-sub">mmHg</p>
-        <p class="health-tile-note">Tap to update</p>
-      </div>
-
-      <div class="health-tile kicks-tile" (click)="openHealthModal()">
-        <div class="health-tile-top">
-          <span class="health-tile-ico">👣</span>
-          <span class="health-tile-label">Fetal Kicks</span>
-        </div>
-        <div class="kicks-display">
-          <p class="health-tile-val">{{ health.kicks }}<span class="health-tile-unit">today</span></p>
-          <div class="kick-dots">
-            <span class="kick-dot" *ngFor="let k of kickDots; let i = index"
-                  [class.filled]="i < health.kicks"></span>
+        <div class="hs-item">
+          <div class="hs-icon-wrap">
+            <svg width="16" height="16" viewBox="0 0 18 18" fill="none">
+              <path d="M9 2.5v3M5.5 5.5h7M9 5.5L5.5 12a3.5 3.5 0 007 0L9 5.5Z"
+                    stroke="#b57fd4" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <div class="hs-item-text">
+            <span class="hs-item-label">Weight</span>
+            <span class="hs-item-val">{{ health.weight }}<small>kg</small></span>
           </div>
         </div>
-        <p class="health-tile-note">Tap to update</p>
+
+        <div class="hs-item">
+          <div class="hs-icon-wrap">
+            <svg width="16" height="16" viewBox="0 0 18 18" fill="none">
+              <path d="M1.5 9.5h3l1.5-4 2.5 8 2-6 1.2 2h5.3"
+                    stroke="#e07eb8" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <div class="hs-item-text">
+            <span class="hs-item-label">Blood Pressure</span>
+            <span class="hs-item-val">{{ bpDisplay }}</span>
+          </div>
+        </div>
+
+        <div class="hs-item">
+          <div class="hs-icon-wrap">
+            <svg width="16" height="16" viewBox="0 0 18 18" fill="none">
+              <ellipse cx="9" cy="11" rx="3.2" ry="4.3" stroke="#6dbfbf" stroke-width="1.4"/>
+              <circle cx="6.3" cy="4.3" r="1" stroke="#6dbfbf" stroke-width="1.3"/>
+              <circle cx="8.6" cy="3.2" r="1" stroke="#6dbfbf" stroke-width="1.3"/>
+              <circle cx="10.9" cy="3.5" r="0.9" stroke="#6dbfbf" stroke-width="1.3"/>
+              <circle cx="12.7" cy="4.8" r="0.8" stroke="#6dbfbf" stroke-width="1.3"/>
+            </svg>
+          </div>
+          <div class="hs-item-text">
+            <span class="hs-item-label">Fetal Kicks</span>
+            <span class="hs-item-val">{{ health.kicks }}<small>today</small></span>
+          </div>
+        </div>
+
+        <div class="hs-item">
+          <div class="hs-icon-wrap">
+            <svg width="16" height="16" viewBox="0 0 18 18" fill="none">
+              <circle cx="9" cy="9" r="7" stroke="#d9609a" stroke-width="1.4"/>
+              <circle cx="6.5" cy="7.5" r="0.9" fill="#d9609a"/>
+              <circle cx="11.5" cy="7.5" r="0.9" fill="#d9609a"/>
+              <path [attr.d]="moodMouthPaths[health.mood]" stroke="#d9609a" stroke-width="1.3"
+                    stroke-linecap="round" fill="none"/>
+            </svg>
+          </div>
+          <div class="hs-item-text">
+            <span class="hs-item-label">Mood</span>
+            <span class="hs-item-val">{{ moodNames[health.mood] }}</span>
+          </div>
+        </div>
+
       </div>
 
-      <div class="health-tile mood-tile">
-        <div class="health-tile-top">
-          <span class="health-tile-ico">🌟</span>
-          <span class="health-tile-label">Mood</span>
-        </div>
-        <div class="mood-row">
-          <button class="mood-btn" *ngFor="let m of moodLabels; let i = index"
-                  [class.selected]="health.mood === i"
-                  (click)="setMood(i)">{{ m }}</button>
-        </div>
+      <div class="health-summary-footer">
+        <span>Tap to open full Health Tracker</span>
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+          <path d="M4.5 2.5L8 6l-3.5 3.5" stroke="currentColor" stroke-width="1.6"
+                stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
       </div>
     </div>
 
@@ -512,46 +463,51 @@
   <!-- ══════════════════════════════════════════
        BOTTOM NAVIGATION
   ══════════════════════════════════════════ -->
-  <div class="bottom-nav">
+    <div class="bottom-nav">
     <button class="nav-item" [class.active]="activeTab === 'home'" (click)="setTab('home')" aria-label="Home">
-      <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
         <path d="M4 10.5L12 4l8 6.5V19a1.5 1.5 0 01-1.5 1.5h-3.25a.75.75 0 01-.75-.75V15a1.5 1.5 0 00-1.5-1.5h-2a1.5 1.5 0 00-1.5 1.5v4.75a.75.75 0 01-.75.75H5.5A1.5 1.5 0 014 19V10.5z"
               stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/>
       </svg>
+      <span class="nav-label">Home</span>
     </button>
 
     <button class="nav-item" [class.active]="activeTab === 'insights'"
             (click)="navigate('/insights')" aria-label="Insights">
-      <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
         <path d="M5 19V11M12 19V5M19 19v-7" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/>
       </svg>
+      <span class="nav-label">Insights</span>
     </button>
 
     <button class="nav-item nav-item--center" [class.active]="activeTab === 'snapshot'"
             (click)="navigate('/snapshot')" aria-label="Snapshot">
       <span class="nav-item-circle">
-        <svg width="27" height="27" viewBox="0 0 24 24" fill="none">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none">
           <path d="M4 8.5a1.5 1.5 0 011.5-1.5h1.4l1-1.6a1.5 1.5 0 011.27-.7h5.66a1.5 1.5 0 011.27.7l1 1.6h1.4A1.5 1.5 0 0120 8.5V18a1.5 1.5 0 01-1.5 1.5h-13A1.5 1.5 0 014 18V8.5z"
                 stroke="white" stroke-width="1.7" stroke-linejoin="round"/>
           <circle cx="12" cy="13" r="3.4" stroke="white" stroke-width="1.7"/>
         </svg>
       </span>
+      <span class="nav-label">Snapshot</span>
     </button>
 
     <button class="nav-item" [class.active]="activeTab === 'appts'"
             (click)="navigate('/appointments')" aria-label="Appointments">
-      <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
         <rect x="4" y="5.5" width="16" height="14.5" rx="2.5" stroke="currentColor" stroke-width="1.7"/>
         <path d="M4 10h16M8 3.5v3M16 3.5v3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
       </svg>
+      <span class="nav-label">Appointments</span>
     </button>
 
     <button class="nav-item" [class.active]="activeTab === 'profile'"
             (click)="navigate('/profile')" aria-label="Profile">
-      <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
         <circle cx="12" cy="8.5" r="3.5" stroke="currentColor" stroke-width="1.7"/>
         <path d="M4.5 20c0-4.14 3.36-7.5 7.5-7.5s7.5 3.36 7.5 7.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
       </svg>
+      <span class="nav-label">Profile</span>
     </button>
   </div>
 

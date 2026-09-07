@@ -6,11 +6,19 @@ import {
   signInWithEmailAndPassword,
   signOut,
   sendPasswordResetEmail,
-  setPersistence,
-  browserLocalPersistence,
-  browserSessionPersistence,
   user
 } from '@angular/fire/auth';
+// Imported from the raw 'firebase/auth' package (NOT '@angular/fire/auth')
+// deliberately — these persistence classes must be the exact same module
+// instance the Auth object internally expects. Importing them through
+// @angular/fire's wrapper instead caused "TypeError: cls is not a
+// constructor" at runtime, a known interop mismatch between the two
+// import paths.
+import {
+  setPersistence,
+  indexedDBLocalPersistence,
+  browserSessionPersistence,
+} from 'firebase/auth';
 import {
   Firestore,
   doc,
@@ -74,9 +82,12 @@ export class AuthService {
   /**
    * Registration flow:
    *  1. Create the Firebase Auth account. Persistence is explicitly set
-   *     to LOCAL first — this guarantees a brand-new account always
-   *     stays signed in long-term, even if the Auth instance previously
-   *     had SESSION persistence left over from an earlier "Remember Me
+   *     to IndexedDB-backed local persistence first — Firebase's own
+   *     recommended persistence type for Capacitor/hybrid apps, and more
+   *     reliable than browserLocalPersistence at surviving a full app
+   *     close-and-reopen. This also guarantees a brand-new account
+   *     always stays signed in long-term, even if the Auth instance
+   *     previously had SESSION persistence left over from a "Remember Me
    *     unchecked" login (setPersistence() is sticky on the Auth
    *     instance until changed again).
    *  2. Save the full pregnancy profile (including dueDate) to
@@ -97,11 +108,20 @@ export class AuthService {
     let cred;
     try {
       cred = await runInInjectionContext(this.envInjector, async () => {
-        await setPersistence(this.auth, browserLocalPersistence);
+        try {
+          await setPersistence(this.auth, indexedDBLocalPersistence);
+        } catch (persistErr) {
+          console.warn('[AuthService] setPersistence failed on register, continuing with default persistence:', persistErr);
+        }
         return createUserWithEmailAndPassword(this.auth, email, password);
       });
     } catch (err: any) {
-      console.error('[AuthService] Registration (Auth) error code:', err?.code);
+      console.error('[AuthService] Registration (Auth) failed — full details:', {
+        code: err?.code,
+        name: err?.name,
+        message: err?.message,
+        raw: err,
+      });
       throw new Error(this.mapAuthError(err));
     }
 
@@ -231,41 +251,45 @@ export class AuthService {
       case 'auth/too-many-requests':
         return 'Too many attempts. Please wait a moment and try again.';
       default:
-        return "We couldn't create your account. Please try again.";
+        return err?.message
+          ? `We couldn't create your account: ${err.message}`
+          : "We couldn't create your account. Please try again.";
     }
   }
 
   /**
-   * Signs in with Firebase Auth's own secure persistence system —
-   * no email or password is ever written to localStorage directly.
-   * rememberMe = true  → browserLocalPersistence  (stays signed in
-   *                       across browser restarts, until explicit logout)
-   * rememberMe = false → browserSessionPersistence (signed out once the
-   *                       browser/tab is closed)
+   * Signs in with Firebase Auth's own secure persistence system — no
+   * email or password is ever written to localStorage/any storage by
+   * this app's own code.
+   *
+   * rememberMe = true  → indexedDBLocalPersistence — the account stays
+   *                       signed in across full app closes and re-opens
+   *                       (Firebase's recommended persistence type for
+   *                       Capacitor/hybrid apps specifically).
+   * rememberMe = false → browserSessionPersistence — signed out once
+   *                       the current app/browser session ends.
    */
   async login(email: string, password: string, rememberMe: boolean = false): Promise<void> {
-  try {
-    await runInInjectionContext(this.envInjector, async () => {
-      try {
-        await setPersistence(
-          this.auth,
-          rememberMe ? browserLocalPersistence : browserSessionPersistence
-        );
-      } catch (persistErr) {
-        // Some environments (private browsing, restrictive storage
-        // settings/extensions) can block IndexedDB, which
-        // setPersistence relies on. Don't let that block sign-in
-        // entirely — fall back to the SDK's default persistence and
-        // continue with the actual login attempt.
-        console.warn('[AuthService] setPersistence failed, continuing with default persistence:', persistErr);
-      }
-      await signInWithEmailAndPassword(this.auth, email, password);
-    });
-  } catch (err: any) {
-    console.error('[AuthService] Login error code:', err?.code, '| message:', err?.message);
-    throw err;
+    try {
+      await runInInjectionContext(this.envInjector, async () => {
+        try {
+          await setPersistence(
+            this.auth,
+            rememberMe ? indexedDBLocalPersistence : browserSessionPersistence
+          );
+        } catch (persistErr) {
+          // Defensive fallback only — with the correct import source
+          // above this should no longer actually occur, but sign-in
+          // must never be blocked by a persistence-layer failure.
+          console.warn('[AuthService] setPersistence failed, continuing with default persistence:', persistErr);
+        }
+        await signInWithEmailAndPassword(this.auth, email, password);
+      });
+    } catch (err: any) {
+      console.error('[AuthService] Login error code:', err?.code, '| message:', err?.message);
+      throw err;
+    }
   }
-}
 
   async logout(): Promise<void> {
     await runInInjectionContext(this.envInjector, () => signOut(this.auth));
@@ -291,14 +315,6 @@ export class AuthService {
     );
   }
 
-  /**
-   * Sends a Firebase password-reset email. Errors are mapped to
-   * friendly messages and the original Firebase error code is attached
-   * to the thrown Error (as `.code`) so the calling page can decide how
-   * to handle specific cases (e.g. treating "no such account" as a
-   * generic success message, to avoid revealing which emails are
-   * registered).
-   */
   async resetPassword(email: string): Promise<void> {
     try {
       await runInInjectionContext(this.envInjector, () =>

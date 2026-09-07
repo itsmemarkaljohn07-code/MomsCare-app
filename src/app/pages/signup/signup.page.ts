@@ -11,7 +11,7 @@ import { AuthService } from '../../services/auth.service';
 import { OtpService } from '../../services/otp.service';
 import { ThemeService } from '../../services/theme';
 import { Auth, fetchSignInMethodsForEmail } from '@angular/fire/auth';
-import { Firestore, collection, query, where, getDocs } from '@angular/fire/firestore';
+import { Firestore, collection, query, where, getDocs, limit } from '@angular/fire/firestore';
 import { runInInjectionContext, EnvironmentInjector, inject } from '@angular/core';
 import { Subscription } from 'rxjs';
 
@@ -546,7 +546,8 @@ export class SignupPage implements OnInit, OnDestroy, AfterViewInit {
             fetchSignInMethodsForEmail(this.auth, this.form.email),
             getDocs(query(
               collection(this.firestore, 'users'),
-              where('fullName', '==', this.form.fullName.trim())
+              where('fullName', '==', this.form.fullName.trim()),
+              limit(1)
             ))
           ])
         ),

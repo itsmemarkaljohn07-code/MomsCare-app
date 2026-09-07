@@ -4,6 +4,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { IonicModule } from '@ionic/angular';
 import { ThemeService } from '../../services/theme';
+import { AuthService } from '../../services/auth.service';
 import { AppointmentsService, AppointmentRecord } from '../../services/appointments.service';
 import { Subscription } from 'rxjs';
 
@@ -40,7 +41,11 @@ export class AppointmentsPage implements OnInit, OnDestroy {
   private themeSub!: Subscription;
   private apptSub!: Subscription;
 
-  pregnancyWeek = 20;
+  /** Computed from the user's real stored due date (same source and
+   *  formula as the Homepage), not hardcoded — stays in sync with the
+   *  rest of the app automatically. */
+  pregnancyWeek = 0;
+  private dueDate: Date | null = null;
 
   activeTab: 'upcoming' | 'past' = 'upcoming';
   expandedCard: number | null = null;
@@ -67,6 +72,10 @@ export class AppointmentsPage implements OnInit, OnDestroy {
   upcomingAppointments: Appointment[] = [];
   pastAppointments: Appointment[] = [];
 
+  /** Already real-time — driven by upcomingAppointments.length, which
+   *  is populated from Firestore via applyRecords(). Updates
+   *  automatically as appointments are added, cancelled, or their
+   *  dates pass. */
   get upcomingCount(): number {
     return this.upcomingAppointments.length;
   }
@@ -188,13 +197,42 @@ export class AppointmentsPage implements OnInit, OnDestroy {
   constructor(
     private router: Router,
     private theme: ThemeService,
+    private authService: AuthService,
     private appointmentsService: AppointmentsService,
   ) {}
+
+  /** Same formula as Home's recomputePregnancyFromDueDate() — reads the
+   *  same stored dueDate via the same shared AuthService, so this stays
+   *  in sync with the rest of the app rather than being a second,
+   *  separate calculation. */
+  private recomputePregnancyWeek(): void {
+    if (!this.dueDate) return;
+    const TOTAL_PREGNANCY_DAYS = 280;
+    const msPerDay = 24 * 60 * 60 * 1000;
+    const now = new Date();
+    const daysUntilDue = Math.round((this.dueDate.getTime() - now.getTime()) / msPerDay);
+    const daysElapsed = Math.max(0, Math.min(TOTAL_PREGNANCY_DAYS, TOTAL_PREGNANCY_DAYS - daysUntilDue));
+    this.pregnancyWeek = Math.min(40, Math.floor(daysElapsed / 7));
+  }
+
+  private async loadPregnancyWeek(): Promise<void> {
+    try {
+      const profile = await this.authService.getProfile();
+      if (profile?.dueDate) {
+        this.dueDate = new Date(profile.dueDate);
+        this.recomputePregnancyWeek();
+      }
+    } catch (err) {
+      console.error('Failed to load pregnancy week:', err);
+    }
+  }
 
   ngOnInit(): void {
     this.themeSub = this.theme.isDark$.subscribe((val: boolean) => (this.darkMode = val));
     this.apptSub = this.appointmentsService.getAppointments$()
       .subscribe((records: AppointmentRecord[]) => this.applyRecords(records));
+
+    this.loadPregnancyWeek();
 
     requestAnimationFrame(() => {
       setTimeout(() => (this.animReady = true), 80);

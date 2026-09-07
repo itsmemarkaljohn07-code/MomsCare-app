@@ -50,6 +50,8 @@ export class SnapshotPage implements OnInit, OnDestroy {
   today = new Date();
   Math = Math;
 
+  /** Reads router state so tapping the Homepage's compact Health
+   *  Tracker card can land directly on the 'health' tab here. */
   activeTab: 'gallery' | 'health' = 'gallery';
   activeNavTab = 'snapshot';
 
@@ -58,8 +60,7 @@ export class SnapshotPage implements OnInit, OnDestroy {
   }
 
   // ════════════════════════════════════════════════════════
-  // PHOTO GALLERY (unchanged — no Firestore requirement was given
-  // for photos in this request)
+  // PHOTO GALLERY (unchanged)
   // ════════════════════════════════════════════════════════
   photoTypes: PhotoType[] = ['bump', 'ultrasound', 'milestone'];
   typeLabels: Record<PhotoType, string> = {
@@ -110,10 +111,8 @@ export class SnapshotPage implements OnInit, OnDestroy {
   }
 
   // ════════════════════════════════════════════════════════
-  // HEALTH TRACKER — now backed by the shared HealthService, so this
-  // is always in sync with the Homepage's Health Snapshot. Property
-  // and method names are kept identical to the original so the
-  // existing template and styles work unchanged.
+  // HEALTH TRACKER — backed by the shared HealthService, always in
+  // sync with the Homepage's compact Health Tracker summary.
   // ════════════════════════════════════════════════════════
   health: HealthLog = {
     date: new Date(),
@@ -133,11 +132,21 @@ export class SnapshotPage implements OnInit, OnDestroy {
   moodLabels = ['😢', '😕', '😊', '😄', '🤩'];
   moodNames  = ['Low', 'Okay', 'Good', 'Great', 'Amazing'];
 
+  /** Minimalist mood-face mouth curve per mood index (0-4) — replaces
+   *  the colorful emoji face with one consistent line-art icon, used
+   *  identically here and on the Homepage's summary card. */
+  moodMouthPaths: string[] = [
+    'M6 11.5 Q9 8.5 12 11.5',
+    'M6.5 11.3 Q9 10.3 11.5 11.3',
+    'M6.5 11 Q9 11.8 11.5 11',
+    'M6 11 Q9 13.2 12 11',
+    'M5.5 10.5 Q9 14.5 12.5 10.5',
+  ];
+
   get bpDisplay(): string {
     return `${this.health.bpSys}/${this.health.bpDia}`;
   }
-  get moodEmoji(): string { return this.moodLabels[this.health.mood]; }
-  get moodName():  string { return this.moodNames[this.health.mood]; }
+  get moodName(): string { return this.moodNames[this.health.mood]; }
 
   get kickDots(): number[] {
     return Array(Math.max(10, this.health.kicks)).fill(0);
@@ -197,6 +206,13 @@ export class SnapshotPage implements OnInit, OnDestroy {
   ngOnInit(): void {
     this.themeSub = this.theme.isDark$.subscribe(val => (this.darkMode = val));
 
+    // Land on the Health tab directly when arriving from the
+    // Homepage's compact Health Tracker shortcut.
+    const navState = window.history.state as { tab?: string } | undefined;
+    if (navState?.tab === 'health') {
+      this.activeTab = 'health';
+    }
+
     this.userSub = this.authService.user$.subscribe(u => {
       this.currentUid = u?.uid ?? null;
     });
@@ -214,6 +230,8 @@ export class SnapshotPage implements OnInit, OnDestroy {
       }
     });
 
+    // Live listener — new entries (add/edit) appear here automatically,
+    // already ordered most-recent-first, without any manual refresh.
     this.historySub = this.healthService.getHistory$().subscribe(list => {
       this.healthHistory = list.map(h => ({
         date:   h.loggedAt?.toDate ? h.loggedAt.toDate() : new Date(),

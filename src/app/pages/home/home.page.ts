@@ -67,6 +67,23 @@ export class HomePage implements OnInit, OnDestroy {
   pregnancyWeek = 0;
   pregnancyDays = 0;
 
+  /** The week currently being DISPLAYED in the fetal illustration area —
+   *  defaults to the real pregnancyWeek, but the user can browse other
+   *  weeks via selectWeek() without ever changing pregnancyWeek/dueDate/
+   *  any stored data. Only set from pregnancyWeek automatically once, on
+   *  first load — never re-synced afterward, so browsing survives the
+   *  60s countdown refresh. */
+  viewingWeek = 0;
+  private viewingWeekInitialized = false;
+
+  get isViewingCurrentWeek(): boolean {
+    return this.viewingWeek === this.pregnancyWeek;
+  }
+
+  resetToCurrentWeek(): void {
+    this.viewingWeek = this.pregnancyWeek;
+  }
+
   private recomputePregnancyFromDueDate(): void {
     const TOTAL_PREGNANCY_DAYS = 280;
     const msPerDay = 24 * 60 * 60 * 1000;
@@ -75,6 +92,11 @@ export class HomePage implements OnInit, OnDestroy {
     const daysElapsed = Math.max(0, Math.min(TOTAL_PREGNANCY_DAYS, TOTAL_PREGNANCY_DAYS - daysUntilDue));
     this.pregnancyWeek = Math.min(40, Math.floor(daysElapsed / 7));
     this.pregnancyDays = daysElapsed % 7;
+
+    if (!this.viewingWeekInitialized) {
+      this.viewingWeek = this.pregnancyWeek;
+      this.viewingWeekInitialized = true;
+    }
   }
 
   get dueDate(): Date { return this.currentUser.dueDate; }
@@ -94,7 +116,7 @@ export class HomePage implements OnInit, OnDestroy {
   }
 
   selectWeek(w: number): void {
-    console.log('Selected week', w);
+    this.viewingWeek = Math.max(1, Math.min(40, w));
   }
 
   babySizes: Record<number, { emoji: string; fruit: string; length: string; weight: string }> = {
@@ -141,50 +163,61 @@ export class HomePage implements OnInit, OnDestroy {
     40: "Any day now, Mama! You've done amazingly 💖",
   };
 
+  // These now reflect the browsed viewingWeek, not the real pregnancyWeek
+  // — so exploring other weeks shows accurate info for that week without
+  // touching any stored data.
   get babySize() {
     const keys = Object.keys(this.babySizes).map(Number).sort((a, b) => a - b);
     let closest = keys[0];
-    for (const w of keys) { if (this.pregnancyWeek >= w) closest = w; }
+    for (const w of keys) { if (this.viewingWeek >= w) closest = w; }
     return this.babySizes[closest];
   }
 
   get weeklyMessage(): string {
     const keys = Object.keys(this.weeklyMessages).map(Number).sort((a, b) => a - b);
     let closest = keys[0];
-    for (const w of keys) { if (this.pregnancyWeek >= w) closest = w; }
+    for (const w of keys) { if (this.viewingWeek >= w) closest = w; }
     return this.weeklyMessages[closest];
   }
 
   get pregnancyProgress(): number {
-    return Math.min(100, Math.round((this.pregnancyWeek / 40) * 100));
+    return Math.min(100, Math.round((this.viewingWeek / 40) * 100));
   }
 
   get trimester(): string {
-    if (this.pregnancyWeek <= 13) return '1st Trimester';
-    if (this.pregnancyWeek <= 26) return '2nd Trimester';
+    if (this.viewingWeek <= 13) return '1st Trimester';
+    if (this.viewingWeek <= 26) return '2nd Trimester';
     return '3rd Trimester';
   }
 
   private get s(): number {
-    return Math.max(0.32, Math.min(1.0, 0.32 + (this.pregnancyWeek / 40) * 0.68));
+    return Math.max(0.32, Math.min(1.0, 0.32 + (this.viewingWeek / 40) * 0.68));
   }
 
   private get origin() {
     return { cx: 110, cy: 128 };
   }
 
+  private get stageMix(): number {
+    return Math.max(0, Math.min(1, (this.viewingWeek - 4) / 36));
+  }
+
   get fetal() {
     const s = this.s;
+    const mix = this.stageMix;
+    const headRatioMix = 1.15 - 0.25 * mix;
+    const bodyWidthMix = 0.85 + 0.35 * mix;
+    const bodyHeightMix = 0.92 + 0.12 * mix;
     const { cx, cy } = this.origin;
     return {
-      cx, cy, s,
+      cx, cy, s, mix,
       hx: cx + s * 22,
       hy: cy - s * 34,
-      hr: s * 23,
+      hr: s * 23 * headRatioMix,
       bx: cx - s * 2,
       by: cy + s * 6,
-      bw: s * 17,
-      bh: s * 26,
+      bw: s * 17 * bodyWidthMix,
+      bh: s * 26 * bodyHeightMix,
     };
   }
 
@@ -297,10 +330,6 @@ export class HomePage implements OnInit, OnDestroy {
 
   // ════════════════════════════════════════════════════════
   // APPOINTMENTS — real-time from Firestore via AppointmentsService.
-  // Shows the 2 nearest upcoming appointments; re-evaluated on every
-  // change-detection tick (including the existing 60s clockInterval),
-  // so a passed appointment automatically rolls off without any extra
-  // polling code.
   // ════════════════════════════════════════════════════════
   private readonly MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   private readonly DAYS   = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
@@ -332,8 +361,11 @@ export class HomePage implements OnInit, OnDestroy {
   }
 
   // ════════════════════════════════════════════════════════
-  // HEALTH SNAPSHOT — shared with Snapshot Page's Health Tracker via
-  // HealthService, keyed by the user's UID, always in sync.
+  // HEALTH TRACKER — compact, display-only shortcut to the full
+  // Health Tracker on the Snapshot page. Still reads live from the
+  // exact same shared HealthService as Snapshot, so it's never a
+  // separate data source — editing happens only on Snapshot, tapping
+  // this card navigates there.
   // ════════════════════════════════════════════════════════
   health: HealthData = { weight: 0, bpSys: 0, bpDia: 0, kicks: 0, mood: 2 };
 
@@ -343,62 +375,21 @@ export class HomePage implements OnInit, OnDestroy {
       : '--/--';
   }
 
-  healthDraft = { weight: 0, bpSys: 120, bpDia: 80, kicks: 0 };
-  showHealthModal = false;
-  activeField     = '';
+  moodNames = ['Low', 'Okay', 'Good', 'Great', 'Amazing'];
 
-  get kickDots(): number[] {
-    return Array(Math.max(10, this.health.kicks)).fill(0);
-  }
+  /** Minimalist mood-face mouth curve per mood index (0-4) — replaces
+   *  colorful emoji with a single consistent line-art face icon whose
+   *  expression changes, used identically here and on Snapshot. */
+  moodMouthPaths: string[] = [
+    'M6 11.5 Q9 8.5 12 11.5',
+    'M6.5 11.3 Q9 10.3 11.5 11.3',
+    'M6.5 11 Q9 11.8 11.5 11',
+    'M6 11 Q9 13.2 12 11',
+    'M5.5 10.5 Q9 14.5 12.5 10.5',
+  ];
 
-  openHealthModal(): void {
-    this.healthDraft = {
-      weight: this.health.weight,
-      bpSys:  this.health.bpSys || 120,
-      bpDia:  this.health.bpDia || 80,
-      kicks:  this.health.kicks,
-    };
-    this.showHealthModal = true;
-  }
-
-  closeHealthModal(): void { this.showHealthModal = false; this.activeField = ''; }
-
-  async saveHealth(): Promise<void> {
-    if (!this.currentUid) { this.closeHealthModal(); return; }
-    try {
-      await this.healthService.saveHealth(this.currentUid, {
-        weight: this.healthDraft.weight,
-        bpSys:  this.healthDraft.bpSys,
-        bpDia:  this.healthDraft.bpDia,
-        kicks:  this.healthDraft.kicks,
-        mood:   this.health.mood,
-      });
-    } catch (err) {
-      console.error('Failed to save health data:', err);
-    }
-    this.closeHealthModal();
-  }
-
-  adjustKicks(delta: number): void {
-    this.healthDraft.kicks = Math.max(0, this.healthDraft.kicks + delta);
-  }
-
-  moodLabels = ['😢', '😕', '😊', '😄', '🤩'];
-
-  async setMood(idx: number): Promise<void> {
-    this.health.mood = idx;
-    if (!this.currentUid) return;
-    try {
-      await this.healthService.saveHealth(this.currentUid, {
-        weight: this.health.weight,
-        bpSys:  this.health.bpSys,
-        bpDia:  this.health.bpDia,
-        kicks:  this.health.kicks,
-        mood:   idx,
-      });
-    } catch (err) {
-      console.error('Failed to save mood:', err);
-    }
+  goToHealthTracker(): void {
+    this.router.navigate(['/snapshot'], { state: { tab: 'health' } });
   }
 
   // ════════════════════════════════════════════════════════
@@ -477,13 +468,6 @@ export class HomePage implements OnInit, OnDestroy {
     }
   }
 
-  /** Schedules a 24h-repeating reminder. On native builds (Capacitor +
-   *  @capacitor/local-notifications installed), this is a true
-   *  OS-scheduled local notification that fires even if the app is
-   *  fully closed. If that plugin isn't available (e.g. running in a
-   *  plain browser), it falls back to placing one reminder per day in
-   *  the app's own in-app notification list instead — never crashes
-   *  either way. */
   private async scheduleChecklistReminder(): Promise<void> {
     try {
       const { Capacitor } = await import('@capacitor/core');
@@ -512,7 +496,7 @@ export class HomePage implements OnInit, OnDestroy {
     if (!this.currentUid) return;
     const today   = this.getTodayDateString();
     const flagKey = `momscare_checklist_reminder_sent_${today}`;
-    if (localStorage.getItem(flagKey)) return; // avoid duplicate same-day reminder
+    if (localStorage.getItem(flagKey)) return;
 
     try {
       await this.notificationsService.createNotification(this.currentUid, {
@@ -548,7 +532,7 @@ export class HomePage implements OnInit, OnDestroy {
     this.midnightTimeout = setTimeout(() => {
       this.checklist.forEach(item => (item.done = false));
       this.saveChecklistState();
-      this.updateChecklistReminders(); // begins a fresh 24h reminder cycle
+      this.updateChecklistReminders();
       this.scheduleMidnightReset();
     }, msUntilMidnight);
   }

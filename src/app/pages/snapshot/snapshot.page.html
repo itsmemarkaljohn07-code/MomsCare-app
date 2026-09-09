@@ -13,9 +13,67 @@
         </svg>
       </button>
       <img [src]="viewingPhoto.imageUrl" class="viewer-img" alt="Snapshot photo"/>
-      <div class="viewer-info">
+            <div class="viewer-info">
         <p class="viewer-caption">{{ viewingPhoto.caption }}</p>
         <p class="viewer-meta">Week {{ viewingPhoto.week }} · {{ typeLabels[viewingPhoto.type] }}</p>
+
+        <div class="viewer-health" *ngIf="viewingPhoto.healthSnapshot">
+          <p class="viewer-health-title">Health at this moment</p>
+          <div class="viewer-health-grid">
+            <div class="viewer-health-stat">
+              <span class="vh-icon">
+                <svg width="16" height="16" viewBox="0 0 18 18" fill="none">
+                  <path d="M9 2.5v3M5.5 5.5h7M9 5.5L5.5 12a3.5 3.5 0 007 0L9 5.5Z"
+                        stroke="#b57fd4" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </span>
+              <div class="vh-text">
+                <span class="vh-label">Weight</span>
+                <span class="vh-val">{{ viewingPhoto.healthSnapshot.weight }}kg</span>
+              </div>
+            </div>
+            <div class="viewer-health-stat">
+              <span class="vh-icon">
+                <svg width="16" height="16" viewBox="0 0 18 18" fill="none">
+                  <path d="M1.5 9.5h3l1.5-4 2.5 8 2-6 1.2 2h5.3"
+                        stroke="#e07eb8" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </span>
+              <div class="vh-text">
+                <span class="vh-label">Blood Pressure</span>
+                <span class="vh-val">{{ viewingPhoto.healthSnapshot.bpSys }}/{{ viewingPhoto.healthSnapshot.bpDia }}</span>
+              </div>
+            </div>
+            <div class="viewer-health-stat">
+              <span class="vh-icon">
+                <svg width="16" height="16" viewBox="0 0 18 18" fill="none">
+                  <ellipse cx="9" cy="11" rx="3.2" ry="4.3" stroke="#6dbfbf" stroke-width="1.4"/>
+                  <circle cx="6.3" cy="4.3" r="1" stroke="#6dbfbf" stroke-width="1.3"/>
+                  <circle cx="10.9" cy="3.5" r="0.9" stroke="#6dbfbf" stroke-width="1.3"/>
+                </svg>
+              </span>
+              <div class="vh-text">
+                <span class="vh-label">Fetal Kicks</span>
+                <span class="vh-val">{{ viewingPhoto.healthSnapshot.kicks }}</span>
+              </div>
+            </div>
+            <div class="viewer-health-stat">
+              <span class="vh-icon">
+                <svg width="16" height="16" viewBox="0 0 18 18" fill="none">
+                  <circle cx="9" cy="9" r="7" stroke="#d9609a" stroke-width="1.4"/>
+                  <circle cx="6.5" cy="7.5" r="1" fill="#d9609a"/>
+                  <circle cx="11.5" cy="7.5" r="1" fill="#d9609a"/>
+                  <path [attr.d]="moodMouthPaths[viewingPhoto.healthSnapshot.mood]" stroke="#d9609a" stroke-width="1.3" stroke-linecap="round" fill="none"/>
+                </svg>
+              </span>
+              <div class="vh-text">
+                <span class="vh-label">Mood</span>
+                <span class="vh-val">{{ moodNames[viewingPhoto.healthSnapshot.mood] }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <button class="viewer-delete" (click)="deletePhoto(viewingPhoto.id)">Delete Photo</button>
       </div>
     </div>
@@ -101,18 +159,71 @@
 
       <!-- Photo timeline grouped by week -->
       <div class="timeline" [class.visible]="animReady" *ngIf="photos.length > 0">
-        <div class="timeline-group" *ngFor="let group of groupedPhotos">
-          <div class="timeline-week-label">
-            <span class="week-pill">Week {{ group.week }}</span>
+          <div class="timeline-group" *ngFor="let group of groupedPhotos">
+          <div class="timeline-date-label">
+            <span class="date-label-text">{{ group.label }}</span>
             <div class="week-line"></div>
           </div>
-          <div class="photo-grid">
-            <div class="photo-thumb" *ngFor="let photo of group.items" (click)="openPhoto(photo)">
-              <img [src]="photo.imageUrl" class="thumb-img" alt="Snapshot"/>
-              <div class="thumb-overlay">
-                <span class="thumb-type">{{ typeLabels[photo.type] }}</span>
+                    <div class="photo-grid">
+            <div class="flip-card" *ngFor="let photo of group.items">
+              <div class="flip-card-inner" [class.flipped]="isFlipped(photo.id)" (click)="toggleFlip(photo.id)">
+
+                <!-- FRONT: photo -->
+                <div class="flip-card-front">
+                  <img [src]="photo.imageUrl" class="thumb-img" alt="Snapshot"/>
+                  <div class="thumb-overlay">
+                    <span class="thumb-type">{{ typeLabels[photo.type] }}</span>
+                  </div>
+                  <button class="thumb-expand" (click)="$event.stopPropagation(); openPhoto(photo)" aria-label="View full photo">
+                    <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
+                      <path d="M6 2H2v4M10 2h4v4M6 14H2v-4M10 14h4v-4" stroke="white" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                  </button>
+                  <div class="thumb-caption" *ngIf="photo.caption">{{ photo.caption }}</div>
+                </div>
+
+                <!-- BACK: health snapshot at time of upload -->
+                <div class="flip-card-back">
+                  <ng-container *ngIf="photo.healthSnapshot; else noHealthData">
+                    <div class="back-stat">
+                        <svg width="14" height="14" viewBox="0 0 18 18" fill="none">
+                        <path d="M9 2.5v3M5.5 5.5h7M9 5.5L5.5 12a3.5 3.5 0 007 0L9 5.5Z"
+                              stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                      </svg>
+                      <span>{{ photo.healthSnapshot.weight }}kg</span>
+                    </div>
+                      <div class="back-stat">
+                      <svg width="14" height="14" viewBox="0 0 18 18" fill="none">
+                        <path d="M1.5 9.5h3l1.5-4 2.5 8 2-6 1.2 2h5.3"
+                              stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                      </svg>
+                      <span>{{ photo.healthSnapshot.bpSys }}/{{ photo.healthSnapshot.bpDia }}</span>
+                    </div>
+                      <div class="back-stat">
+                      <svg width="14" height="14" viewBox="0 0 18 18" fill="none">
+                        <ellipse cx="9" cy="11" rx="3.2" ry="4.3" stroke="currentColor" stroke-width="1.5"/>
+                        <circle cx="6.3" cy="4.3" r="1" stroke="currentColor" stroke-width="1.3"/>
+                        <circle cx="10.9" cy="3.5" r="0.9" stroke="currentColor" stroke-width="1.3"/>
+                      </svg>
+                      <span>{{ photo.healthSnapshot.kicks }} kicks</span>
+                    </div>
+                      <div class="back-stat">
+                      <svg width="14" height="14" viewBox="0 0 18 18" fill="none">
+                        <circle cx="9" cy="9" r="7" stroke="currentColor" stroke-width="1.5"/>
+                        <circle cx="6.5" cy="7.5" r="0.9" fill="currentColor"/>
+                        <circle cx="11.5" cy="7.5" r="0.9" fill="currentColor"/>
+                        <path [attr.d]="moodMouthPaths[photo.healthSnapshot.mood]" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" fill="none"/>
+                      </svg>
+                      <span>{{ moodNames[photo.healthSnapshot.mood] }}</span>
+                    </div>
+                    <span class="back-week">Week {{ photo.week }}</span>
+                  </ng-container>
+                  <ng-template #noHealthData>
+                    <p class="back-empty">No health data recorded for this photo</p>
+                  </ng-template>
+                </div>
+
               </div>
-              <div class="thumb-caption" *ngIf="photo.caption">{{ photo.caption }}</div>
             </div>
           </div>
         </div>

@@ -4,6 +4,7 @@ import { IonicRouteStrategy, provideIonicAngular } from '@ionic/angular/standalo
 import { provideFirebaseApp, initializeApp, getApp } from '@angular/fire/app';
 import { provideAuth, getAuth } from '@angular/fire/auth';
 import { provideFirestore, initializeFirestore } from '@angular/fire/firestore';
+import { provideStorage, getStorage } from '@angular/fire/storage';
 import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
 
 import { routes } from './app/app.routes';
@@ -26,10 +27,11 @@ bootstrapApplication(AppComponent, {
     // that entire class of interference. This is the officially
     // documented fix for Firestore requests that hang/never resolve
     // while everything else (Auth, REST calls) works fine.
-    provideFirestore(() =>
+        provideFirestore(() =>
       initializeFirestore(getApp(), {
         experimentalForceLongPolling: true,
       })
     ),
+    provideStorage(() => getStorage()),
   ],
 });

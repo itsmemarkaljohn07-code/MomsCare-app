@@ -155,20 +155,52 @@ ion-content[data-theme="dark"] {
   &.visible { opacity: 1; }
 }
 .timeline-group { margin-bottom: 20px; }
-.timeline-week-label { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
-.week-pill {
-  font-size: 0.68rem; font-weight: 800; color: var(--purple);
-  background: rgba(155,111,196,0.12); padding: 4px 12px; border-radius: 99px;
-  font-family: 'Nunito','Poppins',sans-serif;
+.timeline-date-label { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.date-label-text {
+  font-size: 0.85rem; font-weight: 800; color: var(--dark);
+  font-family: 'Nunito','Poppins',sans-serif; white-space: nowrap;
 }
 .week-line { flex: 1; height: 1px; background: var(--card-border); }
-.photo-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-.photo-thumb {
-  position: relative; aspect-ratio: 1; border-radius: 14px; overflow: hidden;
-  cursor: pointer; box-shadow: var(--shadow-sm);
-  transition: transform 0.18s;
-  &:active { transform: scale(0.95); }
+
+/* 2 cards per row, larger — was 3 columns */
+.photo-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+
+/* ── Flip card ──
+   Deeper perspective (1100px) gives a more realistic sense of depth
+   as the card turns, rather than a flatter, less convincing rotation.
+   -webkit- prefixes on perspective/transform-style are added
+   specifically for iOS Safari, which silently fails to render true 3D
+   flips without them — a common cause of flip cards looking "flat" or
+   glitchy on iPhone specifically. */
+.flip-card {
+  aspect-ratio: 1;
+  perspective: 1100px;
+  -webkit-perspective: 1100px;
 }
+.flip-card-inner {
+  position: relative; width: 100%; height: 100%;
+  cursor: pointer;
+  transform-style: preserve-3d;
+  -webkit-transform-style: preserve-3d;
+  will-change: transform;
+  transition: transform 0.6s cubic-bezier(0.45, 0.05, 0.15, 1);
+  &.flipped { transform: rotateY(180deg); }
+}
+
+.flip-card-inner:active:not(.flipped) { transform: scale(0.96); }
+.flip-card-inner.flipped:active { transform: rotateY(180deg) scale(0.96); }
+
+.flip-card-front, .flip-card-back {
+  position: absolute; inset: 0;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  border-radius: 14px; overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+
+/* NOTE: no separate position:relative override on .flip-card-front
+   here — that was the bug causing the flip to visibly shift/misalign.
+   Both faces now share the exact same position:absolute stacking. */
 .thumb-img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .thumb-overlay {
   position: absolute; top: 6px; left: 6px;
@@ -176,12 +208,52 @@ ion-content[data-theme="dark"] {
   border-radius: 8px; padding: 2px 7px;
 }
 .thumb-type { font-size: 0.55rem; font-weight: 800; color: white; font-family: 'Nunito','Poppins',sans-serif; }
+.thumb-expand {
+  position: absolute; top: 6px; right: 6px;
+  width: 22px; height: 22px; border-radius: 7px;
+  background: rgba(0,0,0,0.5); backdrop-filter: blur(4px);
+  border: none; display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+}
 .thumb-caption {
   position: absolute; bottom: 0; left: 0; right: 0;
   background: linear-gradient(to top, rgba(0,0,0,0.65), transparent);
   color: white; font-size: 0.6rem; font-weight: 600; padding: 14px 7px 6px;
   font-family: 'Nunito','Poppins',sans-serif;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+.flip-card-back {
+  transform: rotateY(180deg);
+  background: linear-gradient(135deg, var(--pink), var(--purple));
+  display: grid; grid-template-columns: 1fr 1fr;
+  align-content: center; gap: 8px;
+  padding: 12px;
+}
+.back-stat {
+  display: flex; align-items: center; gap: 5px;
+  color: white; overflow: hidden;
+  svg { flex-shrink: 0; opacity: 0.95; }
+  span {
+    font-size: 0.62rem; font-weight: 800;
+    font-family: 'Nunito','Poppins',sans-serif;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+}
+.back-week {
+  grid-column: 1 / -1;
+  text-align: center;
+  font-size: 0.58rem; font-weight: 700;
+  color: rgba(255,255,255,0.8);
+  font-family: 'Nunito','Poppins',sans-serif;
+  margin-top: 4px;
+}
+.back-empty {
+  grid-column: 1 / -1;
+  align-self: center; text-align: center;
+  font-size: 0.6rem; font-weight: 600; color: rgba(255,255,255,0.85);
+  font-family: 'Nunito','Poppins',sans-serif;
+  padding: 8px; line-height: 1.4;
 }
 
 /* Health tracker */
@@ -316,6 +388,41 @@ ion-content[data-theme="dark"] {
 .viewer-info { padding: 16px; }
 .viewer-caption { font-size: 0.9rem; font-weight: 700; color: white; font-family: 'Nunito','Poppins',sans-serif; margin: 0 0 4px; }
 .viewer-meta { font-size: 0.72rem; color: rgba(255,255,255,0.6); font-family: 'Nunito','Poppins',sans-serif; margin: 0 0 12px; }
+
+/* Health-at-time-of-upload block inside the enlarged photo viewer */
+.viewer-health {
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 14px;
+  padding: 12px;
+  margin-bottom: 14px;
+}
+.viewer-health-title {
+  font-size: 0.62rem; font-weight: 800; color: rgba(255,255,255,0.65);
+  text-transform: uppercase; letter-spacing: 0.5px;
+  font-family: 'Nunito','Poppins',sans-serif; margin: 0 0 10px;
+}
+.viewer-health-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+}
+.viewer-health-stat {
+  display: flex; align-items: center; gap: 8px;
+}
+.vh-icon {
+  width: 30px; height: 30px; flex-shrink: 0; border-radius: 50%;
+  background: rgba(255,255,255,0.92);
+  display: flex; align-items: center; justify-content: center;
+}
+.vh-text { display: flex; flex-direction: column; min-width: 0; }
+.vh-label {
+  font-size: 0.56rem; font-weight: 700; color: rgba(255,255,255,0.55);
+  font-family: 'Nunito','Poppins',sans-serif;
+}
+.vh-val {
+  font-size: 0.82rem; font-weight: 800; color: white;
+  font-family: 'Nunito','Poppins',sans-serif;
+}
+
 .viewer-delete {
   width: 100%; height: 40px; border-radius: 10px;
   background: rgba(224,85,128,0.15); color: #e05580; border: 1px solid rgba(224,85,128,0.3);

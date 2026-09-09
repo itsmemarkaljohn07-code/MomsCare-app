@@ -1,5 +1,5 @@
 // health.service.ts
-import { Injectable } from '@angular/core';
+import { Injectable, EnvironmentInjector, runInInjectionContext, inject } from '@angular/core';
 import {
   Firestore, doc, docData, setDoc,
   collection, addDoc, query, orderBy, limit, collectionData, Timestamp,
@@ -31,6 +31,8 @@ export interface HealthLogEntry extends HealthData {
  */
 @Injectable({ providedIn: 'root' })
 export class HealthService {
+  private envInjector = inject(EnvironmentInjector);
+
   constructor(private firestore: Firestore, private auth: AuthService) {}
 
   private currentDocRef(uid: string) {
@@ -46,7 +48,9 @@ export class HealthService {
     return this.auth.user$.pipe(
       switchMap(user => {
         if (!user) return of(null);
-        return docData(this.currentDocRef(user.uid)) as Observable<HealthData | null>;
+        return runInInjectionContext(this.envInjector, () =>
+          docData(this.currentDocRef(user.uid))
+        ) as Observable<HealthData | null>;
       })
     );
   }
@@ -56,8 +60,10 @@ export class HealthService {
     return this.auth.user$.pipe(
       switchMap(user => {
         if (!user) return of([]);
-        const q = query(this.historyCol(user.uid), orderBy('loggedAt', 'desc'), limit(max));
-        return collectionData(q, { idField: 'id' }) as Observable<HealthLogEntry[]>;
+        return runInInjectionContext(this.envInjector, () => {
+          const q = query(this.historyCol(user.uid), orderBy('loggedAt', 'desc'), limit(max));
+          return collectionData(q, { idField: 'id' });
+        }) as Observable<HealthLogEntry[]>;
       })
     );
   }
@@ -65,7 +71,11 @@ export class HealthService {
   /** Updates the shared "current" snapshot and appends a history entry. */
   async saveHealth(uid: string, data: HealthData): Promise<void> {
     const payload = { ...data, updatedAt: Timestamp.now() };
-    await setDoc(this.currentDocRef(uid), payload);
-    await addDoc(this.historyCol(uid), { ...payload, loggedAt: Timestamp.now() });
+    await runInInjectionContext(this.envInjector, () =>
+      setDoc(this.currentDocRef(uid), payload)
+    );
+    await runInInjectionContext(this.envInjector, () =>
+      addDoc(this.historyCol(uid), { ...payload, loggedAt: Timestamp.now() })
+    );
   }
 }

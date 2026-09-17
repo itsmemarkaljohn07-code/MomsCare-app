@@ -53,6 +53,8 @@
                   {{ appt.day }}, {{ appt.date }} · {{ appt.time }}
                 </span>
                 <span class="card-tag" [class]="'tag-' + appt.accentColor">In-Person</span>
+                <span class="card-tag tag-pending" *ngIf="appt.doctorApproval === 'pending'">Awaiting Approval</span>
+                <span class="card-tag tag-rejected" *ngIf="appt.doctorApproval === 'rejected'">Declined</span>
               </div>
             </div>
 
@@ -74,6 +76,13 @@
             <div class="summary-section" *ngIf="appt.location">
               <p class="summary-label">Location</p>
               <p class="summary-value">{{ appt.location }}</p>
+            </div>
+
+            <div class="summary-section" *ngIf="appt.doctorApproval === 'rejected'">
+              <p class="summary-label">Status</p>
+              <p class="summary-value" style="color:#d44b7a">
+                Declined by your doctor{{ appt.rejectionReason ? ': ' + appt.rejectionReason : '' }}
+              </p>
             </div>
 
             <div class="summary-section" *ngIf="appt.notes">

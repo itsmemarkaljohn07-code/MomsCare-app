@@ -137,6 +137,8 @@ ion-content[data-theme="dark"] {
 /* ── Card ── */
 .card {
   flex: 1;
+  display: flex;
+  flex-direction: column;
   background: var(--card-bg);
   border-radius: 32px 32px 0 0;
   padding: 32px 24px 40px;
@@ -168,7 +170,7 @@ ion-content[data-theme="dark"] {
 
 /* ── Fields ── */
 .field-group {
-  margin-bottom: 16px;
+  margin-bottom: 20px;
   position: relative;
 
   .field-label {
@@ -260,7 +262,7 @@ ion-content[data-theme="dark"] {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 22px;
+  margin-bottom: 28px;
 }
 
 .remember-label {
@@ -433,13 +435,18 @@ ion-content[data-theme="dark"] {
   &:active { transform: scale(0.97); }
 }
 
-/* ── Register ── */
+/* ── Register ──
+   margin-top: auto pulls this down to consume whatever space is left
+   in the card (now that the removed social-login section no longer
+   fills it), rather than that space sitting unused below it. */
 .register-row {
   text-align: center;
   font-size: 0.85rem;
   color: var(--text-muted);
   font-family: 'Nunito', 'Poppins', sans-serif;
   margin: 0;
+  margin-top: auto;
+  padding-top: 28px;
 }
 .register-link {
   color: var(--pink);

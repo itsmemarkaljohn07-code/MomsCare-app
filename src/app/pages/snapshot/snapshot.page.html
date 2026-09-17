@@ -74,6 +74,67 @@
           </div>
         </div>
 
+                 <div class="comment-thread">
+          <p class="comment-thread-title">Care Team Comments</p>
+
+          <div class="comment-empty" *ngIf="threadedComments.length === 0">
+            No comments yet from your care team.
+          </div>
+
+          <div class="comment-block" *ngFor="let thread of threadedComments">
+            <div class="comment-bubble comment-bubble--admin">
+              <div class="comment-avatar">
+                <svg width="14" height="14" viewBox="0 0 18 18" fill="none">
+                  <path d="M9 2L3 4.5v4c0 3.5 2.5 6.5 6 7.5 3.5-1 6-4 6-7.5v-4L9 2z" stroke="white" stroke-width="1.4" stroke-linejoin="round"/>
+                  <path d="M6.5 9l1.8 1.8L11.5 7" stroke="white" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </div>
+              <div class="comment-content">
+                <div class="comment-meta">
+                  <span class="comment-author">{{ thread.comment.authorName }}</span>
+                  <span class="comment-time" *ngIf="thread.comment.createdAt?.toDate">
+                    {{ thread.comment.createdAt.toDate() | date:'MMM d, h:mm a' }}
+                  </span>
+                </div>
+                <p class="comment-message">{{ thread.comment.message }}</p>
+                <button class="comment-reply-btn" (click)="toggleReply(thread.comment.id, thread.comment.authorName)">
+                  {{ replyingToId === thread.comment.id ? 'Cancel' : 'Reply' }}
+                </button>
+              </div>
+            </div>
+
+            <div class="comment-replies" *ngIf="thread.replies.length > 0">
+              <div class="comment-bubble comment-bubble--user" *ngFor="let reply of thread.replies">
+                <div class="comment-content">
+                  <div class="comment-meta">
+                    <span class="comment-author">You</span>
+                    <span class="comment-time" *ngIf="reply.createdAt?.toDate">
+                      {{ reply.createdAt.toDate() | date:'MMM d, h:mm a' }}
+                    </span>
+                  </div>
+                  <p class="comment-message">{{ reply.message }}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Single, persistent reply bar — sticks to the bottom of the
+             scrollable sheet, always reachable regardless of scroll
+             position or comment thread length. -->
+        <div class="reply-bar" *ngIf="replyingToId">
+          <div class="reply-bar-context">
+            Replying to <strong>{{ replyingToAuthorName }}</strong>
+            <button class="reply-cancel-btn" (click)="cancelReply()" aria-label="Cancel reply">✕</button>
+          </div>
+                    <div class="reply-input-row">
+            <input class="reply-input" type="text" [(ngModel)]="replyDraft" placeholder="Write a reply..." />
+            <button class="reply-send-btn" (click)="sendReply(replyingToId)" [disabled]="!replyDraft.trim()">
+              Send
+            </button>
+          </div>
+        </div>
+
         <button class="viewer-delete" (click)="deletePhoto(viewingPhoto.id)">Delete Photo</button>
       </div>
     </div>

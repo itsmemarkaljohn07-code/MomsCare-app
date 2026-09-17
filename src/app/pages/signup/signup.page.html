@@ -33,22 +33,40 @@
 
       <div class="card" [class.visible]="animReady" @slideStep>
 
-        <!-- Full Name -->
-        <div class="field-group" [class.focused]="focus.name" [class.error]="!!errors.name">
-          <label class="field-label">Full Name</label>
-          <div class="field-inner">
-            <span class="f-ico">
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                <circle cx="8" cy="5.5" r="3" stroke="#b57fd4" stroke-width="1.4"/>
-                <path d="M2 14c0-3.3 2.7-6 6-6s6 2.7 6 6" stroke="#b57fd4" stroke-width="1.4" stroke-linecap="round"/>
-              </svg>
-            </span>
-            <input class="f-input" type="text" autocomplete="name"
-                   [(ngModel)]="form.fullName"
-                   (focus)="focus.name=true" (blur)="focus.name=false; validateName()"
-                   placeholder="Maria Santos"/>
+                <!-- Full Name + Username -->
+        <div class="field-row">
+          <div class="field-group" [class.focused]="focus.name" [class.error]="!!errors.name">
+            <label class="field-label">Full Name</label>
+            <div class="field-inner">
+              <span class="f-ico">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                  <circle cx="8" cy="5.5" r="3" stroke="#b57fd4" stroke-width="1.4"/>
+                  <path d="M2 14c0-3.3 2.7-6 6-6s6 2.7 6 6" stroke="#b57fd4" stroke-width="1.4" stroke-linecap="round"/>
+                </svg>
+              </span>
+              <input class="f-input" type="text" autocomplete="name"
+                     [(ngModel)]="form.fullName"
+                     (focus)="focus.name=true" (blur)="focus.name=false; validateName()"
+                     placeholder="Maria Santos"/>
+            </div>
+            <p class="field-error" *ngIf="errors.name">{{ errors.name }}</p>
           </div>
-          <p class="field-error" *ngIf="errors.name">{{ errors.name }}</p>
+
+          <div class="field-group" [class.focused]="focus.username" [class.error]="!!errors.username">
+            <label class="field-label">Username</label>
+            <div class="field-inner">
+              <span class="f-ico">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                  <path d="M8 2L2 5v3c0 3.5 2.5 6.5 6 7.5 3.5-1 6-4 6-7.5V5L8 2z" stroke="#b57fd4" stroke-width="1.3" stroke-linejoin="round"/>
+                </svg>
+              </span>
+              <input class="f-input" type="text" autocomplete="username"
+                     [(ngModel)]="form.username"
+                     (focus)="focus.username=true" (blur)="focus.username=false; validateUsername()"
+                     placeholder="mariasantos"/>
+            </div>
+            <p class="field-error" *ngIf="errors.username">{{ errors.username }}</p>
+          </div>
         </div>
 
         <!-- Email -->
@@ -187,18 +205,7 @@
           <span class="btn-spinner" *ngIf="isLoading && !checkingEmail"><span></span><span></span><span></span></span>
         </button>
 
-        <div class="divider"><span>or sign up with</span></div>
-        <button class="btn-google" (click)="onGoogle()">
-          <svg width="18" height="18" viewBox="0 0 16 16" fill="none">
-            <path d="M15.5 8.2c0-.6-.05-1.2-.16-1.7H8v3.2h4.2c-.18 1-.73 1.85-1.56 2.42v2h2.52C14.63 12.56 15.5 10.56 15.5 8.2Z" fill="#4285F4"/>
-            <path d="M8 16c2.1 0 3.87-.7 5.16-1.88l-2.52-2c-.7.47-1.6.75-2.64.75-2.03 0-3.75-1.37-4.36-3.21H1.04v2.06C2.32 14.17 4.98 16 8 16Z" fill="#34A853"/>
-            <path d="M3.64 9.66A4.85 4.85 0 013.38 8c0-.58.1-1.14.26-1.66V4.28H1.04A8 8 0 000 8c0 1.3.31 2.52.84 3.6l2.8-1.94Z" fill="#FBBC05"/>
-            <path d="M8 3.18c1.14 0 2.17.39 2.98 1.16l2.23-2.23C11.86.8 10.1 0 8 0 4.98 0 2.32 1.83 1.04 4.28l2.8 1.94C4.26 4.55 5.97 3.18 8 3.18Z" fill="#EA4335"/>
-          </svg>
-          Continue with Google
-        </button>
-
-        <p class="login-row">Already have an account? <a class="login-link" (click)="onLogin()">Sign in</a></p>
+          <p class="login-row">Already have an account? <a class="login-link" (click)="onLogin()">Sign in</a></p>
       </div>
     </ng-container>
 

@@ -23,6 +23,8 @@ export interface Appointment {
   advice?: string[];
   files?: string[];
   id?: string;
+  doctorApproval?: 'pending' | 'approved' | 'rejected';
+  rejectionReason?: string;
 }
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -67,7 +69,7 @@ export class AppointmentsPage implements OnInit, OnDestroy {
     return this.upcomingAppointments.length;
   }
 
-  private toDisplay(rec: AppointmentRecord): Appointment {
+    private toDisplay(rec: AppointmentRecord): Appointment {
     const d = new Date(rec.date + 'T00:00:00');
     return {
       id: rec.id,
@@ -83,6 +85,8 @@ export class AppointmentsPage implements OnInit, OnDestroy {
       accentColor: rec.accentColor,
       advice: rec.advice || [],
       files: rec.files || [],
+      doctorApproval: (rec as any).doctorApproval,
+      rejectionReason: (rec as any).rejectionReason,
     };
   }
 

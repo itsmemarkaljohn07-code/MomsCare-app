@@ -459,7 +459,9 @@ ion-content[data-theme="dark"] {
   &.tag-purple { background: rgba(181, 127, 212, 0.12); color: var(--purple); }
   &.tag-blue   { background: rgba(106, 171, 247, 0.12); color: #4a8cd4; }
   &.tag-orange { background: rgba(244, 149, 106, 0.12); color: #d4714a; }
-  &.tag-past   { background: rgba(158, 122, 181, 0.1); color: var(--muted); }
+  &.tag-past     { background: rgba(158, 122, 181, 0.1); color: var(--muted); }
+  &.tag-pending  { background: rgba(244, 149, 106, 0.14); color: #c9702f; }
+  &.tag-rejected { background: rgba(224, 85, 128, 0.14); color: #e05580; }
 }
 
 /* ── Chevron ── */

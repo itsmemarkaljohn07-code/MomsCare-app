@@ -8,6 +8,7 @@ import { ThemeService } from '../../services/theme';
 import { AuthService } from '../../services/auth.service';
 import { HealthService, HealthData } from '../../services/health.service';
 import { PhotoService, SnapshotPhotoRecord, HealthSnapshotAtUpload } from '../../services/photo.service';
+import { CommentService, SnapshotComment } from '../../services/comment.service';
 import { Subscription } from 'rxjs';
 
 export type PhotoType = 'bump' | 'ultrasound' | 'milestone';
@@ -47,14 +48,14 @@ export class SnapshotPage implements OnInit, OnDestroy {
   private healthSub!: Subscription;
   private historySub!: Subscription;
   private photosSub?: Subscription;
+  private commentsSub?: Subscription;
   private currentUid: string | null = null;
+  currentUserName = 'You';
 
   pregnancyWeek = 20;
   today = new Date();
   Math = Math;
 
-  /** Reads router state so tapping the Homepage's compact Health
-   *  Tracker card can land directly on the 'health' tab here. */
   activeTab: 'gallery' | 'health' = 'gallery';
   activeNavTab = 'snapshot';
 
@@ -63,10 +64,7 @@ export class SnapshotPage implements OnInit, OnDestroy {
   }
 
   // ════════════════════════════════════════════════════════
-  // PHOTO GALLERY — real uploads via PhotoService (Cloudinary for the
-  // image, Firestore for metadata). Each photo also carries a frozen
-  // snapshot of the user's health data at the moment it was uploaded,
-  // powering the flip-card feature below.
+  // PHOTO GALLERY
   // ════════════════════════════════════════════════════════
   photoTypes: PhotoType[] = ['bump', 'ultrasound', 'milestone'];
   typeLabels: Record<PhotoType, string> = {
@@ -84,9 +82,6 @@ export class SnapshotPage implements OnInit, OnDestroy {
 
   viewingPhoto: SnapshotPhoto | null = null;
 
-  /** Tracks which cards are currently flipped, by photo id — using a
-   *  Set means each card's flip state is fully independent of the
-   *  others. */
   flippedIds = new Set<string>();
 
   toggleFlip(id: string): void {
@@ -101,10 +96,6 @@ export class SnapshotPage implements OnInit, OnDestroy {
     return this.flippedIds.has(id);
   }
 
-    /** Groups photos by the actual calendar day they were uploaded (in
-   *  the user's own local time, not UTC), most-recent day first —
-   *  matching the behaviour of a phone's native Gallery app rather
-   *  than grouping by pregnancy week. */
   get groupedPhotos(): { dateKey: string; label: string; items: SnapshotPhoto[] }[] {
     const groups = new Map<string, SnapshotPhoto[]>();
     for (const p of this.photos) {
@@ -113,7 +104,7 @@ export class SnapshotPage implements OnInit, OnDestroy {
       groups.get(key)!.push(p);
     }
     return Array.from(groups.entries())
-      .sort((a, b) => b[0].localeCompare(a[0])) // YYYY-MM-DD strings sort chronologically
+      .sort((a, b) => b[0].localeCompare(a[0]))
       .map(([dateKey, items]) => ({
         dateKey,
         label: this.formatGroupLabel(dateKey),
@@ -134,7 +125,6 @@ export class SnapshotPage implements OnInit, OnDestroy {
     const formatted = groupDate.toLocaleDateString('en-US', {
       month: 'long', day: 'numeric', year: 'numeric',
     });
-
     const todayKey = this.toLocalDateKey(new Date());
     return dateKey === todayKey ? `Today — ${formatted}` : formatted;
   }
@@ -159,7 +149,6 @@ export class SnapshotPage implements OnInit, OnDestroy {
     try {
       dataUrl = await getDataUrl();
     } catch {
-      // User cancelled the camera/picker — not a real error.
       return;
     }
     if (!dataUrl) return;
@@ -170,9 +159,6 @@ export class SnapshotPage implements OnInit, OnDestroy {
         type: this.selectedType,
         week: this.pregnancyWeek,
         caption: this.captionDraft,
-        // Freezes the user's REAL, live health data at this exact
-        // moment onto the photo — never changes afterward, even if
-        // they log new health data later.
         healthSnapshot: {
           weight: this.health.weight,
           bpSys:  this.health.bpSys,
@@ -198,12 +184,73 @@ export class SnapshotPage implements OnInit, OnDestroy {
     await this.captureAndUpload(() => this.photoService.pickFromGallery());
   }
 
-  openPhoto(photo: SnapshotPhoto): void {
+  // ── Photo viewer + comment thread ──────────────────────────────────
+  photoComments: SnapshotComment[] = [];
+  replyingToId: string | null = null;
+  replyingToAuthorName = '';
+  replyDraft = '';
+
+  get threadedComments(): { comment: SnapshotComment; replies: SnapshotComment[] }[] {
+    const topLevel = this.photoComments.filter(c => !c.parentCommentId);
+    return topLevel.map(comment => ({
+      comment,
+      replies: this.photoComments.filter(r => r.parentCommentId === comment.id),
+    }));
+  }
+
+    openPhoto(photo: SnapshotPhoto): void {
     this.viewingPhoto = photo;
+    this.cancelReply();
+
+    this.commentsSub?.unsubscribe();
+    if (this.currentUid) {
+      this.commentsSub = this.commentService.getComments$(this.currentUid, photo.id)
+        .subscribe(comments => (this.photoComments = comments));
+    }
   }
 
   closePhoto(): void {
     this.viewingPhoto = null;
+    this.commentsSub?.unsubscribe();
+    this.photoComments = [];
+    this.cancelReply();
+  }
+
+  /** Tapping "Reply" only sets WHICH comment is being replied to — the
+   *  actual input is a single, persistent bar pinned to the bottom of
+   *  the sheet (see .reply-bar in the template), never an element that
+   *  appears/disappears inline within the scrolling comment list. */
+  toggleReply(commentId: string | undefined, authorName: string): void {
+    if (!commentId) return;
+    if (this.replyingToId === commentId) {
+      this.cancelReply();
+      return;
+    }
+    this.replyingToId = commentId;
+    this.replyingToAuthorName = authorName;
+    this.replyDraft = '';
+  }
+
+  cancelReply(): void {
+    this.replyingToId = null;
+    this.replyingToAuthorName = '';
+    this.replyDraft = '';
+  }
+
+  async sendReply(parentCommentId: string | null): Promise<void> {
+    if (!parentCommentId || !this.currentUid || !this.viewingPhoto || !this.replyDraft.trim()) return;
+    try {
+      await this.commentService.postReply(
+        this.currentUid,
+        this.viewingPhoto.id,
+        this.currentUserName,
+        this.replyDraft.trim(),
+        parentCommentId
+      );
+      this.cancelReply();
+    } catch (err) {
+      console.error('Failed to post reply:', err);
+    }
   }
 
   async deletePhoto(id: string): Promise<void> {
@@ -217,8 +264,7 @@ export class SnapshotPage implements OnInit, OnDestroy {
   }
 
   // ════════════════════════════════════════════════════════
-  // HEALTH TRACKER — backed by the shared HealthService, always in
-  // sync with the Homepage's compact Health Tracker summary.
+  // HEALTH TRACKER
   // ════════════════════════════════════════════════════════
   health: HealthLog = {
     date: new Date(),
@@ -238,10 +284,6 @@ export class SnapshotPage implements OnInit, OnDestroy {
   moodLabels = ['😢', '😕', '😊', '😄', '🤩'];
   moodNames  = ['Low', 'Okay', 'Good', 'Great', 'Amazing'];
 
-  /** Minimalist mood-face mouth curve per mood index (0-4) — replaces
-   *  the colorful emoji face with one consistent line-art icon, used
-   *  identically here, on the Homepage's summary card, and on the
-   *  back of each photo's flip card. */
   moodMouthPaths: string[] = [
     'M6 11.5 Q9 8.5 12 11.5',
     'M6.5 11.3 Q9 10.3 11.5 11.3',
@@ -309,6 +351,7 @@ export class SnapshotPage implements OnInit, OnDestroy {
     private authService: AuthService,
     private healthService: HealthService,
     private photoService: PhotoService,
+    private commentService: CommentService,
   ) {}
 
   ngOnInit(): void {
@@ -326,6 +369,10 @@ export class SnapshotPage implements OnInit, OnDestroy {
       if (this.currentUid) {
         this.photosSub = this.photoService.getPhotos$(this.currentUid).subscribe(records => {
           this.photos = records.map(r => this.toSnapshotPhoto(r));
+        });
+
+        this.authService.getProfile().then(profile => {
+          if (profile?.fullName) this.currentUserName = profile.fullName;
         });
       } else {
         this.photos = [];
@@ -365,5 +412,6 @@ export class SnapshotPage implements OnInit, OnDestroy {
     this.healthSub?.unsubscribe();
     this.historySub?.unsubscribe();
     this.photosSub?.unsubscribe();
+    this.commentsSub?.unsubscribe();
   }
 }

@@ -31,6 +31,7 @@ import { Observable } from 'rxjs';
 export interface UserProfile {
   uid: string;
   fullName: string;
+  username: string;
   email: string;
   mobile?: string;
   dueDate?: string;
@@ -125,9 +126,10 @@ export class AuthService {
       throw new Error(this.mapAuthError(err));
     }
 
-    const userData: UserProfile = {
+        const userData: UserProfile = {
       uid:           cred.user.uid,
       fullName:      profile.fullName      ?? '',
+      username:      profile.username      ?? '',
       email:         email,
       mobile:        profile.mobile        ?? '',
       dueDate:       profile.dueDate       ?? '',
@@ -146,6 +148,9 @@ export class AuthService {
 
     try {
       await this.saveProfileWithRetry(cred.user.uid, userData);
+      if (userData.username) {
+        await this.reserveUsername(userData.username, email, cred.user.uid);
+      }
       this.clearPendingProfileLocally();
     } catch (err) {
       console.error('[AuthService] Profile save failed after retries:', err);
@@ -165,9 +170,10 @@ export class AuthService {
     if (!this.currentUid) {
       throw new Error('No signed-in account found. Please sign in and try again.');
     }
-    const userData: UserProfile = {
+        const userData: UserProfile = {
       uid:           this.currentUid,
       fullName:      profile.fullName      ?? '',
+      username:      profile.username      ?? '',
       email:         this.auth.currentUser?.email ?? '',
       mobile:        profile.mobile        ?? '',
       dueDate:       profile.dueDate       ?? '',
@@ -352,7 +358,57 @@ export class AuthService {
     try { localStorage.removeItem(REMEMBERED_EMAIL_KEY); } catch { /* ignore */ }
   }
 
-  getRememberedEmail(): string | null {
+    getRememberedEmail(): string | null {
     try { return localStorage.getItem(REMEMBERED_EMAIL_KEY); } catch { return null; }
+  }
+
+  // ── Username support ──────────────────────────────────────────────
+  // Firebase Auth's email/password provider has no native "username"
+  // concept — it always requires a real email internally. This app
+  // still collects a real email at signup (for account recovery), but
+  // the user only ever types a USERNAME to sign in. A `usernames/
+  // {username}` doc maps each username to its account email, checked
+  // for uniqueness at signup and looked up silently at login.
+
+  async isUsernameTaken(username: string): Promise<boolean> {
+    const snap = await runInInjectionContext(this.envInjector, () =>
+      getDoc(doc(this.firestore, 'usernames', username.toLowerCase()))
+    );
+    return snap.exists();
+  }
+
+  async reserveUsername(username: string, email: string, uid: string): Promise<void> {
+    await runInInjectionContext(this.envInjector, () =>
+      setDoc(doc(this.firestore, 'usernames', username.toLowerCase()), { email, uid })
+    );
+  }
+
+  /** Resolves a username to its account email, or null if not found. */
+  private async getEmailForUsername(username: string): Promise<string | null> {
+    const snap = await runInInjectionContext(this.envInjector, () =>
+      getDoc(doc(this.firestore, 'usernames', username.toLowerCase()))
+    );
+    return snap.exists() ? (snap.data() as any).email ?? null : null;
+  }
+
+  async loginWithUsername(username: string, password: string, rememberMe: boolean = false): Promise<void> {
+    const email = await this.getEmailForUsername(username.trim());
+    if (!email) {
+      const err: any = new Error('No account found with that username.');
+      err.code = 'auth/user-not-found';
+      throw err;
+    }
+    return this.login(email, password, rememberMe);
+  }
+
+  // ── Remembered username (replaces remembered email for login) ──────
+  rememberUsername(username: string): void {
+    try { localStorage.setItem('momscare_remembered_username', username); } catch { /* ignore */ }
+  }
+  forgetRememberedUsername(): void {
+    try { localStorage.removeItem('momscare_remembered_username'); } catch { /* ignore */ }
+  }
+  getRememberedUsername(): string | null {
+    try { return localStorage.getItem('momscare_remembered_username'); } catch { return null; }
   }
 }

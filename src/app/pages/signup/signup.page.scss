@@ -143,6 +143,24 @@ ion-content[data-theme="dark"] {
   transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+.field-row {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 16px;
+
+  .field-group {
+    flex: 1;
+    min-width: 0; // allows the field to actually shrink to fit the
+                  // row instead of overflowing/overlapping — flex
+                  // children default to min-width:auto otherwise
+    margin-bottom: 0;
+  }
+}
+
+@media (max-width: 360px) {
+  .field-row { flex-direction: column; gap: 0; }
+}
+
 /* ── White card (gradient steps) ── */
 .card {
   flex: 1;

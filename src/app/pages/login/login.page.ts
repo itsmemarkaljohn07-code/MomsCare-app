@@ -20,21 +20,21 @@ export class LoginPage implements OnInit, OnDestroy {
   darkMode  = false;
   private themeSub!: Subscription;
 
-  loginForm    = { email: '', password: '' };
+  loginForm    = { username: '', password: '' };
   emailFocused = false;
   passFocused  = false;
   showPass     = false;
   isLoading    = false;
   rememberMe   = false;
 
-  errors = {
-    email:    '',
+    errors = {
+    username: '',
     password: '',
     general:  '',
   };
 
   touched = {
-    email:    false,
+    username: false,
     password: false,
   };
 
@@ -50,9 +50,9 @@ export class LoginPage implements OnInit, OnDestroy {
     // If a previous login had "Remember me" checked, prefill the email
     // and restore the checkbox state (only the email is ever stored —
     // the password itself is never persisted anywhere by this app).
-    const remembered = this.authService.getRememberedEmail();
+    const remembered = this.authService.getRememberedUsername();
     if (remembered) {
-      this.loginForm.email = remembered;
+      this.loginForm.username = remembered;
       this.rememberMe = true;
     }
 
@@ -66,15 +66,13 @@ export class LoginPage implements OnInit, OnDestroy {
   }
 
   // ── Validation ─────────────────────────────────
-  validateEmail(): void {
-    this.touched.email = true;
-    const email = this.loginForm.email.trim();
-    if (!email) {
-      this.errors.email = 'Email is required.';
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) {
-      this.errors.email = 'Please enter a valid email address.';
+  validateUsername(): void {
+    this.touched.username = true;
+    const username = this.loginForm.username.trim();
+    if (!username) {
+      this.errors.username = 'Username is required.';
     } else {
-      this.errors.email = '';
+      this.errors.username = '';
     }
   }
 
@@ -90,11 +88,11 @@ export class LoginPage implements OnInit, OnDestroy {
   }
 
   private isFormValid(): boolean {
-    this.touched.email    = true;
+    this.touched.username = true;
     this.touched.password = true;
-    this.validateEmail();
+    this.validateUsername();
     this.validatePassword();
-    return !this.errors.email && !this.errors.password;
+    return !this.errors.username && !this.errors.password;
   }
 
   // ── Sign In with Firebase ──────────────────────
@@ -104,17 +102,17 @@ export class LoginPage implements OnInit, OnDestroy {
     this.isLoading    = true;
     this.errors.general = '';
 
-    try {
-      await this.authService.login(
-        this.loginForm.email.trim(),
+      try {
+      await this.authService.loginWithUsername(
+        this.loginForm.username.trim(),
         this.loginForm.password,
         this.rememberMe
       );
 
       if (this.rememberMe) {
-        this.authService.rememberEmail(this.loginForm.email.trim());
+        this.authService.rememberUsername(this.loginForm.username.trim());
       } else {
-        this.authService.forgetRememberedEmail();
+        this.authService.forgetRememberedUsername();
       }
 
       // Login successful — navigate to home
@@ -143,14 +141,9 @@ export class LoginPage implements OnInit, OnDestroy {
 
   onBack(): void { this.router.navigate(['/welcome']); }
 
-  onForgot(): void {
-    this.router.navigate(['/forgot-password'], {
-      state: { email: this.loginForm.email.trim() || undefined }
-    });
+      onForgot(): void {
+    this.router.navigate(['/forgot-password']);
   }
 
   onRegister(): void { this.router.navigate(['/signup']); }
-  onFacebook(): void { console.log('Facebook sign-in'); }
-  onGoogle(): void   { console.log('Google sign-in'); }
-  onApple(): void    { console.log('Apple sign-in'); }
 }

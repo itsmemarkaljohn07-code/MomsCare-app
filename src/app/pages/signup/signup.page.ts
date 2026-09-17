@@ -78,6 +78,7 @@ export class SignupPage implements OnInit, OnDestroy, AfterViewInit {
   /* ── Form ── */
   form = {
     fullName:        '',
+    username:        '',
     email:           '',
     mobile:          '',
     password:        '',
@@ -95,11 +96,11 @@ export class SignupPage implements OnInit, OnDestroy, AfterViewInit {
   calcMethod: 'lmp' | 'weeks' | null = null;
 
   focus = {
-    name: false, email: false, mobile: false,
+    name: false, username: false, email: false, mobile: false,
     password: false, confirm: false, dueDate: false,
   };
   errors = {
-    name: '', email: '', mobile: '', password: '', confirm: '', terms: '',
+    name: '', username: '', email: '', mobile: '', password: '', confirm: '', terms: '',
   };
 
   show = { password: false, confirm: false };
@@ -347,9 +348,10 @@ export class SignupPage implements OnInit, OnDestroy, AfterViewInit {
   /** Assembles the pregnancy/profile payload from the current form state.
    *  Shared by both onFinish() and onRetryProfileSave() so the two never
    *  drift out of sync. */
-  private buildProfilePayload() {
+    private buildProfilePayload() {
     return {
       fullName:      this.form.fullName.trim(),
+      username:      this.form.username.trim(),
       mobile:        this.form.mobile.trim(),
       dueDate:       this.form.dueDate       || '',
       weeksPregnant: this.form.weeksPregnant !== null ? this.form.weeksPregnant : 0,
@@ -432,9 +434,23 @@ export class SignupPage implements OnInit, OnDestroy, AfterViewInit {
   // ───────────────────────────────────────────────
   // STEP 1 — VALIDATION
   // ───────────────────────────────────────────────
-  validateName(): void {
+    validateName(): void {
     this.errors.name = this.form.fullName.trim().length < 2
       ? 'Please enter your full name' : '';
+  }
+
+  validateUsername(): void {
+    const username = this.form.username.trim();
+    this.form.username = username;
+    if (!username) {
+      this.errors.username = 'Username is required.';
+    } else if (username.length < 3) {
+      this.errors.username = 'Username must be at least 3 characters.';
+    } else if (!/^[a-zA-Z0-9_]+$/.test(username)) {
+      this.errors.username = 'Letters, numbers, and underscores only.';
+    } else {
+      this.errors.username = '';
+    }
   }
 
   validateEmail(): void {
@@ -492,8 +508,8 @@ export class SignupPage implements OnInit, OnDestroy, AfterViewInit {
     this.passwordStrength = score;
   }
 
-  private isStep1Valid(): boolean {
-    this.validateName(); this.validateEmail();
+    private isStep1Valid(): boolean {
+    this.validateName(); this.validateUsername(); this.validateEmail();
     this.validateMobile(); this.validatePassword(); this.validateConfirm();
     this.errors.terms = !this.form.agreed ? 'Please agree to the Terms & Conditions' : '';
     return !Object.values(this.errors).some(e => e);
@@ -539,25 +555,28 @@ export class SignupPage implements OnInit, OnDestroy, AfterViewInit {
 
     this.otp = ['', '', '', '', '', ''];
 
-    try {
+        try {
       const checksPromise = this.withTimeout(
-        runInInjectionContext(this.envInjector, () =>
-          Promise.all([
-            fetchSignInMethodsForEmail(this.auth, this.form.email),
-            getDocs(query(
-              collection(this.firestore, 'users'),
-              where('fullName', '==', this.form.fullName.trim()),
-              limit(1)
-            ))
-          ])
-        ),
+        Promise.all([
+          runInInjectionContext(this.envInjector, () =>
+            Promise.all([
+              fetchSignInMethodsForEmail(this.auth, this.form.email),
+              getDocs(query(
+                collection(this.firestore, 'users'),
+                where('fullName', '==', this.form.fullName.trim()),
+                limit(1)
+              ))
+            ])
+          ),
+          this.authService.isUsernameTaken(this.form.username),
+        ]),
         PRECHECK_TIMEOUT_MS,
         'Checking availability is taking too long.'
       );
 
       const otpPromise = this.sendOtpEmail();
 
-      const [methods, nameSnap] = await checksPromise;
+      const [[methods, nameSnap], usernameTaken] = await checksPromise;
 
       if (methods && methods.length > 0) {
         this.errors.email = 'This email is already registered. Please sign in instead.';
@@ -566,6 +585,11 @@ export class SignupPage implements OnInit, OnDestroy, AfterViewInit {
 
       if (!nameSnap.empty) {
         this.errors.name = 'This name is already taken. Please use a different name.';
+        return;
+      }
+
+      if (usernameTaken) {
+        this.errors.username = 'This username is already taken. Please choose another.';
         return;
       }
 
@@ -720,8 +744,7 @@ export class SignupPage implements OnInit, OnDestroy, AfterViewInit {
   // ───────────────────────────────────────────────
   // MISC
   // ───────────────────────────────────────────────
-  onGoogle(): void { console.log('Google sign-up'); }
-  onTerms(): void {
+    onTerms(): void {
     this.saveDraft();
     this.router.navigate(['/terms'], { state: { fromSignup: true } });
   }

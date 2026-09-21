@@ -52,7 +52,27 @@ export class SnapshotPage implements OnInit, OnDestroy {
   private currentUid: string | null = null;
   currentUserName = 'You';
 
-  pregnancyWeek = 20;
+  // The patient's due date, fetched once when their profile loads
+  // (see ngOnInit). pregnancyWeek below is computed FROM this on every
+  // read, rather than being a value that has to be manually kept in
+  // sync — that's what let it silently go stale/wrong before.
+  private currentDueDate: string | null = null;
+
+  /** Current pregnancy week, computed live from the patient's due
+   *  date. Same 280-day/40-week formula as computeWeek() in the admin
+   *  dashboard's patient-view-live.tsx, so both apps always agree.
+   *  Returns 0 if no due date is on file yet. */
+  get pregnancyWeek(): number {
+    if (!this.currentDueDate) return 0;
+    const TOTAL_DAYS = 280;
+    const msPerDay = 24 * 60 * 60 * 1000;
+    const dueTime = new Date(this.currentDueDate).getTime();
+    if (isNaN(dueTime)) return 0;
+    const daysUntilDue = Math.round((dueTime - Date.now()) / msPerDay);
+    const daysElapsed = Math.max(0, Math.min(TOTAL_DAYS, TOTAL_DAYS - daysUntilDue));
+    return Math.min(40, Math.floor(daysElapsed / 7));
+  }
+
   today = new Date();
   Math = Math;
 
@@ -373,9 +393,11 @@ export class SnapshotPage implements OnInit, OnDestroy {
 
         this.authService.getProfile().then(profile => {
           if (profile?.fullName) this.currentUserName = profile.fullName;
+          this.currentDueDate = profile?.dueDate ?? null;
         });
       } else {
         this.photos = [];
+        this.currentDueDate = null;
       }
     });
 

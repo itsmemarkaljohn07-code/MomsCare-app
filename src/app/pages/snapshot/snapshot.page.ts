@@ -9,6 +9,7 @@ import { AuthService } from '../../services/auth.service';
 import { HealthService, HealthData } from '../../services/health.service';
 import { PhotoService, SnapshotPhotoRecord, HealthSnapshotAtUpload } from '../../services/photo.service';
 import { CommentService, SnapshotComment } from '../../services/comment.service';
+import { DoctorProfileService, DoctorProfile } from '../../services/doctor-profile.service';
 import { Subscription } from 'rxjs';
 
 export type PhotoType = 'bump' | 'ultrasound' | 'milestone';
@@ -218,14 +219,73 @@ export class SnapshotPage implements OnInit, OnDestroy {
     }));
   }
 
-    openPhoto(photo: SnapshotPhoto): void {
+  // ── Doctor profile lookup for comment display ────────────────────
+  // Keyed by authorUid when available, else by authorName -- matches
+  // the same key DoctorProfileService itself caches under. undefined
+  // = not yet resolved, null = resolved but no profile found.
+  doctorProfiles: Record<string, DoctorProfile | null | undefined> = {};
+
+  private doctorProfileKey(comment: SnapshotComment): string {
+    return comment.authorUid || comment.authorName;
+  }
+
+  doctorAvatarUrl(comment: SnapshotComment): string | undefined {
+    return this.doctorProfiles[this.doctorProfileKey(comment)]?.photoUrl;
+  }
+
+  doctorSpecialty(comment: SnapshotComment): string | undefined {
+    return this.doctorProfiles[this.doctorProfileKey(comment)]?.specialty;
+  }
+
+  /** For a fallback avatar when there's no photo -- initials, and a
+   *  color deterministically chosen from the name, reusing the exact
+   *  same palette avatar.page.ts already uses for the patient's own
+   *  avatar picker, rather than introducing a second color set. */
+  private readonly avatarColors = [
+    '#e07eb8', '#b57fd4', '#7acfcf', '#f0a050', '#5b8fd4',
+    '#d44b7a', '#5bba8a', '#9b6fc4', '#e05580', '#6dbfbf',
+  ];
+
+  getInitials(name: string): string {
+    const parts = name.trim().split(/\s+/).filter(Boolean);
+    if (parts.length === 0) return '?';
+    if (parts.length === 1) return parts[0][0].toUpperCase();
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  }
+
+  getAvatarColor(name: string): string {
+    let hash = 0;
+    for (let i = 0; i < name.length; i++) hash = (hash * 31 + name.charCodeAt(i)) >>> 0;
+    return this.avatarColors[hash % this.avatarColors.length];
+  }
+
+  /** Resolves and caches a profile for every doctor-authored comment
+   *  in the current thread that hasn't been looked up yet. Marks each
+   *  key with `null` immediately so a comment list re-emitting while a
+   *  lookup is still in flight doesn't trigger a duplicate fetch. */
+  private resolveDoctorProfiles(comments: SnapshotComment[]): void {
+    for (const c of comments) {
+      if (c.authorRole !== 'admin') continue;
+      const key = this.doctorProfileKey(c);
+      if (key in this.doctorProfiles) continue;
+      this.doctorProfiles = { ...this.doctorProfiles, [key]: null };
+      this.doctorProfileService.getDoctorProfile(c.authorUid, c.authorName).then(profile => {
+        this.doctorProfiles = { ...this.doctorProfiles, [key]: profile };
+      });
+    }
+  }
+
+  openPhoto(photo: SnapshotPhoto): void {
     this.viewingPhoto = photo;
     this.cancelReply();
 
     this.commentsSub?.unsubscribe();
     if (this.currentUid) {
       this.commentsSub = this.commentService.getComments$(this.currentUid, photo.id)
-        .subscribe(comments => (this.photoComments = comments));
+        .subscribe(comments => {
+          this.photoComments = comments;
+          this.resolveDoctorProfiles(comments);
+        });
     }
   }
 
@@ -372,6 +432,7 @@ export class SnapshotPage implements OnInit, OnDestroy {
     private healthService: HealthService,
     private photoService: PhotoService,
     private commentService: CommentService,
+    private doctorProfileService: DoctorProfileService,
   ) {}
 
   ngOnInit(): void {

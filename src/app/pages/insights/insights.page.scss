@@ -189,6 +189,22 @@ ion-content[data-theme="dark"] {
 .banner-text { font-size: clamp(0.82rem,2.8vw,0.9rem); font-weight: 700; color: var(--dark); font-family: 'Nunito','Poppins',sans-serif; line-height: 1.55; margin: 0 0 8px; }
 .banner-source { font-size: 0.65rem; color: var(--muted); font-family: 'Nunito','Poppins',sans-serif; font-weight: 600; }
 
+/* ── Today's Insight manual swipe slider ── */
+.banner-slider { overflow: hidden; touch-action: pan-y; cursor: grab; &:active { cursor: grabbing; } }
+.banner-track {
+  display: flex;
+  transition: transform 0.4s cubic-bezier(0.65, 0, 0.35, 1);
+  &.dragging { transition: none; }
+}
+.banner-slide { flex: 0 0 100%; min-width: 0; }
+.banner-dots { display: flex; gap: 6px; margin-top: 2px; }
+.banner-dot {
+  width: 6px; height: 6px; border-radius: 99px; border: none;
+  background: rgba(181,127,212,0.25); cursor: pointer; padding: 0;
+  transition: width 0.25s, background 0.25s;
+  &.active { width: 16px; background: var(--pink); }
+}
+
 /* ── Tips strip ── */
 .tips-strip {
   margin: 0 16px 28px; background: rgba(255,255,255,0.55);

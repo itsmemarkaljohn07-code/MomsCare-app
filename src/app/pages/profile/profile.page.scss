@@ -38,7 +38,6 @@ ion-content[data-theme="dark"] {
   .blob-bottom { background: rgba(80, 140, 180, 0.15); }
   .profile-theme-card,
   .settings-list,
-  .data-card         { background: var(--card-bg); border-color: var(--card-border); }
   .settings-item:hover { background: rgba(181, 127, 212, 0.10); }
   .theme-toggle-track.dark { background: linear-gradient(135deg, #3d2252, #2a1540); }
   .bottom-nav { background: var(--nav-bg); border-color: var(--nav-border); }
@@ -93,7 +92,7 @@ ion-content[data-theme="dark"] {
 .profile-header {
   width: 100%; max-width: 440px;
   display: flex; flex-direction: column; align-items: center;
-  padding: 56px 0 28px;
+  padding: 56px 0 40px;
   text-align: center;
   animation: fadeSlideUp 0.42s cubic-bezier(0.22, 1, 0.36, 1) 0.06s both;
 }
@@ -182,36 +181,6 @@ ion-content[data-theme="dark"] {
   background: linear-gradient(90deg, var(--pink), var(--purple));
   border-radius: 99px;
   transition: width 1.2s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-/* ══════════════════════════════════════════
-   DATA CARDS (quick stats row)
-══════════════════════════════════════════ */
-.data-row {
-  width: 100%; max-width: 440px;
-  display: flex; gap: 10px;
-  margin-bottom: 20px;
-  animation: fadeSlideUp 0.42s cubic-bezier(0.22, 1, 0.36, 1) 0.10s both;
-}
-
-.data-card {
-  flex: 1; background: var(--card-bg);
-  border: 1px solid var(--card-border);
-  border-radius: 18px; padding: 14px 12px;
-  box-shadow: var(--shadow-card);
-  display: flex; flex-direction: column; align-items: center; gap: 4px;
-  text-align: center;
-}
-
-.data-card-icon { font-size: 1.4rem; line-height: 1; }
-.data-card-val {
-  font-size: 1.1rem; font-weight: 900; color: var(--dark);
-  font-family: 'Nunito', 'Poppins', sans-serif; line-height: 1;
-}
-.data-card-label {
-  font-size: 0.6rem; font-weight: 700; color: var(--muted);
-  font-family: 'Nunito', 'Poppins', sans-serif;
-  text-transform: uppercase; letter-spacing: 0.4px;
 }
 
 /* ══════════════════════════════════════════
@@ -413,4 +382,20 @@ ion-content[data-theme="dark"] {
   .nav-label { font-size: 0.5rem; }
   .nav-item-circle { width: 44px; height: 44px; }
   .nav-item--center .nav-item-circle { margin-top: -16px; }
+}
+
+/* ── Tablet / desktop ──
+   Every major section on this page was capped at 440px with no upper
+   breakpoint at all, so on a wide screen the whole page stayed a thin
+   phone-width column stranded in empty space. Same breakpoint and
+   same modest approach (more room, not a full multi-column desktop
+   layout) as insights.page.scss already uses elsewhere in this app. */
+@media (min-width: 700px) {
+  .profile-header,
+  .profile-section-label,
+  .profile-theme-card,
+  .settings-list,
+  .signout-btn {
+    max-width: 560px;
+  }
 }

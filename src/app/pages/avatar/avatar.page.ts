@@ -6,19 +6,13 @@ import { IonicModule } from '@ionic/angular';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ThemeService } from '../../services/theme';
+import { AuthService, AvatarSelection } from '../../services/auth.service';
 import { Subscription } from 'rxjs';
 
 export interface AvatarAnimal {
   id: string;
   name: string;
   emoji: string;
-}
-
-export interface AvatarConfig {
-  emoji: string;
-  bgColor: string;
-  animalId: string;
-  animalName: string;
 }
 
 @Component({
@@ -35,7 +29,10 @@ export class AvatarPage implements OnInit, OnDestroy {
 
   animReady = false;
 
-  currentUser = { firstName: 'Maria' };
+  // Real first name, loaded from the signed-in user's own profile in
+  // ngOnInit -- 'there' is only a placeholder until that resolves,
+  // never a hardcoded person's name.
+  currentUser = { firstName: 'there' };
 
   // ── Color palette ──
   colors: string[] = [
@@ -73,8 +70,9 @@ export class AvatarPage implements OnInit, OnDestroy {
 
   selectedColor  = '#e07eb8';
   selectedAnimal: AvatarAnimal = this.animals[0];
+  isSaving = false;
 
-  constructor(private router: Router, private location: Location, private theme: ThemeService) {}
+  constructor(private router: Router, private location: Location, private theme: ThemeService, private authService: AuthService) {}
 
   ngOnInit(): void {
     this.themeSub = this.theme.isDark$.subscribe(val => (this.darkMode = val));
@@ -82,16 +80,27 @@ export class AvatarPage implements OnInit, OnDestroy {
     requestAnimationFrame(() => setTimeout(() => (this.animReady = true), 80));
   }
 
-  private loadSaved(): void {
+  /** Loads the current avatar (and name) from the signed-in user's own
+   *  Firestore profile -- the SAME users/{uid} document every other
+   *  page already reads via AuthService, not a device-local value
+   *  that would be shared by whoever happens to be signed in on this
+   *  device. If the profile hasn't been fetched yet or has no avatar
+   *  saved, the existing component defaults above are left as-is. */
+  private async loadSaved(): Promise<void> {
     try {
-      const saved = localStorage.getItem('momscare_avatar');
+      const profile = await this.authService.getProfile();
+      if (profile?.fullName) {
+        this.currentUser.firstName = profile.fullName.split(' ')[0] || 'there';
+      }
+      const saved = profile?.avatar;
       if (saved) {
-        const config: AvatarConfig = JSON.parse(saved);
-        this.selectedColor  = config.bgColor;
-        const found = this.animals.find(a => a.id === config.animalId);
+        this.selectedColor = saved.bgColor;
+        const found = this.animals.find(a => a.id === saved.animalId);
         if (found) this.selectedAnimal = found;
       }
-    } catch {}
+    } catch (err) {
+      console.error('Failed to load avatar from profile:', err);
+    }
   }
 
   selectColor(color: string): void {
@@ -102,17 +111,30 @@ export class AvatarPage implements OnInit, OnDestroy {
     this.selectedAnimal = animal;
   }
 
-  saveAndGoBack(): void {
-    const config: AvatarConfig = {
+  /** Saves to the signed-in user's own profile document, keyed by
+   *  their Firebase Auth UID via AuthService -- this is what makes
+   *  the avatar belong to the account rather than to the device. If
+   *  the save fails (e.g. a network blip), the user stays on this
+   *  page rather than navigating back to a Profile page that would
+   *  then show their OLD avatar, silently implying nothing happened
+   *  when something actually did fail. */
+  async saveAndGoBack(): Promise<void> {
+    if (this.isSaving) return;
+    const config: AvatarSelection = {
       emoji:      this.selectedAnimal.emoji,
       bgColor:    this.selectedColor,
       animalId:   this.selectedAnimal.id,
       animalName: this.selectedAnimal.name,
     };
+    this.isSaving = true;
     try {
-      localStorage.setItem('momscare_avatar', JSON.stringify(config));
-    } catch {}
-    this.location.back();
+      await this.authService.updateProfile({ avatar: config });
+      this.location.back();
+    } catch (err) {
+      console.error('Failed to save avatar:', err);
+    } finally {
+      this.isSaving = false;
+    }
   }
 
   goBack(): void {

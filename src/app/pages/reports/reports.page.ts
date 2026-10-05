@@ -35,7 +35,17 @@ export class ReportsPage implements OnInit, OnDestroy {
     const due = new Date('2025-09-15');
     return Math.max(0, Math.ceil((due.getTime() - Date.now()) / 86400000));
   }
-  get bpNormal(): boolean { return this.current.mood >= 2; }
+  /** Flags the most recent blood-pressure reading (the last entry
+   *  in bpData, which the chart this tag sits above is displaying)
+   *  as normal when it's under the standard clinical threshold for
+   *  high blood pressure — 140 systolic / 90 diastolic. This
+   *  previously checked `mood`, which has nothing to do with blood
+   *  pressure at all. */
+  get bpNormal(): boolean {
+    const latest = this.bpData[this.bpData.length - 1];
+    if (!latest) return true;
+    return latest.sys < 140 && latest.dia < 90;
+  }
 
   weightData = [
     { label:'W13', val:58.2 }, { label:'W14', val:58.8 }, { label:'W15', val:59.1 },

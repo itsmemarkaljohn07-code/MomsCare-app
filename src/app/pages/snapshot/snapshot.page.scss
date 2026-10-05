@@ -382,6 +382,18 @@ ion-content[data-theme="dark"] {
   overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
 }
+@media (min-width: 700px) {
+  /* Tablet/desktop: a centered lightbox rather than a phone-style
+     bottom sheet -- a 440px sheet pinned to the bottom of a wide
+     screen would look small and stranded. */
+  .modal-overlay { align-items: center; padding: 24px; }
+  .photo-viewer {
+    max-width: 720px; max-height: 85vh; border-radius: 20px;
+    display: flex; flex-direction: row; align-items: stretch;
+  }
+  .viewer-img { width: 55%; max-height: 85vh; flex-shrink: 0; }
+  .viewer-info { width: 45%; overflow-y: auto; }
+}
 .viewer-close {
   position: absolute; top: 12px; right: 12px; z-index: 5;
   width: 34px; height: 34px; border-radius: 50%;
@@ -409,32 +421,47 @@ ion-content[data-theme="dark"] {
   &--user { flex-direction: row-reverse; }
 }
 .comment-avatar {
-  width: 24px; height: 24px; flex-shrink: 0; border-radius: 50%;
-  background: linear-gradient(135deg, #e07eb8, #b57fd4);
+  width: 32px; height: 32px; flex-shrink: 0; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
+  &--photo { object-fit: cover; }
+  &--initials {
+    color: white; font-size: 0.68rem; font-weight: 800;
+    font-family: 'Nunito','Poppins',sans-serif;
+  }
 }
 .comment-content {
-  max-width: 82%;
+  max-width: 82%; min-width: 0;
   background: rgba(255,255,255,0.08);
-  border-radius: 12px; padding: 8px 10px;
+  border-radius: 14px; padding: 10px 12px;
+  overflow-wrap: break-word; word-break: break-word;
 }
 .comment-bubble--user .comment-content {
   background: rgba(224,126,184,0.25);
 }
-.comment-meta {
-  display: flex; align-items: center; gap: 6px; margin-bottom: 2px;
-}
+/* Name sits on its own line, clearly larger/bolder than everything
+   below it -- the metadata row (Care Team, specialty, timestamp) is
+   deliberately smaller and quieter so the name reads first. */
 .comment-author {
-  font-size: 0.68rem; font-weight: 800; color: white;
+  display: block;
+  font-size: 0.82rem; font-weight: 800; color: white;
+  font-family: 'Nunito','Poppins',sans-serif; margin-bottom: 2px;
+}
+.comment-meta {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 4px;
+  margin-bottom: 5px;
+}
+.comment-role-badge {
+  font-size: 0.6rem; font-weight: 700; color: #e07eb8;
   font-family: 'Nunito','Poppins',sans-serif;
 }
-.comment-time {
+.comment-specialty, .comment-time {
   font-size: 0.6rem; color: rgba(255,255,255,0.5);
   font-family: 'Nunito','Poppins',sans-serif;
 }
 .comment-message {
-  font-size: 0.78rem; color: rgba(255,255,255,0.92);
-  font-family: 'Nunito','Poppins',sans-serif; margin: 0; line-height: 1.4;
+  font-size: 0.84rem; color: rgba(255,255,255,0.92);
+  font-family: 'Nunito','Poppins',sans-serif; margin: 0; line-height: 1.55;
+  overflow-wrap: break-word; word-break: break-word;
 }
 .comment-reply-btn {
   background: none; border: none; padding: 0; margin-top: 4px;

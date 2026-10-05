@@ -23,8 +23,8 @@
             <div class="viewer-health-stat">
               <span class="vh-icon">
                 <svg width="16" height="16" viewBox="0 0 18 18" fill="none">
-                  <path d="M9 2.5v3M5.5 5.5h7M9 5.5L5.5 12a3.5 3.5 0 007 0L9 5.5Z"
-                        stroke="#b57fd4" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+                  <rect x="3" y="4" width="12" height="11" rx="2.2" stroke="#b57fd4" stroke-width="1.4"/>
+                  <rect x="6.5" y="6.7" width="5" height="2.4" rx="0.6" stroke="#b57fd4" stroke-width="1.1"/>
                 </svg>
               </span>
               <div class="vh-text">
@@ -35,8 +35,10 @@
             <div class="viewer-health-stat">
               <span class="vh-icon">
                 <svg width="16" height="16" viewBox="0 0 18 18" fill="none">
-                  <path d="M1.5 9.5h3l1.5-4 2.5 8 2-6 1.2 2h5.3"
-                        stroke="#e07eb8" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+                  <path d="M9 14.5C9 14.5 2.5 10.3 2.5 6.3A3.3 3.3 0 019 4.3A3.3 3.3 0 0115.5 6.3C15.5 10.3 9 14.5 9 14.5Z"
+                        stroke="#e07eb8" stroke-width="1.4" stroke-linejoin="round"/>
+                  <path d="M4.3 9h2l1-2.3 1.7 4.6 1.3-3 0.8 1.3h2.6"
+                        stroke="#e07eb8" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
                 </svg>
               </span>
               <div class="vh-text">
@@ -47,9 +49,7 @@
             <div class="viewer-health-stat">
               <span class="vh-icon">
                 <svg width="16" height="16" viewBox="0 0 18 18" fill="none">
-                  <ellipse cx="9" cy="11" rx="3.2" ry="4.3" stroke="#6dbfbf" stroke-width="1.4"/>
-                  <circle cx="6.3" cy="4.3" r="1" stroke="#6dbfbf" stroke-width="1.3"/>
-                  <circle cx="10.9" cy="3.5" r="0.9" stroke="#6dbfbf" stroke-width="1.3"/>
+                  <path d="M 13.60 4.87 C 13.51 4.22 13.01 3.25 12.39 2.83 C 11.77 2.42 11.01 1.76 9.87 2.38 C 8.73 3.00 6.40 4.85 5.53 6.55 C 4.65 8.24 4.60 11.05 4.60 12.53 C 4.60 14.02 5.13 14.71 5.53 15.45 C 5.92 16.20 6.43 16.75 6.98 17.03 C 7.54 17.30 8.27 17.37 8.85 17.11 C 9.43 16.85 10.04 16.37 10.47 15.45 C 10.91 14.54 11.40 12.91 11.48 11.62 C 11.57 10.32 10.73 8.50 10.97 7.68 C 11.21 6.86 12.48 7.18 12.92 6.71 C 13.36 6.24 13.69 5.51 13.60 4.87 Z" stroke="#6dbfbf" stroke-width="1.3" stroke-linejoin="round" stroke-linecap="round"/>
                 </svg>
               </span>
               <div class="vh-text">
@@ -83,17 +83,27 @@
 
           <div class="comment-block" *ngFor="let thread of threadedComments">
             <div class="comment-bubble comment-bubble--admin">
-              <div class="comment-avatar">
-                <svg width="14" height="14" viewBox="0 0 18 18" fill="none">
-                  <path d="M9 2L3 4.5v4c0 3.5 2.5 6.5 6 7.5 3.5-1 6-4 6-7.5v-4L9 2z" stroke="white" stroke-width="1.4" stroke-linejoin="round"/>
-                  <path d="M6.5 9l1.8 1.8L11.5 7" stroke="white" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
-                </svg>
-              </div>
+
+              <!-- Real doctor photo when available; otherwise initials
+                   on a name-derived color, never the old generic icon
+                   that looked identical for every doctor. -->
+              <img *ngIf="doctorAvatarUrl(thread.comment) as avatarUrl; else initialsAvatar"
+                   [src]="avatarUrl" class="comment-avatar comment-avatar--photo"
+                   [alt]="thread.comment.authorName"/>
+              <ng-template #initialsAvatar>
+                <div class="comment-avatar comment-avatar--initials"
+                     [style.background]="getAvatarColor(thread.comment.authorName)">
+                  {{ getInitials(thread.comment.authorName) }}
+                </div>
+              </ng-template>
+
               <div class="comment-content">
+                <span class="comment-author">{{ thread.comment.authorName }}</span>
                 <div class="comment-meta">
-                  <span class="comment-author">{{ thread.comment.authorName }}</span>
+                  <span class="comment-role-badge">Care Team</span>
+                  <span class="comment-specialty" *ngIf="doctorSpecialty(thread.comment) as specialty">· {{ specialty }}</span>
                   <span class="comment-time" *ngIf="thread.comment.createdAt?.toDate">
-                    {{ thread.comment.createdAt.toDate() | date:'MMM d, h:mm a' }}
+                    · {{ thread.comment.createdAt.toDate() | date:'MMM d, h:mm a' }}
                   </span>
                 </div>
                 <p class="comment-message">{{ thread.comment.message }}</p>
@@ -248,23 +258,23 @@
                   <ng-container *ngIf="photo.healthSnapshot; else noHealthData">
                     <div class="back-stat">
                         <svg width="14" height="14" viewBox="0 0 18 18" fill="none">
-                        <path d="M9 2.5v3M5.5 5.5h7M9 5.5L5.5 12a3.5 3.5 0 007 0L9 5.5Z"
-                              stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                        <rect x="3" y="4" width="12" height="11" rx="2.2" stroke="currentColor" stroke-width="1.5"/>
+                        <rect x="6.5" y="6.7" width="5" height="2.4" rx="0.6" stroke="currentColor" stroke-width="1.2"/>
                       </svg>
                       <span>{{ photo.healthSnapshot.weight }}kg</span>
                     </div>
                       <div class="back-stat">
                       <svg width="14" height="14" viewBox="0 0 18 18" fill="none">
-                        <path d="M1.5 9.5h3l1.5-4 2.5 8 2-6 1.2 2h5.3"
-                              stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M9 14.5C9 14.5 2.5 10.3 2.5 6.3A3.3 3.3 0 019 4.3A3.3 3.3 0 0115.5 6.3C15.5 10.3 9 14.5 9 14.5Z"
+                              stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+                        <path d="M4.3 9h2l1-2.3 1.7 4.6 1.3-3 0.8 1.3h2.6"
+                              stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
                       </svg>
                       <span>{{ photo.healthSnapshot.bpSys }}/{{ photo.healthSnapshot.bpDia }}</span>
                     </div>
                       <div class="back-stat">
                       <svg width="14" height="14" viewBox="0 0 18 18" fill="none">
-                        <ellipse cx="9" cy="11" rx="3.2" ry="4.3" stroke="currentColor" stroke-width="1.5"/>
-                        <circle cx="6.3" cy="4.3" r="1" stroke="currentColor" stroke-width="1.3"/>
-                        <circle cx="10.9" cy="3.5" r="0.9" stroke="currentColor" stroke-width="1.3"/>
+                        <path d="M 13.60 4.87 C 13.51 4.22 13.01 3.25 12.39 2.83 C 11.77 2.42 11.01 1.76 9.87 2.38 C 8.73 3.00 6.40 4.85 5.53 6.55 C 4.65 8.24 4.60 11.05 4.60 12.53 C 4.60 14.02 5.13 14.71 5.53 15.45 C 5.92 16.20 6.43 16.75 6.98 17.03 C 7.54 17.30 8.27 17.37 8.85 17.11 C 9.43 16.85 10.04 16.37 10.47 15.45 C 10.91 14.54 11.40 12.91 11.48 11.62 C 11.57 10.32 10.73 8.50 10.97 7.68 C 11.21 6.86 12.48 7.18 12.92 6.71 C 13.36 6.24 13.69 5.51 13.60 4.87 Z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round"/>
                       </svg>
                       <span>{{ photo.healthSnapshot.kicks }} kicks</span>
                     </div>
@@ -318,8 +328,10 @@
           <div class="hcard-top">
             <div class="hcard-icon-wrap">
               <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-                <path d="M1.5 9.5h3l1.5-4 2.5 8 2-6 1.2 2h5.3"
-                      stroke="#e07eb8" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M9 14.5C9 14.5 2.5 10.3 2.5 6.3A3.3 3.3 0 019 4.3A3.3 3.3 0 0115.5 6.3C15.5 10.3 9 14.5 9 14.5Z"
+                      stroke="#e07eb8" stroke-width="1.4" stroke-linejoin="round"/>
+                <path d="M4.3 9h2l1-2.3 1.7 4.6 1.3-3 0.8 1.3h2.6"
+                      stroke="#e07eb8" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
               </svg>
             </div>
             <span class="hcard-label">Blood Pressure</span>
@@ -336,8 +348,8 @@
           <div class="hcard-top">
             <div class="hcard-icon-wrap purple">
               <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-                <path d="M9 2.5v3M5.5 5.5h7M9 5.5L5.5 12a3.5 3.5 0 007 0L9 5.5Z"
-                      stroke="#b57fd4" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+                <rect x="3" y="4" width="12" height="11" rx="2.2" stroke="#b57fd4" stroke-width="1.4"/>
+                <rect x="6.5" y="6.7" width="5" height="2.4" rx="0.6" stroke="#b57fd4" stroke-width="1.1"/>
               </svg>
             </div>
             <span class="hcard-label">Weight</span>
@@ -357,11 +369,7 @@
           <div class="hcard-top">
             <div class="hcard-icon-wrap mint">
               <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-                <ellipse cx="9" cy="11" rx="3.2" ry="4.3" stroke="#6dbfbf" stroke-width="1.4"/>
-                <circle cx="6.3" cy="4.3" r="1" stroke="#6dbfbf" stroke-width="1.3"/>
-                <circle cx="8.6" cy="3.2" r="1" stroke="#6dbfbf" stroke-width="1.3"/>
-                <circle cx="10.9" cy="3.5" r="0.9" stroke="#6dbfbf" stroke-width="1.3"/>
-                <circle cx="12.7" cy="4.8" r="0.8" stroke="#6dbfbf" stroke-width="1.3"/>
+                <path d="M 13.60 4.87 C 13.51 4.22 13.01 3.25 12.39 2.83 C 11.77 2.42 11.01 1.76 9.87 2.38 C 8.73 3.00 6.40 4.85 5.53 6.55 C 4.65 8.24 4.60 11.05 4.60 12.53 C 4.60 14.02 5.13 14.71 5.53 15.45 C 5.92 16.20 6.43 16.75 6.98 17.03 C 7.54 17.30 8.27 17.37 8.85 17.11 C 9.43 16.85 10.04 16.37 10.47 15.45 C 10.91 14.54 11.40 12.91 11.48 11.62 C 11.57 10.32 10.73 8.50 10.97 7.68 C 11.21 6.86 12.48 7.18 12.92 6.71 C 13.36 6.24 13.69 5.51 13.60 4.87 Z" stroke="#6dbfbf" stroke-width="1.3" stroke-linejoin="round" stroke-linecap="round"/>
               </svg>
             </div>
             <span class="hcard-label">Fetal Kicks</span>
@@ -459,8 +467,8 @@
         <div class="input-label-row">
           <span class="input-ico">
             <svg width="16" height="16" viewBox="0 0 18 18" fill="none">
-              <path d="M9 2.5v3M5.5 5.5h7M9 5.5L5.5 12a3.5 3.5 0 007 0L9 5.5Z"
-                    stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+              <rect x="3" y="4" width="12" height="11" rx="2.2" stroke="currentColor" stroke-width="1.4"/>
+              <rect x="6.5" y="6.7" width="5" height="2.4" rx="0.6" stroke="currentColor" stroke-width="1.1"/>
             </svg>
           </span>
           <label class="input-label">Current Weight</label>
@@ -478,8 +486,10 @@
         <div class="input-label-row">
           <span class="input-ico">
             <svg width="16" height="16" viewBox="0 0 18 18" fill="none">
-              <path d="M1.5 9.5h3l1.5-4 2.5 8 2-6 1.2 2h5.3"
-                    stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M9 14.5C9 14.5 2.5 10.3 2.5 6.3A3.3 3.3 0 019 4.3A3.3 3.3 0 0115.5 6.3C15.5 10.3 9 14.5 9 14.5Z"
+                    stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/>
+              <path d="M4.3 9h2l1-2.3 1.7 4.6 1.3-3 0.8 1.3h2.6"
+                    stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
           </span>
           <label class="input-label">Blood Pressure</label>
@@ -504,11 +514,7 @@
         <div class="input-label-row">
           <span class="input-ico">
             <svg width="16" height="16" viewBox="0 0 18 18" fill="none">
-              <ellipse cx="9" cy="11" rx="3.2" ry="4.3" stroke="currentColor" stroke-width="1.4"/>
-              <circle cx="6.3" cy="4.3" r="1" stroke="currentColor" stroke-width="1.3"/>
-              <circle cx="8.6" cy="3.2" r="1" stroke="currentColor" stroke-width="1.3"/>
-              <circle cx="10.9" cy="3.5" r="0.9" stroke="currentColor" stroke-width="1.3"/>
-              <circle cx="12.7" cy="4.8" r="0.8" stroke="currentColor" stroke-width="1.3"/>
+              <path d="M 13.60 4.87 C 13.51 4.22 13.01 3.25 12.39 2.83 C 11.77 2.42 11.01 1.76 9.87 2.38 C 8.73 3.00 6.40 4.85 5.53 6.55 C 4.65 8.24 4.60 11.05 4.60 12.53 C 4.60 14.02 5.13 14.71 5.53 15.45 C 5.92 16.20 6.43 16.75 6.98 17.03 C 7.54 17.30 8.27 17.37 8.85 17.11 C 9.43 16.85 10.04 16.37 10.47 15.45 C 10.91 14.54 11.40 12.91 11.48 11.62 C 11.57 10.32 10.73 8.50 10.97 7.68 C 11.21 6.86 12.48 7.18 12.92 6.71 C 13.36 6.24 13.69 5.51 13.60 4.87 Z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round" stroke-linecap="round"/>
             </svg>
           </span>
           <label class="input-label">Fetal Kicks Today</label>

@@ -109,7 +109,7 @@ export class SignupPage implements OnInit, OnDestroy, AfterViewInit {
 
   /* ── OTP ── */
   otp: string[] = ['', '', '', '', '', ''];
-  resendTimer    = 60;
+  resendTimer    = 90;
   otpError       = '';
   otpVerified    = false;
   emailSent      = false;
@@ -655,7 +655,7 @@ export class SignupPage implements OnInit, OnDestroy, AfterViewInit {
   }
 
   private beginResendCountdown(): void {
-    this.resendTimer = 60;
+    this.resendTimer = 90;
     if (this.resendInterval) clearInterval(this.resendInterval);
     this.resendInterval = setInterval(() => {
       this.resendTimer--;

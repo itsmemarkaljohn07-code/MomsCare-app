@@ -2,8 +2,8 @@ import { Component, OnInit, OnDestroy } from '@angular/core';
 import { Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { IonicModule } from '@ionic/angular';
-import { AuthService } from '../../services/auth.service';
+import { IonicModule, ViewWillEnter } from '@ionic/angular';
+import { AuthService, AvatarSelection } from '../../services/auth.service';
 import { ThemeService } from '../../services/theme';
 import { Subscription } from 'rxjs';
 
@@ -14,28 +14,44 @@ import { Subscription } from 'rxjs';
   standalone: true,
   imports: [IonicModule, CommonModule, FormsModule],
 })
-export class ProfilePage implements OnInit, OnDestroy {
+// ViewWillEnter (not just OnInit) is deliberate: Ionic normally keeps
+// this page's component instance alive in the background when you
+// navigate to Avatar and back, so OnInit alone would never re-fire --
+// meaning a just-saved avatar wouldn't show up here without this.
+export class ProfilePage implements OnInit, OnDestroy, ViewWillEnter {
 
-  darkMode      = false;
-  pregnancyWeek = 20;
-  dueDate       = new Date('2025-09-15');
+  darkMode = false;
+
+  // Real name and due date, loaded from the signed-in user's own
+  // profile in ionViewWillEnter below. 'User' is only a fallback for
+  // the brief moment before that resolves, or if a name genuinely
+  // isn't on file yet -- never a hardcoded person's name.
+  userName = 'User';
+  private dueDateIso: string | null = null;
+
+  /** Same 280-day/40-week formula as every other page that computes
+   *  this (snapshot.page.ts, insights.page.ts) -- one shared
+   *  calculation, not a second one that could drift out of sync. */
+  get pregnancyWeek(): number {
+    if (!this.dueDateIso) return 0;
+    const TOTAL_DAYS = 280;
+    const msPerDay = 24 * 60 * 60 * 1000;
+    const dueTime = new Date(this.dueDateIso).getTime();
+    if (isNaN(dueTime)) return 0;
+    const daysUntilDue = Math.round((dueTime - Date.now()) / msPerDay);
+    const daysElapsed = Math.max(0, Math.min(TOTAL_DAYS, TOTAL_DAYS - daysUntilDue));
+    return Math.min(40, Math.floor(daysElapsed / 7));
+  }
 
   private themeSub!: Subscription;
 
   activeTab = 'profile';
 
-  get selectedAvatar() {
-    try {
-      const saved = localStorage.getItem('momscare_avatar');
-      if (saved) return JSON.parse(saved);
-    } catch {}
-    return { emoji: '🐻', bgColor: '#e07eb8' };
-  }
-
-  get daysUntilDue(): number {
-    const diff = this.dueDate.getTime() - Date.now();
-    return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
-  }
+  // Default shown before the real profile loads, and the fallback if
+  // the user hasn't saved a custom avatar yet -- same default as
+  // before, just no longer sourced from a device-local value that
+  // could show one account's avatar on another account.
+  selectedAvatar: AvatarSelection | { emoji: string; bgColor: string } = { emoji: '🐻', bgColor: '#e07eb8' };
 
   babySizes: Record<number, { emoji: string; fruit: string }> = {
     8:  { emoji: '🫐', fruit: 'blueberry' },
@@ -89,6 +105,24 @@ export class ProfilePage implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.themeSub = this.theme.isDark$.subscribe(val => (this.darkMode = val));
+  }
+
+  /** Called by Ionic every time this page becomes the active view --
+   *  including returning from Avatar, where OnInit alone would not
+   *  re-fire. Pulls name, due date, and avatar fresh from Firestore
+   *  each time, so a just-saved avatar (or a name changed elsewhere)
+   *  always shows up immediately. */
+  async ionViewWillEnter(): Promise<void> {
+    try {
+      const profile = await this.authService.getProfile();
+      this.userName = profile?.fullName || 'User';
+      this.dueDateIso = profile?.dueDate ?? null;
+      if (profile?.avatar) {
+        this.selectedAvatar = profile.avatar;
+      }
+    } catch (err) {
+      console.error('Failed to load profile:', err);
+    }
   }
 
   ngOnDestroy(): void {

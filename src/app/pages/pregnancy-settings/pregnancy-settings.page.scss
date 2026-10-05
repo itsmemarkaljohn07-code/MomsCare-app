@@ -567,3 +567,14 @@ ion-content { --background: var(--bg); }
   padding: 10px 22px; border-radius: 99px; z-index: 999;
   box-shadow: 0 6px 20px rgba(224,126,184,0.35);
 }
+/* A toggle-row that holds a plain input (the relocated kick-reminder
+   time) instead of the on/off switch -- same row rhythm, just a
+   compact inline field on the right instead of a full-width one. */
+.field-input--inline {
+  width: auto; height: 38px; padding: 0 10px; font-size: 0.82rem;
+  flex-shrink: 0;
+}
+.save-error-text {
+  font-size: 0.74rem; font-weight: 700; color: var(--error, #e05580);
+  font-family: 'Nunito','Poppins',sans-serif; margin: 0 0 12px; text-align: center;
+}

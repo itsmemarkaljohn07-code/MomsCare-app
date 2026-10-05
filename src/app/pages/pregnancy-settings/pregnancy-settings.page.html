@@ -22,12 +22,12 @@
       <div class="status-card">
         <div class="status-row">
           <div class="status-item">
-            <span class="status-val">{{ settings.pregnancyWeek }}</span>
+            <span class="status-val">{{ pregnancyWeek }}</span>
             <span class="status-lbl">Current Week</span>
           </div>
           <div class="status-divider"></div>
           <div class="status-item">
-            <span class="status-val">{{ 40 - settings.pregnancyWeek }}</span>
+            <span class="status-val">{{ 40 - pregnancyWeek }}</span>
             <span class="status-lbl">Weeks Left</span>
           </div>
           <div class="status-divider"></div>
@@ -47,9 +47,11 @@
       <div class="card">
         <div class="field-group">
           <label class="field-label">Current Pregnancy Week</label>
+          <!-- Nudges Expected Due Date below by a week instead of
+               storing its own number -- see adjustWeek() for why. -->
           <div class="week-stepper">
             <button class="stepper-btn" (click)="adjustWeek(-1)">−</button>
-            <span class="stepper-val">Week {{ settings.pregnancyWeek }}</span>
+            <span class="stepper-val">Week {{ pregnancyWeek }}</span>
             <button class="stepper-btn plus" (click)="adjustWeek(1)">+</button>
           </div>
         </div>
@@ -69,6 +71,20 @@
             <option value="ivf">IVF / Transfer Date</option>
           </select>
         </div>
+        <div class="field-group">
+          <label class="field-label">Weight Unit</label>
+          <select class="field-select" [(ngModel)]="settings.weightUnit">
+            <option value="kg">Kilograms (kg)</option>
+            <option value="lbs">Pounds (lbs)</option>
+          </select>
+        </div>
+        <div class="field-group">
+          <label class="field-label">High-Risk Pregnancy</label>
+          <select class="field-select" [(ngModel)]="settings.highRisk">
+            <option value="no">No</option>
+            <option value="yes">Yes — monitoring closely</option>
+          </select>
+        </div>
       </div>
 
       <!-- Notifications -->
@@ -85,37 +101,25 @@
             </div>
           </button>
         </div>
+        <!-- Relocated from the former "Preferences" card -- this is
+             the time the "Kick Count Alerts" toggle above actually
+             fires at, so it belongs right next to it rather than in a
+             separate, disconnected section. -->
+        <div class="toggle-row toggle-row--subfield">
+          <div class="toggle-info">
+            <p class="toggle-title">Kick Count Reminder Time</p>
+            <p class="toggle-sub">When your daily kick-count reminder fires</p>
+          </div>
+          <input class="field-input field-input--inline" type="time" [(ngModel)]="settings.kickReminderTime"/>
+        </div>
       </div>
 
-      <!-- Preferences -->
-      <p class="section-label">Preferences</p>
-      <div class="card">
-        <div class="field-group">
-          <label class="field-label">Weight Unit</label>
-          <select class="field-select" [(ngModel)]="settings.weightUnit">
-            <option value="kg">Kilograms (kg)</option>
-            <option value="lbs">Pounds (lbs)</option>
-          </select>
-        </div>
-        <div class="field-group">
-          <label class="field-label">Kick Count Reminder Time</label>
-          <input class="field-input" type="time" [(ngModel)]="settings.kickReminderTime"/>
-        </div>
-        <div class="field-group">
-          <label class="field-label">Clinic / Hospital</label>
-          <input class="field-input" [(ngModel)]="settings.clinic" placeholder="Your clinic name"/>
-        </div>
-        <div class="field-group">
-          <label class="field-label">High-Risk Pregnancy</label>
-          <select class="field-select" [(ngModel)]="settings.highRisk">
-            <option value="no">No</option>
-            <option value="yes">Yes — monitoring closely</option>
-          </select>
-        </div>
-      </div>
+      <p class="save-error-text" *ngIf="saveError">{{ saveError }}</p>
 
       <div class="btn-wrap">
-        <button class="btn-primary" (click)="saveSettings()">Save Settings</button>
+        <button class="btn-primary" (click)="saveSettings()" [disabled]="isSaving">
+          {{ isSaving ? 'Saving...' : 'Save Settings' }}
+        </button>
       </div>
       <div class="toast" *ngIf="showToast">✓ Settings saved</div>
 

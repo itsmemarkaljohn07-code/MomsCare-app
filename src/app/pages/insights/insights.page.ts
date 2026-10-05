@@ -5,6 +5,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { IonicModule } from '@ionic/angular';
 import { ThemeService } from '../../services/theme';
+import { AuthService } from '../../services/auth.service';
 import { InsightsService } from '../../services/insights.service';
 import { Subscription } from 'rxjs';
 
@@ -74,7 +75,23 @@ export class InsightsPage implements OnInit, OnDestroy {
   darkMode      = false;
   private themeSub!: Subscription;
   private articlesSub!: Subscription;
-  pregnancyWeek = 20;
+  // The patient's due date, fetched once in ngOnInit. pregnancyWeek
+  // below is computed FROM this on every read, using the exact same
+  // 280-day formula as snapshot.page.ts's pregnancyWeek getter and the
+  // admin dashboard's computePregnancyWeek — one shared calculation,
+  // not a second one that could drift out of sync.
+  private currentDueDate: string | null = null;
+
+  get pregnancyWeek(): number {
+    if (!this.currentDueDate) return 0;
+    const TOTAL_DAYS = 280;
+    const msPerDay = 24 * 60 * 60 * 1000;
+    const dueTime = new Date(this.currentDueDate).getTime();
+    if (isNaN(dueTime)) return 0;
+    const daysUntilDue = Math.round((dueTime - Date.now()) / msPerDay);
+    const daysElapsed = Math.max(0, Math.min(TOTAL_DAYS, TOTAL_DAYS - daysUntilDue));
+    return Math.min(40, Math.floor(daysElapsed / 7));
+  }
 
   // ── Bottom nav active state ──────────────────────────────────────────────
   activeTab = 'insights';
@@ -171,12 +188,41 @@ export class InsightsPage implements OnInit, OnDestroy {
   get mindArticles():      ArticleCard[] { return this.cardsForSection('mind'); }
   get birthArticles():     ArticleCard[] { return this.cardsForSection('birth'); }
 
-  weeklyTips = [
-    'Eat iron-rich foods with vitamin C to boost absorption',
-    '30 min of gentle walking daily benefits both of you',
-    'Aim for 8–10 glasses of water to support amniotic fluid',
-    'Diaphragmatic breathing reduces cortisol in minutes',
-  ];
+  // Checkpoints at the same weeks as babySizes below, for a consistent
+  // pattern across the file. General educational information only —
+  // not medical advice, and phrased to defer to a provider on anything
+  // symptom- or decision-related rather than instructing directly.
+  weeklyTipsByWeek: Record<number, string[]> = {
+    4:  ['Ask your provider about starting a prenatal vitamin with folic acid', 'Small, frequent meals can help if nausea begins', 'A good time to schedule your first prenatal appointment'],
+    8:  ['Rest when your body asks for it — fatigue is common this trimester', 'Ask your provider about any foods or drinks worth limiting for now', "Baby's major organs are forming, which is why early care matters"],
+    10: ['Nausea often peaks around now for many and tends to ease with time', 'Gentle walks can help with energy, if your provider has cleared activity', 'Ask your clinic what to expect from your first ultrasound'],
+    12: ['Many people feel less nauseous as the first trimester wraps up', 'A small bump may start to show as your uterus grows', 'First-trimester screening is often discussed around now'],
+    14: ['Energy often improves in the second trimester', 'Stay hydrated — your needs increase as blood volume grows', 'Baby can now make facial expressions, even before you feel movement'],
+    16: ['Some feel early flutters of movement now, though it varies widely', 'Side-sleeping, especially on the left, is commonly recommended', 'A good time to check with your clinic about scheduling the anatomy scan'],
+    18: ["Movement may feel more noticeable — it's different for everyone", 'Quick stretches can ease round-ligament pain on your sides', "The anatomy scan often happens around this stage"],
+    20: ["You're at the halfway point — a good time for a mid-pregnancy check-up", 'Gentle stretching and hydration may help with leg cramps', "Baby can now hear sounds from outside the womb"],
+    22: ['Supportive shoes can help as your center of gravity shifts', "Baby's movements may feel stronger and more regular now", 'Keep up a balanced diet rich in iron and calcium'],
+    24: ['Ask your provider about timing for the glucose screening test', 'Mild, irregular tightening (Braxton Hicks) can start — mention it at your next visit', "Baby's hearing is more developed; some enjoy talking or playing music for them"],
+    26: ['Elevating your legs can help with swelling in your feet and ankles', 'A good time to look into childbirth classes if you\'re interested', "Stay mindful of your baby's regular movement pattern"],
+    28: ['Welcome to the third trimester — appointments often become more frequent', 'Pacing yourself can help as shortness of breath increases', 'A common time to start discussing birth plan preferences'],
+    30: ['Rest when you can — fatigue often returns in the third trimester', "Mention any noticeable change in baby's movements to your provider", 'Consider starting to pack your hospital bag over the coming weeks'],
+    32: ['Contact your provider if contractions become regular or painful', 'Sleeping slightly propped up may ease common heartburn', 'Baby is practicing breathing movements ahead of birth'],
+    34: ["Your provider will start checking baby's position at appointments", 'Side-rest and hydration continue to help with swelling', 'A good time to finalize your hospital bag and birth plan details'],
+    36: ['Weekly appointments often begin around now for closer monitoring', 'Contact your provider promptly for reduced movement, unusual swelling, or severe headaches', 'Baby is considered early term soon, with most development complete'],
+    38: ['Ask your provider what early labor signs to watch for', 'Rest as much as you can — labor can begin any time from here', "Keep your provider's contact info and hospital route easy to find"],
+    40: ["You've reached your due date — many pregnancies go a little earlier or later", "Your provider will discuss next steps if labor hasn't started yet", "Don't hesitate to reach out to your care team with any concerns"],
+  };
+
+  /** Picks the tip set for the closest checkpoint at or before the
+   *  current pregnancyWeek — same "closest match" pattern babySize
+   *  below already uses, so the two stay visually/behaviorally
+   *  consistent with each other. */
+  get weeklyTips(): string[] {
+    const keys = Object.keys(this.weeklyTipsByWeek).map(Number).sort((a, b) => a - b);
+    let closest = keys[0];
+    for (const w of keys) { if (this.pregnancyWeek >= w) closest = w; }
+    return this.weeklyTipsByWeek[closest];
+  }
 
   babySizes: Record<number, { fruit: string }> = {
     4: { fruit: 'poppy seed' }, 8: { fruit: 'raspberry' }, 10: { fruit: 'strawberry' },
@@ -200,22 +246,80 @@ export class InsightsPage implements OnInit, OnDestroy {
     return '3rd Trimester';
   }
 
+  // Up to 5 general, stage-independent insights (distinct from the
+  // week-specific Quick Tips below), spread across the categories a
+  // mother actually benefits from during pregnancy rather than
+  // clustering on one theme. General educational information only —
+  // not a substitute for a healthcare provider's guidance.
   todayInsights = [
-    { text: 'Your blood volume has increased by nearly 50% during pregnancy — this is why your heart works harder and you may feel warmer than usual.', source: 'MomsCare Health · Body Changes' },
-    { text: 'Relaxin, the hormone that loosens your ligaments for birth, also affects other joints — which is why your hips, knees, and ankles may feel different.', source: 'MomsCare Health · Hormones' },
-    { text: 'Your sense of smell sharpens significantly in pregnancy — a protective mechanism that may help you avoid foods potentially harmful to your baby.', source: 'MomsCare Health · Senses' },
-    { text: 'Babies in the womb can taste the flavors of the foods you eat through the amniotic fluid — a great time to introduce a variety of healthy foods.', source: 'MomsCare Health · Baby Development' },
-    { text: 'Pregnancy brain is real — hormonal changes temporarily affect memory and concentration. Rest, hydration, and gentle exercise all help.', source: 'MomsCare Health · Mind & Body' },
+    { text: "Your baby's fingerprints are fully formed by around week 17 — completely unique, just like yours.", source: 'MomCare Health · Baby Development' },
+    { text: 'Foods rich in folate, iron, and calcium support both your health and your growing baby throughout pregnancy.', source: 'MomCare Health · Nutrition' },
+    { text: "Gentle activities like walking, swimming, and prenatal yoga are generally considered safe for most pregnancies — ask your provider what's right for you.", source: 'MomCare Health · Safe Activity' },
+    { text: 'Increased blood volume during pregnancy is why your heart works harder and you may feel warmer than usual.', source: 'MomCare Health · Body Changes' },
+    { text: "It's completely normal for your emotions to shift throughout pregnancy — rest, hydration, and talking to someone you trust can help on harder days.", source: 'MomCare Health · Mind & Body' },
   ];
 
-  get todayInsight() {
-    return this.todayInsights[new Date().getDate() % this.todayInsights.length];
+  // ── "Today's Insight" manual swipe slider ──────────────────────────
+  // Deliberately separate from the hero-carousel's auto-playing state
+  // above (startCarousel/currentSlide) — this one never advances on
+  // its own; it only moves when the user swipes or taps a dot.
+  // Starting on the day-of-month pick preserves a bit of the old
+  // "changes daily" feel as a starting point, while still being fully
+  // manually browsable from there.
+  insightSlideIndex = new Date().getDate() % this.todayInsights.length;
+  insightIsDragging = false;
+  private insightDragStartX = 0;
+  insightDragDeltaX = 0;
+
+  private clampInsightIndex(i: number): number {
+    const max = this.todayInsights.length - 1;
+    return Math.max(0, Math.min(max, i));
+  }
+
+  goToInsightSlide(i: number): void {
+    this.insightSlideIndex = this.clampInsightIndex(i);
+  }
+
+  onInsightPointerDown(event: PointerEvent): void {
+    this.insightIsDragging = true;
+    this.insightDragStartX = event.clientX;
+    this.insightDragDeltaX = 0;
+  }
+
+  onInsightPointerMove(event: PointerEvent): void {
+    if (!this.insightIsDragging) return;
+    this.insightDragDeltaX = event.clientX - this.insightDragStartX;
+  }
+
+  onInsightPointerUp(): void {
+    if (!this.insightIsDragging) return;
+    // Must move a deliberate distance to count as a swipe, so an
+    // accidental tap-and-twitch doesn't change the slide.
+    const SWIPE_THRESHOLD = 45;
+    if (this.insightDragDeltaX > SWIPE_THRESHOLD) {
+      this.goToInsightSlide(this.insightSlideIndex - 1);
+    } else if (this.insightDragDeltaX < -SWIPE_THRESHOLD) {
+      this.goToInsightSlide(this.insightSlideIndex + 1);
+    }
+    this.insightIsDragging = false;
+    this.insightDragDeltaX = 0;
+  }
+
+  /** The live track position: a percentage base for which slide is
+   *  "home", plus the raw pixel drag offset layered on top so the
+   *  track visually follows the finger/cursor while dragging, then
+   *  snaps cleanly to the nearest slide on release. */
+  get insightTrackTransform(): string {
+    const base = -(this.insightSlideIndex * 100);
+    const dragPx = this.insightIsDragging ? this.insightDragDeltaX : 0;
+    return `translateX(calc(${base}% + ${dragPx}px))`;
   }
 
   // ── Lifecycle ─────────────────────────────────────────────────────────────
   constructor(
     private router: Router,
     private theme: ThemeService,
+    private authService: AuthService,
     private insightsService: InsightsService,
   ) {}
 
@@ -224,6 +328,10 @@ export class InsightsPage implements OnInit, OnDestroy {
 
     this.articlesSub = this.insightsService.getArticles$().subscribe(data => {
       this.articles = data;
+    });
+
+    this.authService.getProfile().then(profile => {
+      this.currentDueDate = profile?.dueDate ?? null;
     });
 
     requestAnimationFrame(() => setTimeout(() => (this.animReady = true), 80));

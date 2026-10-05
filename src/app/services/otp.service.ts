@@ -6,7 +6,7 @@ const EMAILJS_SERVICE_ID  = 'service_6y9mdix';
 const EMAILJS_TEMPLATE_ID = 'template_re07dou';
 const EMAILJS_PUBLIC_KEY  = 'JJ2acNuoI-gnZChfe';
 
-const OTP_TTL_SECONDS = 60;
+const OTP_TTL_SECONDS = 90;
 
 interface PendingOtp {
   code: string;

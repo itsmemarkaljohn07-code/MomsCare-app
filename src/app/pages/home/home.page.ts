@@ -221,61 +221,122 @@ export class HomePage implements OnInit, OnDestroy {
     };
   }
 
+  /** Torso/body silhouette only — the head is its own separate ellipse
+   *  in the template now, so this no longer loops around a head bump.
+   *  A single rounded, gently belly-curved closed curve representing
+   *  the curled torso. Still driven entirely by the SAME fetal values
+   *  above — only how those numbers are turned into a shape changed,
+   *  not the numbers themselves. */
+  /** Torso/body silhouette only — the head is its own separate ellipse
+   *  in the template. A single rounded, gently belly-curved closed
+   *  curve representing the curled torso. Still driven entirely by the
+   *  SAME fetal values above — only how those numbers become a shape
+   *  changed, not the numbers themselves. */
+  /** Torso/body silhouette only — the head is its own separate ellipse
+   *  in the template, drawn LARGE and dominant (see the HTML), which
+   *  is deliberate: in the reference images the head is consistently
+   *  the biggest, most prominent single mass, with the body a smaller
+   *  curled shape beneath it — not two similarly-sized lobes. This
+   *  curve is also pulled in much tighter than the previous version,
+   *  for a more pronounced "C" curl. Still driven entirely by the
+   *  SAME fetal values above — only how those numbers become a shape
+   *  changed. */
   get bodyPath(): string {
     const f = this.fetal;
+    const { bx, by, bw, bh } = f;
     return `
-      M ${f.hx - f.hr * 0.95} ${f.hy + f.hr * 0.55}
-      C ${f.hx - f.hr * 1.25} ${f.hy - f.hr * 0.3}
-        ${f.hx - f.hr * 0.55} ${f.hy - f.hr * 1.25}
-        ${f.hx + f.hr * 0.25} ${f.hy - f.hr * 1.1}
-      C ${f.hx + f.hr * 1.05} ${f.hy - f.hr * 0.95}
-        ${f.hx + f.hr * 1.15} ${f.hy + f.hr * 0.15}
-        ${f.hx + f.hr * 0.6} ${f.hy + f.hr * 0.75}
-      C ${f.hx + f.hr * 0.3} ${f.hy + f.hr * 1.05}
-        ${f.bx + f.bw * 1.1} ${f.by - f.bh * 0.85}
-        ${f.bx + f.bw * 1.15} ${f.by - f.bh * 0.2}
-      C ${f.bx + f.bw * 1.2} ${f.by + f.bh * 0.55}
-        ${f.bx + f.bw * 0.65} ${f.by + f.bh * 1.05}
-        ${f.bx - f.bw * 0.05} ${f.by + f.bh * 1.15}
-      C ${f.bx - f.bw * 0.75} ${f.by + f.bh * 1.25}
-        ${f.bx - f.bw * 1.3} ${f.by + f.bh * 0.7}
-        ${f.bx - f.bw * 1.15} ${f.by - f.bh * 0.1}
-      C ${f.bx - f.bw * 1.05} ${f.by - f.bh * 0.75}
-        ${f.bx - f.bw * 0.55} ${f.hy + f.hr * 1.3}
-        ${f.hx - f.hr * 0.95} ${f.hy + f.hr * 0.55}
+      M ${bx - bw * 0.4} ${by - bh * 0.7}
+      C ${bx - bw * 1.05} ${by - bh * 0.3} ${bx - bw * 1.15} ${by + bh * 0.5} ${bx - bw * 0.55} ${by + bh * 0.95}
+      C ${bx - bw * 0.1} ${by + bh * 1.3} ${bx + bw * 0.6} ${by + bh * 1.15} ${bx + bw * 0.75} ${by + bh * 0.55}
+      C ${bx + bw * 0.85} ${by + bh * 0.1} ${bx + bw * 0.7} ${by - bh * 0.4} ${bx + bw * 0.35} ${by - bh * 0.65}
+      C ${bx + bw * 0.1} ${by - bh * 0.85} ${bx - bw * 0.15} ${by - bh * 0.9} ${bx - bw * 0.4} ${by - bh * 0.7}
       Z
     `.replace(/\s+/g, ' ').trim();
   }
 
-  get armPath(): string {
-    const f = this.fetal;
-    const shx = f.bx + f.bw * 0.55, shy = f.by - f.bh * 0.55;
-    const elx = f.bx + f.bw * 1.05, ely = f.by - f.bh * 0.05;
-    const hax = f.hx + f.hr * 0.15, hay = f.hy + f.hr * 0.85;
-    return `M ${shx} ${shy} Q ${elx} ${ely} ${hax} ${hay}`;
+  /** A limb (arm or leg) rendered as a dense chain of overlapping
+   *  circles that taper from wide (near the body) to narrow
+   *  (hand/foot), bending through a genuine elbow/knee point in the
+   *  middle. Denser sampling (n=28) than earlier versions so it reads
+   *  as a smooth soft limb rather than an angular tapered wedge. */
+  private taperedLimbPoints(
+    p0: { x: number; y: number; r: number },
+    p1: { x: number; y: number; r: number },
+    p2: { x: number; y: number; r: number },
+    n = 28
+  ): { cx: number; cy: number; r: number }[] {
+    const pts: { cx: number; cy: number; r: number }[] = [];
+    for (let i = 0; i <= n; i++) {
+      const t = i / n;
+      pts.push({
+        cx: (1 - t) * p0.x + t * p1.x,
+        cy: (1 - t) * p0.y + t * p1.y,
+        r:  (1 - t) * p0.r + t * p1.r,
+      });
+    }
+    for (let i = 1; i <= n; i++) {
+      const t = i / n;
+      pts.push({
+        cx: (1 - t) * p1.x + t * p2.x,
+        cy: (1 - t) * p1.y + t * p2.y,
+        r:  (1 - t) * p1.r + t * p2.r,
+      });
+    }
+    return pts;
   }
 
-  get legsPath(): string {
+  /** The single dominant limb cue — a bent arm with the hand tucked up
+   *  near the face — matching the pose that reads most clearly as
+   *  "baby" across the reference images. Deliberately the more
+   *  prominent of the two limbs (see legPoints below). */
+  get armPoints(): { cx: number; cy: number; r: number }[] {
     const f = this.fetal;
-    const hipx = f.bx - f.bw * 0.5, hipy = f.by + f.bh * 0.85;
-    const kneex = f.bx + f.bw * 0.9, kneey = f.by + f.bh * 1.15;
-    const footx = f.bx + f.bw * 0.1, footy = f.by - f.bh * 0.05;
-    return `M ${hipx} ${hipy} Q ${kneex} ${kneey} ${footx} ${footy}`;
+    const { bx, by, bw, bh, hx, hy, hr } = f;
+    const limbW = bw * 0.42;
+    return this.taperedLimbPoints(
+      { x: bx + bw * 0.5,  y: by - bh * 0.9,  r: limbW * 0.56 },
+      { x: bx + bw * 1.5,  y: by - bh * 1.0,  r: limbW * 0.42 },
+      { x: hx - hr * 0.35, y: hy + hr * 0.55, r: limbW * 0.32 }
+    );
   }
 
+  /** A smaller, quieter leg — tucked under the body rather than
+   *  crossing boldly outward, so it doesn't visually compete with the
+   *  arm for attention (an earlier version made both limbs equally
+   *  bold, which read as a harsh "V" rather than a gentle curl). */
+  get legPoints(): { cx: number; cy: number; r: number }[] {
+    const f = this.fetal;
+    const { bx, by, bw, bh } = f;
+    const limbW = bw * 0.42;
+    return this.taperedLimbPoints(
+      { x: bx + bw * 0.1,  y: by + bh * 0.5,  r: limbW * 0.5 },
+      { x: bx + bw * 1.05, y: by + bh * 0.85, r: limbW * 0.4 },
+      { x: bx + bw * 0.55, y: by + bh * 0.15, r: limbW * 0.32 }
+    );
+  }
+
+  /** The placenta — a soft round shape the umbilical cord leads to.
+   *  The previous version's cord just faded into empty space; the
+   *  reference images consistently show it connecting to something,
+   *  which is a small addition but makes the whole illustration read
+   *  as "inside the womb" rather than "a shape floating alone." */
+  get placenta(): { cx: number; cy: number; r: number } {
+    const f = this.fetal;
+    const { bx, by, bw, bh } = f;
+    return { cx: bx - bw * 1.9, cy: by - bh * 0.3, r: bw * 0.75 };
+  }
+
+  /** NOTE: this replaces the previous umbilicalPath, which routed to a
+   *  fixed point (110, 56) with no visible placenta at the other end.
+   *  This version routes to the placenta shape above instead — a
+   *  deliberate change this round, not an oversight. */
   get umbilicalPath(): string {
-    const f  = this.fetal;
-    const sx = f.bx - f.bw * 0.2;
-    const sy = f.by + f.bh * 0.1;
-    return `M ${sx} ${sy} C ${sx - 22} ${sy - 36} ${sx + 30} 78 110 56`;
+    const f = this.fetal;
+    const { bx, by, bw, bh } = f;
+    const p = this.placenta;
+    return `M ${bx - bw * 0.35} ${by - bh * 0.1} C ${bx - bw * 1.0} ${by - bh * 0.4} ${p.cx + p.r * 0.6} ${p.cy + p.r * 0.3} ${p.cx + p.r} ${p.cy}`;
   }
 
-  get spinalPath(): string {
-    const f = this.fetal;
-    return `M ${f.hx - f.hr * 0.4} ${f.hy + f.hr * 0.3}
-            Q ${f.bx - f.bw * 0.9} ${f.by - f.bh * 0.3}
-              ${f.bx - f.bw * 0.6} ${f.by + f.bh * 0.9}`;
-  }
 
   activeTab = 'home';
 

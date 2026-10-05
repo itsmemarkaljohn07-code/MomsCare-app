@@ -28,6 +28,13 @@ import {
 } from '@angular/fire/firestore';
 import { Observable } from 'rxjs';
 
+export interface AvatarSelection {
+  emoji: string;
+  bgColor: string;
+  animalId: string;
+  animalName: string;
+}
+
 export interface UserProfile {
   uid: string;
   fullName: string;
@@ -41,6 +48,50 @@ export interface UserProfile {
   clinicName?: string;
   createdAt: string;
   setupComplete?: boolean;
+  // Added for per-user avatar customization -- stored on the SAME
+  // users/{uid} document everything else already lives on, not a
+  // separate collection. Optional so existing accounts with no
+  // avatar saved yet still parse fine.
+  avatar?: AvatarSelection;
+
+  // Added for the My Profile page. firstName/lastName are genuinely
+  // new fields (registration only ever collected one combined
+  // fullName), kept in sync with fullName by whoever writes them so
+  // every existing fullName reader elsewhere in the app keeps working
+  // unchanged. The rest were never collected at registration at all
+  // and are filled in later by the user, so all are optional and
+  // absent (not a placeholder value) until the user actually saves
+  // something.
+  firstName?: string;
+  lastName?: string;
+  dob?: string;
+  address?: string;
+  bloodType?: string;
+  emergencyContact?: string;
+  // NOTE: assignedDoctorName is intended to eventually be kept in
+  // sync with the admin dashboard's doctor-assignment system -- a
+  // separate project with no files in this conversation, so only the
+  // mobile-app side of that sync (this field existing on the shared
+  // profile document, readable and patient-editable here) could
+  // actually be built and verified here.
+  assignedDoctorName?: string;
+
+  // Added for Pregnancy Settings. calcMethod/weightUnit/kickReminderTime/
+  // highRisk were previously only ever saved to a separate, now-removed
+  // localStorage key; notificationPrefs previously had no persistence
+  // at all (toggles reset on every reload). All optional, all absent
+  // until the user actually sets them -- no invented defaults stored.
+  calcMethod?: 'lmp' | 'ultrasound' | 'ivf';
+  weightUnit?: 'kg' | 'lbs';
+  kickReminderTime?: string;
+  highRisk?: boolean;
+  notificationPrefs?: {
+    weeklyUpdates: boolean;
+    appointmentReminders: boolean;
+    vitaminReminder: boolean;
+    kickAlerts: boolean;
+    hydrationReminders: boolean;
+  };
 }
 
 const FIRESTORE_SAVE_TIMEOUT_MS = 45000;

@@ -53,28 +53,28 @@
       <div class="card">
         <div class="field-row">
           <div class="field-group half">
-            <label class="field-label">First Name</label>
+            <label class="field-label">First Name <span class="field-required">*</span></label>
             <input class="field-input" [(ngModel)]="form.firstName" [disabled]="!editMode" placeholder="First name"/>
           </div>
           <div class="field-group half">
-            <label class="field-label">Last Name</label>
+            <label class="field-label">Last Name <span class="field-required">*</span></label>
             <input class="field-input" [(ngModel)]="form.lastName" [disabled]="!editMode" placeholder="Last name"/>
           </div>
         </div>
         <div class="field-group">
-          <label class="field-label">Email Address</label>
+          <label class="field-label">Email Address <span class="field-required">*</span></label>
           <input class="field-input" type="email" [(ngModel)]="form.email" [disabled]="!editMode" placeholder="your@email.com"/>
         </div>
         <div class="field-group">
-          <label class="field-label">Phone Number</label>
+          <label class="field-label">Phone Number <span class="field-required">*</span></label>
           <input class="field-input" type="tel" [(ngModel)]="form.phone" [disabled]="!editMode" placeholder="+63 900 000 0000"/>
         </div>
         <div class="field-group">
-          <label class="field-label">Date of Birth</label>
+          <label class="field-label">Date of Birth <span class="field-optional">(optional)</span></label>
           <input class="field-input" type="date" [(ngModel)]="form.dob" [disabled]="!editMode"/>
         </div>
         <div class="field-group">
-          <label class="field-label">Address</label>
+          <label class="field-label">Address <span class="field-optional">(optional)</span></label>
           <input class="field-input" [(ngModel)]="form.address" [disabled]="!editMode" placeholder="Home address"/>
         </div>
       </div>
@@ -84,7 +84,11 @@
       <div class="card">
         <div class="field-group">
           <label class="field-label">Current Pregnancy Week</label>
-          <input class="field-input" type="number" min="1" max="42" [(ngModel)]="form.pregnancyWeek" [disabled]="!editMode"/>
+          <!-- Computed from Expected Due Date below, not independently
+               editable -- avoids this ever drifting out of sync with
+               the due date used everywhere else in the app. -->
+          <input class="field-input" [value]="pregnancyWeek" disabled/>
+          <p class="field-hint">Calculated automatically from your due date</p>
         </div>
         <div class="field-group">
           <label class="field-label">Expected Due Date</label>
@@ -98,7 +102,7 @@
           </select>
         </div>
         <div class="field-group">
-          <label class="field-label">Blood Type</label>
+          <label class="field-label">Blood Type <span class="field-optional">(optional)</span></label>
           <select class="field-select" [(ngModel)]="form.bloodType" [disabled]="!editMode">
             <option value="">Select blood type</option>
             <option *ngFor="let bt of bloodTypes" [value]="bt">{{ bt }}</option>
@@ -110,25 +114,27 @@
       <p class="section-label">Healthcare Provider</p>
       <div class="card">
         <div class="field-group">
-          <label class="field-label">OB-GYN / Midwife Name</label>
+          <label class="field-label">OB-GYN / Midwife Name <span class="field-optional">(optional)</span></label>
           <input class="field-input" [(ngModel)]="form.doctorName" [disabled]="!editMode" placeholder="Dr. Name"/>
         </div>
         <div class="field-group">
-          <label class="field-label">Clinic / Hospital</label>
+          <label class="field-label">Clinic / Hospital <span class="field-optional">(optional)</span></label>
           <input class="field-input" [(ngModel)]="form.clinic" [disabled]="!editMode" placeholder="Clinic name"/>
         </div>
         <div class="field-group">
-          <label class="field-label">Emergency Contact</label>
+          <label class="field-label">Emergency Contact <span class="field-optional">(optional)</span></label>
           <input class="field-input" [(ngModel)]="form.emergencyContact" [disabled]="!editMode" placeholder="Name · Relationship · Number"/>
         </div>
       </div>
 
+      <p class="save-error-text" *ngIf="saveError">{{ saveError }}</p>
+
       <div class="btn-wrap" *ngIf="editMode">
-        <button class="btn-primary" (click)="saveProfile()">
+        <button class="btn-primary" (click)="saveProfile()" [disabled]="isSaving">
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
             <path d="M3 8h10M9 4l4 4-4 4" stroke="white" stroke-width="1.8" stroke-linecap="round"/>
           </svg>
-          Save Changes
+          {{ isSaving ? 'Saving...' : 'Save Changes' }}
         </button>
       </div>
 

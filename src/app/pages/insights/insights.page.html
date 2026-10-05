@@ -79,8 +79,32 @@
       </div>
       <div class="banner-content">
         <div class="banner-label">Today's Insight</div>
-        <p class="banner-text">{{ todayInsight.text }}</p>
-        <span class="banner-source">{{ todayInsight.source }}</span>
+
+        <!-- Manual swipe only — never auto-advances. Uses Pointer
+             Events so the same handlers work for touch AND mouse-drag,
+             unlike the auto-playing hero-carousel above, which never
+             needed drag support at all. -->
+        <div class="banner-slider"
+             (pointerdown)="onInsightPointerDown($event)"
+             (pointermove)="onInsightPointerMove($event)"
+             (pointerup)="onInsightPointerUp()"
+             (pointerleave)="onInsightPointerUp()"
+             (pointercancel)="onInsightPointerUp()">
+          <div class="banner-track"
+               [class.dragging]="insightIsDragging"
+               [style.transform]="insightTrackTransform">
+            <div class="banner-slide" *ngFor="let insight of todayInsights">
+              <p class="banner-text">{{ insight.text }}</p>
+              <span class="banner-source">{{ insight.source }}</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="banner-dots" *ngIf="todayInsights.length > 1">
+          <button class="banner-dot" *ngFor="let insight of todayInsights; let i = index"
+                  [class.active]="i === insightSlideIndex"
+                  (click)="goToInsightSlide(i)" aria-label="Go to insight"></button>
+        </div>
       </div>
     </div>
 

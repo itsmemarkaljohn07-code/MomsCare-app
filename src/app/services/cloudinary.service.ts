@@ -3,7 +3,11 @@ import { Injectable } from '@angular/core';
 
 // ⚠️ Replace these with your actual Cloudinary values from Step 2 and Step 3
 const CLOUDINARY_CLOUD_NAME    = 'c0okqdac';
-const CLOUDINARY_UPLOAD_PRESET = 'momscare_uploads';
+// Matches the preset actually used everywhere else in the app
+// (environment.ts, photo.service.ts) — this file previously had a
+// different, incorrect name here ('momscare_uploads'), which would
+// make any upload through this specific service fail outright.
+const CLOUDINARY_UPLOAD_PRESET = 'momscare_unsigned';
 
 export interface CloudinaryUploadResult {
   secure_url: string;   // the hosted HTTPS URL — store this in Firestore

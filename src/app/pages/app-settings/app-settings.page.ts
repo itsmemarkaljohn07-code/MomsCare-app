@@ -29,7 +29,7 @@ export class AppSettingsPage implements OnInit, OnDestroy {
   ];
 
   privacySettings = [
-    { label: 'Analytics', desc: 'Help improve MomsCare with usage data', on: true },
+    { label: 'Analytics', desc: 'Help improve MomCare with usage data', on: true },
     { label: 'Crash Reports', desc: 'Auto-send error reports to improve stability', on: true },
     { label: 'Share with Provider', desc: 'Allow your healthcare provider to view data', on: false },
   ];

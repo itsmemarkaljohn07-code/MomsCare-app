@@ -9,9 +9,17 @@ export interface SnapshotComment {
   id?: string;
   userId: string;
   snapshotId: string;
-  authorRole: 'admin' | 'user';
+  // The dashboard writes 'doctor' for doctors and 'admin' for admins;
+  // the patient app writes 'user'. (Previously typed without 'doctor'.)
+  authorRole: 'admin' | 'doctor' | 'user';
   authorName: string;
   authorUid?: string;
+  // Optional, written onto the comment by the dashboard when staff
+  // post it, so the patient app can show a specialty/photo without
+  // reading the doctors collection (which holds login emails and
+  // must stay unreadable to patients).
+  authorSpecialty?: string;
+  authorPhotoUrl?: string;
   message: string;
   parentCommentId: string | null;
   createdAt?: any;

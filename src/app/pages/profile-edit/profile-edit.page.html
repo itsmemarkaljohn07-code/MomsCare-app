@@ -62,8 +62,9 @@
           </div>
         </div>
         <div class="field-group">
-          <label class="field-label">Email Address <span class="field-required">*</span></label>
-          <input class="field-input" type="email" [(ngModel)]="form.email" [disabled]="!editMode" placeholder="your@email.com"/>
+          <label class="field-label">Email Address</label>
+          <input class="field-input" type="email" [value]="form.email" disabled/>
+          <p class="field-hint">This is your login email and can't be changed here</p>
         </div>
         <div class="field-group">
           <label class="field-label">Phone Number <span class="field-required">*</span></label>
@@ -114,8 +115,9 @@
       <p class="section-label">Healthcare Provider</p>
       <div class="card">
         <div class="field-group">
-          <label class="field-label">OB-GYN / Midwife Name <span class="field-optional">(optional)</span></label>
-          <input class="field-input" [(ngModel)]="form.doctorName" [disabled]="!editMode" placeholder="Dr. Name"/>
+          <label class="field-label">OB-GYN / Midwife Name</label>
+          <input class="field-input" [value]="form.doctorName" disabled placeholder="Not assigned yet"/>
+          <p class="field-hint">Assigned by your clinic</p>
         </div>
         <div class="field-group">
           <label class="field-label">Clinic / Hospital <span class="field-optional">(optional)</span></label>

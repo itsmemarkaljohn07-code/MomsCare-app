@@ -11,7 +11,6 @@ import { AuthService } from '../../services/auth.service';
 import { OtpService } from '../../services/otp.service';
 import { ThemeService } from '../../services/theme';
 import { Auth, fetchSignInMethodsForEmail } from '@angular/fire/auth';
-import { Firestore, collection, query, where, getDocs, limit } from '@angular/fire/firestore';
 import { runInInjectionContext, EnvironmentInjector, inject } from '@angular/core';
 import { Subscription } from 'rxjs';
 
@@ -109,7 +108,7 @@ export class SignupPage implements OnInit, OnDestroy, AfterViewInit {
 
   /* ── OTP ── */
   otp: string[] = ['', '', '', '', '', ''];
-  resendTimer    = 90;
+  resendTimer    = 60;
   otpError       = '';
   otpVerified    = false;
   emailSent      = false;
@@ -150,7 +149,6 @@ export class SignupPage implements OnInit, OnDestroy, AfterViewInit {
     private otpService: OtpService,
     private theme: ThemeService,
     private auth: Auth,
-    private firestore: Firestore
   ) {}
 
   ngOnInit(): void {
@@ -558,15 +556,15 @@ export class SignupPage implements OnInit, OnDestroy, AfterViewInit {
         try {
       const checksPromise = this.withTimeout(
         Promise.all([
+          // Email uniqueness comes from Firebase Auth itself; username
+          // uniqueness from the usernames/ lookup below. There used to
+          // be a third check here that queried the whole users
+          // collection by full name. It blocked two different women
+          // who happen to share a name from registering, and it was
+          // the only reason patient profiles had to stay readable by
+          // anyone, signed in or not.
           runInInjectionContext(this.envInjector, () =>
-            Promise.all([
-              fetchSignInMethodsForEmail(this.auth, this.form.email),
-              getDocs(query(
-                collection(this.firestore, 'users'),
-                where('fullName', '==', this.form.fullName.trim()),
-                limit(1)
-              ))
-            ])
+            fetchSignInMethodsForEmail(this.auth, this.form.email)
           ),
           this.authService.isUsernameTaken(this.form.username),
         ]),
@@ -576,15 +574,10 @@ export class SignupPage implements OnInit, OnDestroy, AfterViewInit {
 
       const otpPromise = this.sendOtpEmail();
 
-      const [[methods, nameSnap], usernameTaken] = await checksPromise;
+      const [methods, usernameTaken] = await checksPromise;
 
       if (methods && methods.length > 0) {
         this.errors.email = 'This email is already registered. Please sign in instead.';
-        return;
-      }
-
-      if (!nameSnap.empty) {
-        this.errors.name = 'This name is already taken. Please use a different name.';
         return;
       }
 
@@ -655,7 +648,7 @@ export class SignupPage implements OnInit, OnDestroy, AfterViewInit {
   }
 
   private beginResendCountdown(): void {
-    this.resendTimer = 90;
+    this.resendTimer = 60;
     if (this.resendInterval) clearInterval(this.resendInterval);
     this.resendInterval = setInterval(() => {
       this.resendTimer--;

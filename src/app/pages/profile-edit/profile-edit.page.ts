@@ -6,7 +6,8 @@ import { IonicModule, ViewWillEnter } from '@ionic/angular';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ThemeService } from '../../services/theme';
-import { AuthService, AvatarSelection } from '../../services/auth.service';
+import { AuthService, AvatarSelection, UserProfile } from '../../services/auth.service';
+import { toDateInputValue, fromDateInputValue } from '../../shared/date-utils';
 import { Subscription } from 'rxjs';
 
 @Component({
@@ -45,16 +46,22 @@ export class ProfileEditPage implements OnInit, OnDestroy, ViewWillEnter {
     emergencyContact: '',
   };
 
+  // The due date as it was when the page loaded (yyyy-MM-dd). If the user
+  // doesn't change it, it is left out of the save entirely, so the value
+  // stored at registration is never rewritten or shifted.
+  private loadedDueDate = '';
+
   selectedAvatar: AvatarSelection | { emoji: string; bgColor: string } = { emoji: '🐻', bgColor: '#e07eb8' };
 
   /** Same 280-day formula every other page uses (snapshot.page.ts,
    *  insights.page.ts, profile.page.ts) -- one shared calculation,
    *  computed from dueDate rather than stored as its own number. */
   get pregnancyWeek(): number {
-    if (!this.form.dueDate) return 0;
+    const dueIso = fromDateInputValue(this.form.dueDate);
+    if (!dueIso) return 0;
     const TOTAL_DAYS = 280;
     const msPerDay = 24 * 60 * 60 * 1000;
-    const dueTime = new Date(this.form.dueDate).getTime();
+    const dueTime = new Date(dueIso).getTime();
     if (isNaN(dueTime)) return 0;
     const daysUntilDue = Math.round((dueTime - Date.now()) / msPerDay);
     const daysElapsed = Math.max(0, Math.min(TOTAL_DAYS, TOTAL_DAYS - daysUntilDue));
@@ -98,15 +105,18 @@ export class ProfileEditPage implements OnInit, OnDestroy, ViewWillEnter {
         firstName, lastName,
         email: profile.email ?? '',
         phone: profile.mobile ?? '',
-        dob: profile.dob ?? '',
+        dob: toDateInputValue(profile.dob),
         address: profile.address ?? '',
-        dueDate: profile.dueDate ?? '',
+        dueDate: toDateInputValue(profile.dueDate),
         firstTimeMom: profile.firstTimeMom === false ? 'no' : 'yes',
         bloodType: profile.bloodType ?? '',
-        doctorName: profile.assignedDoctorName ?? '',
+        // Assigned by clinic staff in the admin dashboard, so shown
+        // here read-only rather than as something the patient types.
+        doctorName: (profile.assignedDoctorNames ?? []).join(', '),
         clinic: profile.clinicName ?? '',
         emergencyContact: profile.emergencyContact ?? '',
       };
+      this.loadedDueDate = this.form.dueDate;
       if (profile.avatar) this.selectedAvatar = profile.avatar;
     } catch (err) {
       console.error('Failed to load profile:', err);
@@ -118,7 +128,10 @@ export class ProfileEditPage implements OnInit, OnDestroy, ViewWillEnter {
    *  this app already reads. fullName is kept in sync from
    *  firstName+lastName so every existing fullName reader elsewhere
    *  (the Profile page greeting, for instance) keeps working with no
-   *  changes of its own. On failure, stays in edit mode and shows an
+   *  changes of its own. email and the assigned doctor are deliberately
+   *  NOT written: email is the login identity (changing only the
+   *  Firestore copy would silently desync it), and the doctor
+   *  assignment belongs to clinic staff. On failure, stays in edit mode and shows an
    *  error rather than silently claiming success. */
   async saveProfile(): Promise<void> {
     if (this.isSaving) return;
@@ -126,21 +139,23 @@ export class ProfileEditPage implements OnInit, OnDestroy, ViewWillEnter {
     this.saveError = '';
     try {
       const fullName = `${this.form.firstName} ${this.form.lastName}`.trim();
-      await this.authService.updateProfile({
+      const changes: Partial<UserProfile> = {
         firstName: this.form.firstName,
         lastName: this.form.lastName,
         fullName,
-        email: this.form.email,
         mobile: this.form.phone,
         dob: this.form.dob,
         address: this.form.address,
-        dueDate: this.form.dueDate,
         firstTimeMom: this.form.firstTimeMom === 'yes',
         bloodType: this.form.bloodType,
-        assignedDoctorName: this.form.doctorName,
         clinicName: this.form.clinic,
         emergencyContact: this.form.emergencyContact,
-      });
+      };
+      if (this.form.dueDate !== this.loadedDueDate) {
+        changes.dueDate = fromDateInputValue(this.form.dueDate);
+      }
+      await this.authService.updateProfile(changes);
+      this.loadedDueDate = this.form.dueDate;
       this.editMode = false;
       this.showToast = true;
       setTimeout(() => (this.showToast = false), 2500);

@@ -68,13 +68,12 @@ export interface UserProfile {
   address?: string;
   bloodType?: string;
   emergencyContact?: string;
-  // NOTE: assignedDoctorName is intended to eventually be kept in
-  // sync with the admin dashboard's doctor-assignment system -- a
-  // separate project with no files in this conversation, so only the
-  // mobile-app side of that sync (this field existing on the shared
-  // profile document, readable and patient-editable here) could
-  // actually be built and verified here.
-  assignedDoctorName?: string;
+  // The admin dashboard's REAL doctor-assignment field (it queries
+  // assignedDoctorNames with array-contains). Managed by clinic staff
+  // only: the app reads and displays it, and Firestore rules stop a
+  // patient from changing it. Replaces an earlier patient-editable
+  // assignedDoctorName string that nothing else in the system used.
+  assignedDoctorNames?: string[];
 
   // Added for Pregnancy Settings. calcMethod/weightUnit/kickReminderTime/
   // highRisk were previously only ever saved to a separate, now-removed

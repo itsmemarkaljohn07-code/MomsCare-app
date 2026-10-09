@@ -5,7 +5,8 @@ import { IonicModule, ViewWillEnter } from '@ionic/angular';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ThemeService } from '../../services/theme';
-import { AuthService } from '../../services/auth.service';
+import { AuthService, UserProfile } from '../../services/auth.service';
+import { toDateInputValue, fromDateInputValue, formatLocalDate } from '../../shared/date-utils';
 import { Subscription } from 'rxjs';
 
 @Component({
@@ -37,6 +38,11 @@ export class PregnancySettingsPage implements OnInit, OnDestroy, ViewWillEnter {
     highRisk: 'no',
   };
 
+  // Dates as they were when the page loaded (yyyy-MM-dd). A date the user
+  // doesn't change is left out of the save, so the value stored at
+  // registration is never rewritten or shifted by a timezone.
+  private loaded = { dueDate: '', lmpDate: '' };
+
   notifToggles = [
     { key: 'weeklyUpdates',        label: 'Weekly Pregnancy Updates', desc: 'Get tips and info every week',          on: true },
     { key: 'appointmentReminders', label: 'Appointment Reminders',    desc: '24 hours before each visit',            on: true },
@@ -51,10 +57,11 @@ export class PregnancySettingsPage implements OnInit, OnDestroy, ViewWillEnter {
    *  of sync with each other, which is exactly the conflicting
    *  pregnancy data the app is required to avoid. */
   get pregnancyWeek(): number {
-    if (!this.settings.dueDate) return 0;
+    const dueIso = fromDateInputValue(this.settings.dueDate);
+    if (!dueIso) return 0;
     const TOTAL_DAYS = 280;
     const msPerDay = 24 * 60 * 60 * 1000;
-    const dueTime = new Date(this.settings.dueDate).getTime();
+    const dueTime = new Date(dueIso).getTime();
     if (isNaN(dueTime)) return 0;
     const daysUntilDue = Math.round((dueTime - Date.now()) / msPerDay);
     const daysElapsed = Math.max(0, Math.min(TOTAL_DAYS, TOTAL_DAYS - daysUntilDue));
@@ -77,11 +84,11 @@ export class PregnancySettingsPage implements OnInit, OnDestroy, ViewWillEnter {
    *  visually suggests, without ever creating a second stored value
    *  that could disagree with the due date. */
   adjustWeek(d: number): void {
-    if (!this.settings.dueDate) return;
-    const date = new Date(this.settings.dueDate);
-    if (isNaN(date.getTime())) return;
+    const iso = fromDateInputValue(this.settings.dueDate);
+    if (!iso) return;
+    const date = new Date(iso);
     date.setDate(date.getDate() - d * 7);
-    this.settings.dueDate = date.toISOString().slice(0, 10);
+    this.settings.dueDate = formatLocalDate(date);
   }
 
   constructor(private location: Location, private theme: ThemeService, private authService: AuthService) {}
@@ -100,13 +107,14 @@ export class PregnancySettingsPage implements OnInit, OnDestroy, ViewWillEnter {
       if (!profile) return;
 
       this.settings = {
-        dueDate: profile.dueDate ?? '',
-        lmpDate: profile.lmpDate ?? '',
+        dueDate: toDateInputValue(profile.dueDate),
+        lmpDate: toDateInputValue(profile.lmpDate),
         calcMethod: profile.calcMethod ?? 'lmp',
         weightUnit: profile.weightUnit ?? 'kg',
         kickReminderTime: profile.kickReminderTime ?? '',
         highRisk: profile.highRisk ? 'yes' : 'no',
       };
+      this.loaded = { dueDate: this.settings.dueDate, lmpDate: this.settings.lmpDate };
 
       if (profile.notificationPrefs) {
         const prefs = profile.notificationPrefs;
@@ -135,15 +143,21 @@ export class PregnancySettingsPage implements OnInit, OnDestroy, ViewWillEnter {
         kickAlerts:           this.notifToggles.find(t => t.key === 'kickAlerts')!.on,
         hydrationReminders:   this.notifToggles.find(t => t.key === 'hydrationReminders')!.on,
       };
-      await this.authService.updateProfile({
-        dueDate: this.settings.dueDate,
-        lmpDate: this.settings.lmpDate,
+      const changes: Partial<UserProfile> = {
         calcMethod: this.settings.calcMethod as 'lmp' | 'ultrasound' | 'ivf',
         weightUnit: this.settings.weightUnit as 'kg' | 'lbs',
         kickReminderTime: this.settings.kickReminderTime,
         highRisk: this.settings.highRisk === 'yes',
         notificationPrefs,
-      });
+      };
+      if (this.settings.dueDate !== this.loaded.dueDate) {
+        changes.dueDate = fromDateInputValue(this.settings.dueDate);
+      }
+      if (this.settings.lmpDate !== this.loaded.lmpDate) {
+        changes.lmpDate = fromDateInputValue(this.settings.lmpDate);
+      }
+      await this.authService.updateProfile(changes);
+      this.loaded = { dueDate: this.settings.dueDate, lmpDate: this.settings.lmpDate };
       this.showToast = true;
       setTimeout(() => (this.showToast = false), 2500);
     } catch (err) {

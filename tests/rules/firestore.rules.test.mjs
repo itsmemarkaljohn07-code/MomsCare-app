@@ -12,7 +12,7 @@ import {
   initializeTestEnvironment,
 } from '@firebase/rules-unit-testing';
 import {
-  addDoc, collection, doc, getDoc, getDocs, setDoc, updateDoc, Timestamp,
+  addDoc, collection, deleteDoc, doc, getDoc, getDocs, setDoc, updateDoc, Timestamp,
 } from 'firebase/firestore';
 
 const PROJECT_ID = 'demo-momscare';
@@ -34,6 +34,22 @@ const signedOut = () => env.unauthenticatedContext().firestore();
 const patientA = () => env.authenticatedContext(PATIENT_A, { email: 'a@example.com' }).firestore();
 const admin = () => env.authenticatedContext(ADMIN, { email: 'admin@example.com' }).firestore();
 const doctor = (d) => env.authenticatedContext(d.uid, { doctorId: d.doctorId, doctorName: d.doctorName }).firestore();
+
+// Exactly what AuthService writes to users/{uid} at registration.
+const registration = (uid) => ({
+  uid,
+  fullName: 'New Patient',
+  username: 'newpatient',
+  email: 'a@example.com',
+  mobile: '09171234567',
+  dueDate: '2027-04-01',
+  weeksPregnant: 12,
+  lmpDate: '2026-06-25',
+  firstTimeMom: true,
+  clinicName: 'Clinic',
+  createdAt: new Date().toISOString(),
+  setupComplete: true,
+});
 
 const comment = (overrides) => ({
   userId: PATIENT_A,
@@ -82,6 +98,11 @@ beforeEach(async () => {
       name: DOC_OTHER.doctorName, authUid: DOC_OTHER.uid, loginEmail: 'other@example.com',
     });
     await setDoc(doc(db, 'insights/article1'), { title: 'Week 12' });
+    for (const uid of [PATIENT_A, PATIENT_B]) {
+      await setDoc(doc(db, `users/${uid}/snapshots/photo-${uid}`), { url: 'y.jpg' });
+      await setDoc(doc(db, `users/${uid}/healthLogs/log1`), { weight: 60, loggedAt: Timestamp.now() });
+      await setDoc(doc(db, `users/${uid}/notifications/n1`), { title: 'Reminder', message: 'Checkup', read: false });
+    }
   });
 });
 
@@ -205,6 +226,120 @@ describe('admins and insights', () => {
   });
   test('a signed-in user can read /insights', async () => {
     await assertSucceeds(getDoc(doc(patientA(), 'insights/article1')));
+  });
+});
+
+// Every "cannot" below is paired with a "can" that differs only in the
+// property under test, so a denial can't come from an unrelated mistake
+// (wrong path, missing field, wrong auth context).
+
+describe('signup: users/{uid}', () => {
+  // The shared seed already has both profiles; a write to an existing
+  // document would be an update, not the create being tested.
+  beforeEach(async () => {
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      await deleteDoc(doc(ctx.firestore(), `users/${PATIENT_A}`));
+      await deleteDoc(doc(ctx.firestore(), `users/${PATIENT_B}`));
+    });
+  });
+
+  test('patient A can create users/{A} with exactly the registration payload', async () => {
+    await assertSucceeds(setDoc(doc(patientA(), `users/${PATIENT_A}`), registration(PATIENT_A)));
+  });
+  test('creating users/{A} with an extra assignedDoctorNames field is denied', async () => {
+    await assertFails(setDoc(doc(patientA(), `users/${PATIENT_A}`),
+      { ...registration(PATIENT_A), assignedDoctorNames: ['Dr. Assigned'] }));
+  });
+  test('patient A cannot create users/{B}', async () => {
+    await assertFails(setDoc(doc(patientA(), `users/${PATIENT_B}`), registration(PATIENT_B)));
+  });
+});
+
+describe('signup: usernames/{name}', () => {
+  const ownEntry = { uid: PATIENT_A, email: 'a@example.com' };
+
+  test('patient A can create usernames/{name} with own uid and email', async () => {
+    await assertSucceeds(setDoc(doc(patientA(), 'usernames/newname'), ownEntry));
+  });
+  test('…also when the stored email differs in letter case', async () => {
+    await assertSucceeds(setDoc(doc(patientA(), 'usernames/newname'), { ...ownEntry, email: 'A@Example.COM' }));
+  });
+  test('…also when the auth token email differs in letter case', async () => {
+    const db = env.authenticatedContext(PATIENT_A, { email: 'A@EXAMPLE.COM' }).firestore();
+    await assertSucceeds(setDoc(doc(db, 'usernames/newname'), ownEntry));
+  });
+  test("a username with someone else's uid is denied", async () => {
+    await assertFails(setDoc(doc(patientA(), 'usernames/newname'), { ...ownEntry, uid: PATIENT_B }));
+  });
+  test('a username with an extra field is denied', async () => {
+    await assertFails(setDoc(doc(patientA(), 'usernames/newname'), { ...ownEntry, role: 'admin' }));
+  });
+  test('a username with uppercase letters is denied', async () => {
+    await assertFails(setDoc(doc(patientA(), 'usernames/NewName'), ownEntry));
+  });
+  test('overwriting an existing username is denied (even with own uid/email)', async () => {
+    await assertFails(setDoc(doc(patientA(), 'usernames/patienta'), ownEntry));
+  });
+});
+
+describe('isolation between patients', () => {
+  test('A can update own profile', async () => {
+    await assertSucceeds(updateDoc(doc(patientA(), `users/${PATIENT_A}`), { fullName: 'Renamed' }));
+  });
+  test("A cannot update B's profile", async () => {
+    await assertFails(updateDoc(doc(patientA(), `users/${PATIENT_B}`), { fullName: 'Renamed' }));
+  });
+
+  for (const sub of ['snapshots', 'healthLogs', 'notifications']) {
+    test(`A can read own ${sub}`, async () => {
+      await assertSucceeds(getDocs(collection(patientA(), `users/${PATIENT_A}/${sub}`)));
+    });
+    test(`A cannot read B's ${sub}`, async () => {
+      await assertFails(getDocs(collection(patientA(), `users/${PATIENT_B}/${sub}`)));
+    });
+  }
+
+  test("A can comment under own snapshot", async () => {
+    await assertSucceeds(addDoc(collection(patientA(), `users/${PATIENT_A}/snapshots/photo-${PATIENT_A}/comments`),
+      comment({ userId: PATIENT_A, authorRole: 'user', authorName: 'Patient A' })));
+  });
+  test("A cannot comment under B's snapshot", async () => {
+    await assertFails(addDoc(collection(patientA(), `users/${PATIENT_B}/snapshots/photo-${PATIENT_B}/comments`),
+      comment({ userId: PATIENT_B, authorRole: 'user', authorName: 'Patient A' })));
+  });
+
+  // No client may create or delete appointments, so the "can" partner
+  // is the same patient reaching the same path with an allowed operation.
+  test('A can get own appointment (path/context sanity for the two below)', async () => {
+    await assertSucceeds(getDoc(doc(patientA(), APPT)));
+  });
+  test('A cannot create an appointment', async () => {
+    await assertFails(addDoc(collection(patientA(), `users/${PATIENT_A}/appointments`),
+      { status: 'upcoming', doctor: DOC_ASSIGNED.doctorName, date: '2026-11-01' }));
+  });
+  test('A cannot delete an appointment', async () => {
+    await assertFails(deleteDoc(doc(patientA(), APPT)));
+  });
+});
+
+describe('other write paths', () => {
+  const NOTIF = `users/${PATIENT_A}/notifications/n1`;
+  const LOGS = `users/${PATIENT_A}/healthLogs`;
+
+  test('A can mark a notification read', async () => {
+    await assertSucceeds(updateDoc(doc(patientA(), NOTIF), { read: true }));
+  });
+  test('A cannot change another field on a notification', async () => {
+    await assertFails(updateDoc(doc(patientA(), NOTIF), { title: 'Edited' }));
+  });
+  test('A cannot change another field together with read', async () => {
+    await assertFails(updateDoc(doc(patientA(), NOTIF), { read: true, title: 'Edited' }));
+  });
+  test('A can append a healthLog', async () => {
+    await assertSucceeds(addDoc(collection(patientA(), LOGS), { weight: 61, loggedAt: Timestamp.now() }));
+  });
+  test('A cannot update a healthLog', async () => {
+    await assertFails(updateDoc(doc(patientA(), `${LOGS}/log1`), { weight: 99 }));
   });
 });
 

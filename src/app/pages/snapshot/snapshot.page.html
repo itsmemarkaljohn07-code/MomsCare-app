@@ -89,16 +89,16 @@
                    that looked identical for every doctor. -->
               <img *ngIf="doctorAvatarUrl(thread.comment) as avatarUrl; else initialsAvatar"
                    [src]="avatarUrl" class="comment-avatar comment-avatar--photo"
-                   [alt]="thread.comment.authorName"/>
+                   [alt]="commentAuthorName(thread.comment)"/>
               <ng-template #initialsAvatar>
                 <div class="comment-avatar comment-avatar--initials"
-                     [style.background]="getAvatarColor(thread.comment.authorName)">
-                  {{ getInitials(thread.comment.authorName) }}
+                     [style.background]="getAvatarColor(commentAuthorName(thread.comment))">
+                  {{ getInitials(commentAuthorName(thread.comment)) }}
                 </div>
               </ng-template>
 
               <div class="comment-content">
-                <span class="comment-author">{{ thread.comment.authorName }}</span>
+                <span class="comment-author">{{ commentAuthorName(thread.comment) }}</span>
                 <div class="comment-meta">
                   <span class="comment-role-badge">Care Team</span>
                   <span class="comment-specialty" *ngIf="doctorSpecialty(thread.comment) as specialty">· {{ specialty }}</span>
@@ -107,7 +107,7 @@
                   </span>
                 </div>
                 <p class="comment-message">{{ thread.comment.message }}</p>
-                <button class="comment-reply-btn" (click)="toggleReply(thread.comment.id, thread.comment.authorName)">
+                <button class="comment-reply-btn" (click)="toggleReply(thread.comment.id, commentAuthorName(thread.comment))">
                   {{ replyingToId === thread.comment.id ? 'Cancel' : 'Reply' }}
                 </button>
               </div>

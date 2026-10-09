@@ -1,0 +1,257 @@
+rules_version = '2';
+
+// MomCare - Firestore security rules (v2)
+//
+// Who talks to Firestore, and how:
+//   * Patient mobile app  -> client SDK, signed in as the patient.
+//   * Admin / Doctor dashboards -> mostly the Firebase ADMIN SDK on the
+//     server, which bypasses these rules entirely (all dashboard writes
+//     except the ones listed below, and doctor comments / appointment
+//     approvals / clinical notes, go through server API routes).
+//   * Ten dashboard components use the CLIENT SDK from the browser,
+//     so these rules must allow exactly what they do:
+//       admin-appointments-live, doctor-appointments-live
+//           -> get users/{patient}/appointments/{id}
+//       doctor-comment-thread, photo-comment-thread
+//           -> read comments; photo-comment-thread (admin) also ADDS them
+//       patient-view-live            -> get users/{patient}        (admin)
+//       admin-view-live              -> get admins/{uid}           (admin)
+//       doctor-view-live             -> get doctors/{id}           (admin)
+//       doctor-sidebar               -> get doctors/{ownId}        (doctor)
+//       doctor-profile-form          -> get + update doctors/{ownId}:
+//                                       photoUrl and title only    (doctor)
+//       clinical-notes-panel         -> read users/{patient}/clinicalNotes
+//                                       (admin, or the assigned doctor)
+//
+// VERIFIED against the momscare-admin code:
+//   1. Admins are documents at /admins/{authUid}.
+//   2. Doctors carry custom claims { doctorId, doctorName }.
+//   3. A patient is assigned to a doctor by the patient document's
+//      "assignedDoctorNames" array containing the doctor's name.
+//
+// Anything not matched below is DENIED to clients (default deny).
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ------------------------- helpers -------------------------
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    function isAdmin() {
+      return signedIn() &&
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+
+    function isDoctor() {
+      return signedIn() &&
+        ('doctorName' in request.auth.token) &&
+        request.auth.token.doctorName is string;
+    }
+
+    // The doctors/{id} document that belongs to the signed-in doctor.
+    function isOwnDoctorDoc(doctorId) {
+      return isDoctor() &&
+        ('doctorId' in request.auth.token) &&
+        request.auth.token.doctorId == doctorId;
+    }
+
+    // A doctor only gets access to patients the clinic assigned to them.
+    function isAssignedDoctor(patientUid) {
+      return isDoctor() &&
+        request.auth.token.doctorName in
+          get(/databases/$(database)/documents/users/$(patientUid))
+            .data.get('assignedDoctorNames', []);
+    }
+
+    function isStaffFor(patientUid) {
+      return isAdmin() || isAssignedDoctor(patientUid);
+    }
+
+    // Profile fields a PATIENT may change. Deliberately absent:
+    //   uid, username, email  -> identity; set once at registration
+    //   assignedDoctorNames   -> managed by clinic staff only
+    //   anything else the dashboard stores on the patient document
+    function profileEditableKeys() {
+      return [
+        'fullName', 'firstName', 'lastName', 'mobile',
+        'dueDate', 'weeksPregnant', 'lmpDate', 'firstTimeMom',
+        'clinicName', 'setupComplete', 'createdAt', 'avatar',
+        'dob', 'address', 'bloodType', 'emergencyContact',
+        'calcMethod', 'weightUnit', 'kickReminderTime', 'highRisk',
+        'notificationPrefs'
+      ];
+    }
+
+    // ------------------------- patients -------------------------
+
+    match /users/{uid} {
+
+      // A patient reads ONLY their own profile; an admin may also read it
+      // (the dashboard's live patient view listens to this document).
+      // No list access and no public read: the old rules allowed anyone,
+      // signed in or not, to read profiles.
+      allow get: if isOwner(uid) || isAdmin();
+      allow list: if false;
+
+      // Registration writes the profile right after the Auth account is
+      // created. Only identity + the editable fields may be present, so
+      // nobody can create a profile that pre-assigns themselves a doctor.
+      allow create: if isOwner(uid)
+        && request.resource.data.uid == uid
+        && request.resource.data.keys().hasOnly(
+             profileEditableKeys().concat(['uid', 'username', 'email']));
+
+      // Updates may only touch fields in profileEditableKeys(). Fields
+      // the clinic manages (e.g. assignedDoctorNames) can't be changed
+      // from the app, even though they sit on the same document.
+      allow update: if isOwner(uid)
+        && request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(profileEditableKeys());
+
+      allow delete: if false;
+
+      // -- appointments --
+      // Created and managed by clinic staff (the app never creates
+      // them). A patient can read their own, and cancel an upcoming one.
+      // Admin/doctor dashboards listen to a single appointment document.
+      match /appointments/{id} {
+        allow get: if isOwner(uid) || isStaffFor(uid);
+        allow list: if isOwner(uid);
+        allow create, delete: if false;
+        allow update: if isOwner(uid)
+          && resource.data.status == 'upcoming'
+          && request.resource.data.diff(resource.data).affectedKeys()
+               .hasOnly(['status'])
+          && request.resource.data.status == 'cancelled';
+      }
+
+      // -- snapshots (photos + the health reading logged with them) --
+      match /snapshots/{photoId} {
+        allow read, create, delete: if isOwner(uid);
+        allow update: if false;
+
+        // -- comments --
+        // Real-time thread between the patient and their care team.
+        // Each role may only create comments as itself, so nobody can
+        // post as a doctor by setting authorRole.
+        match /comments/{commentId} {
+          allow read: if isOwner(uid) || isStaffFor(uid);
+
+          allow create: if request.resource.data.userId == uid
+            && request.resource.data.message is string
+            && request.resource.data.message.size() > 0
+            && request.resource.data.message.size() <= 2000
+            && (
+              ( isOwner(uid)
+                && request.resource.data.authorRole == 'user' )
+              ||
+              ( isAdmin()
+                && request.resource.data.authorRole == 'admin'
+                && request.resource.data.authorUid == request.auth.uid )
+              ||
+              ( isAssignedDoctor(uid)
+                && request.resource.data.authorRole == 'doctor'
+                && request.resource.data.authorName == request.auth.token.doctorName )
+            );
+
+          allow update, delete: if false;
+        }
+      }
+
+      // -- clinical notes --
+      // Written only by the dashboard's server routes. Readable in the
+      // browser by admins and by the doctor assigned to this patient.
+      // Patients cannot read them.
+      match /clinicalNotes/{noteId} {
+        allow read: if isStaffFor(uid);
+        allow write: if false;
+      }
+
+      // -- daily health data --
+      match /health/{docId} {
+        allow read, write: if isOwner(uid);
+      }
+
+      // A log is append-only: readings can be added but not rewritten.
+      match /healthLogs/{logId} {
+        allow read, create: if isOwner(uid);
+        allow update, delete: if false;
+      }
+
+      match /checklist/{docId} {
+        allow read, write: if isOwner(uid);
+      }
+
+      // The app can read notifications, add its own, and mark them read
+      // - nothing else about an existing notification can change.
+      match /notifications/{notifId} {
+        allow read, create: if isOwner(uid);
+        allow update: if isOwner(uid)
+          && request.resource.data.diff(resource.data).affectedKeys()
+               .hasOnly(['read']);
+        allow delete: if false;
+      }
+    }
+
+    // --------------------- username -> email lookup ---------------------
+    // Login takes a username, so the app must resolve it to an email
+    // BEFORE anyone is signed in. That makes a single-document read public
+    // by necessity (Firebase has no other way to do this without Cloud
+    // Functions). To limit the exposure: documents can only be fetched by
+    // exact username (no listing, so the list of emails can't be
+    // harvested), and they can never be edited or deleted from a client.
+    match /usernames/{username} {
+      allow get: if true;
+      allow list: if false;
+
+      allow create: if signedIn()
+        && username == username.lower()
+        && request.resource.data.keys().hasOnly(['email', 'uid'])
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.email.lower() == request.auth.token.email.lower();
+
+      allow update, delete: if false;
+    }
+
+    // ------------------------- content -------------------------
+    // Articles are read by signed-in patients and edited only through
+    // the dashboard's server routes (admin SDK).
+    match /insights/{articleId} {
+      allow read: if signedIn();
+      allow write: if false;
+    }
+
+    // ----------------------- staff collections -----------------------
+    // Admin records: any admin can read them (the dashboard's admin view
+    // listens to one); nothing is writable from a client. Patients and
+    // doctors cannot read them.
+    match /admins/{adminId} {
+      allow get: if isAdmin();
+      allow list, write: if false;
+    }
+
+    // Doctor documents contain login emails and auth IDs, so PATIENTS
+    // must never read them (the app doesn't need to: staff identity shown
+    // on a comment is stored on the comment itself).
+    //   - an admin can read any doctor document
+    //   - a doctor can read their OWN document, and change only the two
+    //     profile fields the dashboard's profile form edits (photoUrl,
+    //     title) - never loginEmail, authUid, username, name, etc.
+    //   - creating, deleting and listing go through the admin SDK
+    match /doctors/{doctorId} {
+      allow get: if isAdmin() || isOwnDoctorDoc(doctorId);
+      allow list: if false;
+      allow create, delete: if false;
+      allow update: if isOwnDoctorDoc(doctorId)
+        && request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['photoUrl', 'title']);
+    }
+  }
+}

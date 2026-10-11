@@ -112,8 +112,18 @@
           </div>
           <input class="field-input field-input--inline" type="time" [(ngModel)]="settings.kickReminderTime"/>
         </div>
+        <div class="toggle-row toggle-row--subfield">
+          <div class="toggle-info">
+            <p class="toggle-title">Send a test reminder</p>
+            <p class="toggle-sub">See how a reminder looks on this phone</p>
+          </div>
+          <button class="test-btn" (click)="sendTest()" [disabled]="isTesting">
+            {{ isTesting ? 'Sending...' : 'Test' }}
+          </button>
+        </div>
       </div>
 
+      <p class="reminder-note" *ngIf="reminderNote">{{ reminderNote }}</p>
       <p class="save-error-text" *ngIf="saveError">{{ saveError }}</p>
 
       <div class="btn-wrap">

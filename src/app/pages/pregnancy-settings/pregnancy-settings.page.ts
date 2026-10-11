@@ -7,6 +7,8 @@ import { FormsModule } from '@angular/forms';
 import { ThemeService } from '../../services/theme';
 import { AuthService, UserProfile } from '../../services/auth.service';
 import { toDateInputValue, fromDateInputValue, formatLocalDate } from '../../shared/date-utils';
+import { ReminderSchedulerService, ReminderSyncResult } from '../../services/reminder-scheduler.service';
+import { DEFAULT_KICK_TIME } from '../../services/reminder-plan';
 import { Subscription } from 'rxjs';
 
 @Component({
@@ -24,6 +26,10 @@ export class PregnancySettingsPage implements OnInit, OnDestroy, ViewWillEnter {
   showToast = false;
   isSaving  = false;
   saveError = '';
+  isTesting = false;
+  // Plain-language result of setting up reminders on this phone, shown
+  // under the Notifications card (blocked permission, how many were set...).
+  reminderNote = '';
 
   // Blank until the real profile loads in ionViewWillEnter -- not
   // another hardcoded "20 weeks, due Sep 2025" placeholder. clinic was
@@ -34,7 +40,7 @@ export class PregnancySettingsPage implements OnInit, OnDestroy, ViewWillEnter {
   // the same underlying data.
   settings = {
     dueDate: '', lmpDate: '',
-    calcMethod: 'lmp', weightUnit: 'kg', kickReminderTime: '',
+    calcMethod: 'lmp', weightUnit: 'kg', kickReminderTime: DEFAULT_KICK_TIME,
     highRisk: 'no',
   };
 
@@ -44,11 +50,14 @@ export class PregnancySettingsPage implements OnInit, OnDestroy, ViewWillEnter {
   private loaded = { dueDate: '', lmpDate: '' };
 
   notifToggles = [
-    { key: 'weeklyUpdates',        label: 'Weekly Pregnancy Updates', desc: 'Get tips and info every week',          on: true },
-    { key: 'appointmentReminders', label: 'Appointment Reminders',    desc: '24 hours before each visit',            on: true },
-    { key: 'vitaminReminder',      label: 'Daily Vitamin Reminder',   desc: 'Remind me to take my vitamins',         on: true },
-    { key: 'kickAlerts',           label: 'Kick Count Alerts',        desc: 'Daily fetal movement reminder',         on: false },
-    { key: 'hydrationReminders',   label: 'Hydration Reminders',      desc: 'Stay hydrated throughout the day',      on: false },
+    // Descriptions state when each one really fires. Weekly and vitamin
+    // start OFF: reminders are opt-in, so nothing is scheduled (and no
+    // permission asked for) until the patient switches one on and saves.
+    { key: 'weeklyUpdates',        label: 'Weekly Pregnancy Updates', desc: 'Every Monday morning',                          on: false },
+    { key: 'appointmentReminders', label: 'Appointment Reminders',    desc: 'The day before and 2 hours before each visit',  on: true },
+    { key: 'vitaminReminder',      label: 'Daily Vitamin Reminder',   desc: 'Every morning, around 9:00 AM',                 on: false },
+    { key: 'kickAlerts',           label: 'Kick Count Alerts',        desc: 'Every day at the time you choose below',        on: false },
+    { key: 'hydrationReminders',   label: 'Hydration Reminders',      desc: 'Three a day, around 11 AM, 2 PM and 5 PM',      on: false },
   ];
 
   /** Same 280-day formula every other page uses -- computed from
@@ -91,7 +100,12 @@ export class PregnancySettingsPage implements OnInit, OnDestroy, ViewWillEnter {
     this.settings.dueDate = formatLocalDate(date);
   }
 
-  constructor(private location: Location, private theme: ThemeService, private authService: AuthService) {}
+  constructor(
+    private location: Location,
+    private theme: ThemeService,
+    private authService: AuthService,
+    private reminders: ReminderSchedulerService,
+  ) {}
 
   ngOnInit(): void {
     this.themeSub = this.theme.isDark$.subscribe(val => (this.darkMode = val));
@@ -111,7 +125,7 @@ export class PregnancySettingsPage implements OnInit, OnDestroy, ViewWillEnter {
         lmpDate: toDateInputValue(profile.lmpDate),
         calcMethod: profile.calcMethod ?? 'lmp',
         weightUnit: profile.weightUnit ?? 'kg',
-        kickReminderTime: profile.kickReminderTime ?? '',
+        kickReminderTime: profile.kickReminderTime || DEFAULT_KICK_TIME,
         highRisk: profile.highRisk ? 'yes' : 'no',
       };
       this.loaded = { dueDate: this.settings.dueDate, lmpDate: this.settings.lmpDate };
@@ -135,6 +149,7 @@ export class PregnancySettingsPage implements OnInit, OnDestroy, ViewWillEnter {
     if (this.isSaving) return;
     this.isSaving = true;
     this.saveError = '';
+    this.reminderNote = '';
     try {
       const notificationPrefs = {
         weeklyUpdates:        this.notifToggles.find(t => t.key === 'weeklyUpdates')!.on,
@@ -160,11 +175,67 @@ export class PregnancySettingsPage implements OnInit, OnDestroy, ViewWillEnter {
       this.loaded = { dueDate: this.settings.dueDate, lmpDate: this.settings.lmpDate };
       this.showToast = true;
       setTimeout(() => (this.showToast = false), 2500);
+      await this.updateReminders(notificationPrefs);
     } catch (err) {
       console.error('Failed to save pregnancy settings:', err);
       this.saveError = "Couldn't save your changes. Please check your connection and try again.";
     } finally {
       this.isSaving = false;
+    }
+  }
+
+  /** Makes this phone's reminders match the switches that were just saved.
+   *  Runs AFTER the save succeeded and never throws, so a notification
+   *  problem can't make a successful save look like a failure. */
+  private async updateReminders(notificationPrefs: any): Promise<void> {
+    const anyOn = ['weeklyUpdates', 'vitaminReminder', 'kickAlerts', 'hydrationReminders']
+      .some(k => notificationPrefs[k]);
+    try {
+      const result = await this.reminders.sync(
+        { notificationPrefs, kickReminderTime: this.settings.kickReminderTime },
+        { requestPermission: true },
+      );
+      this.reminderNote = this.describeReminders(result, anyOn);
+    } catch (err) {
+      console.error('Failed to schedule reminders:', err);
+      this.reminderNote = "Saved, but we couldn't set up the reminders on this phone. Please try saving again.";
+    }
+  }
+
+  private describeReminders(r: ReminderSyncResult, anyOn: boolean): string {
+    if (!anyOn) return '';
+    if (r.permission === 'unavailable') {
+      return 'Saved. Reminders are delivered by the MomCare phone app, not in the browser.';
+    }
+    if (r.permission === 'denied') {
+      return 'Saved, but notifications are blocked for MomCare on this phone. Turn them on in Settings > Apps > MomCare > Notifications, then save again.';
+    }
+    if (r.permission === 'granted' && r.scheduled > 0) {
+      const base = `${r.scheduled} reminder${r.scheduled === 1 ? '' : 's'} scheduled on this phone.`;
+      return r.exactAlarms === 'denied'
+        ? `${base} For on-time delivery, allow "Alarms & reminders" for MomCare in your phone settings.`
+        : base;
+    }
+    return '';
+  }
+
+  /** Shows a sample reminder in a few seconds, so the patient (or an
+   *  examiner) can see reminders work without waiting for a scheduled time. */
+  async sendTest(): Promise<void> {
+    if (this.isTesting) return;
+    this.isTesting = true;
+    this.reminderNote = '';
+    try {
+      const result = await this.reminders.sendTestReminder();
+      this.reminderNote =
+        result === 'sent'   ? 'Test reminder sent. It should appear in a few seconds.'
+        : result === 'denied' ? 'Notifications are blocked for MomCare on this phone. Turn them on in Settings > Apps > MomCare > Notifications.'
+        : 'Test reminders work in the MomCare phone app, not in the browser.';
+    } catch (err) {
+      console.error('Failed to send test reminder:', err);
+      this.reminderNote = "Couldn't send a test reminder on this phone.";
+    } finally {
+      this.isTesting = false;
     }
   }
 

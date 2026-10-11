@@ -132,6 +132,28 @@ export class AppointmentRemindersService {
     }
   }
 
+  /** Cancels every appointment reminder pending on this device, including
+   *  ones scheduled in an earlier session (scheduledIds below only lives
+   *  in memory and is empty after an app restart). Used when the user
+   *  switches appointment reminders off. Only IDs at or above
+   *  REMINDER_ID_BASE are touched, so the Home page's daily checklist
+   *  reminder (991001) is left alone. */
+  async cancelAllReminders(): Promise<void> {
+    this.scheduledIds = [];
+    try {
+      const { Capacitor } = await import('@capacitor/core');
+      if (!Capacitor.isNativePlatform()) return;
+      const { LocalNotifications } = await import('@capacitor/local-notifications');
+      const { notifications } = await LocalNotifications.getPending();
+      const mine = notifications.filter(n => n.id >= REMINDER_ID_BASE);
+      if (mine.length > 0) {
+        await LocalNotifications.cancel({ notifications: mine.map(n => ({ id: n.id })) });
+      }
+    } catch {
+      // Plugin not available -- nothing scheduled to cancel.
+    }
+  }
+
   private async cancelAll(): Promise<void> {
     if (this.scheduledIds.length === 0) return;
     try {

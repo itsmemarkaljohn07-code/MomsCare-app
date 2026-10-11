@@ -1,59 +1,151 @@
 // app-settings.page.ts
 import { Component, OnInit, OnDestroy } from '@angular/core';
-import { Location } from '@angular/common';
+import { Location, CommonModule } from '@angular/common';
+import { Router } from '@angular/router';
 import { IonicModule } from '@ionic/angular';
-import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
 import { ThemeService } from '../../services/theme';
+import { AuthService } from '../../services/auth.service';
 import { Subscription } from 'rxjs';
 
+// The one place the contact address for data and deletion requests lives.
+const SUPPORT_EMAIL = 'momscare.noreply@gmail.com';
+
+/**
+ * Every control on this page does something real. The earlier version
+ * had language, date format, app lock, email/push/sound and analytics
+ * toggles that saved nothing and affected nothing, plus alerts promising
+ * an emailed data export and "cleared" cache that never happened. Those
+ * were removed rather than left looking functional.
+ */
 @Component({
   selector: 'app-app-settings',
   templateUrl: './app-settings.page.html',
   styleUrls: ['./app-settings.page.scss'],
   standalone: true,
-  imports: [IonicModule, CommonModule, FormsModule],
+  imports: [IonicModule, CommonModule],
 })
 export class AppSettingsPage implements OnInit, OnDestroy {
   animReady = false;
-  showToast = false;
   darkMode  = false;
   private themeSub!: Subscription;
 
-  s = { language: 'en', dateFormat: 'mdy', appLock: 'none' };
+  readonly supportEmail = SUPPORT_EMAIL;
 
-  notifSettings = [
-    { label: 'Push Notifications', desc: 'Receive alerts on your device', on: true },
-    { label: 'Email Notifications', desc: 'Weekly summaries to your email', on: false },
-    { label: 'Sound & Vibration', desc: 'Play sound for reminders', on: true },
-  ];
+  private accountEmail = '';
+  private accountUsername = '';
+  maskedEmail = '';
 
-  privacySettings = [
-    { label: 'Analytics', desc: 'Help improve MomCare with usage data', on: true },
-    { label: 'Crash Reports', desc: 'Auto-send error reports to improve stability', on: true },
-    { label: 'Share with Provider', desc: 'Allow your healthcare provider to view data', on: false },
-  ];
+  confirmingReset = false;
+  isSendingReset  = false;
 
-  saveSettings(): void {
-    this.showToast = true;
-    setTimeout(() => (this.showToast = false), 2500);
-  }
-  exportData(): void { alert('Your data export will be sent to your email within 24 hours.'); }
-  clearCache(): void { alert('Cache cleared successfully.'); }
-  changePassword(): void { alert('Password change feature coming soon.'); }
-  deleteAccount(): void { alert('Please contact support@momscare.app to delete your account.'); }
+  toastMessage = '';
+  toastKind: 'success' | 'error' = 'success';
+  private toastTimer: ReturnType<typeof setTimeout> | null = null;
 
-  // Manual dark-mode toggle removed — theme now always follows the
-  // device's system setting via ThemeService (no manual override).
+  constructor(
+    private location: Location,
+    private router: Router,
+    private theme: ThemeService,
+    private authService: AuthService,
+  ) {}
 
-  constructor(private location: Location, private theme: ThemeService) {}
   ngOnInit(): void {
     this.themeSub = this.theme.isDark$.subscribe(val => (this.darkMode = val));
     requestAnimationFrame(() => setTimeout(() => (this.animReady = true), 80));
+    this.loadAccount();
   }
+
+  /** Reads the signed-in user's own email and username, used to send the
+   *  password reset link and to fill in the request emails. */
+  private async loadAccount(): Promise<void> {
+    try {
+      const profile = await this.authService.getProfile();
+      this.accountEmail    = profile?.email ?? '';
+      this.accountUsername = profile?.username ?? '';
+      this.maskedEmail     = this.maskEmail(this.accountEmail);
+    } catch (err) {
+      console.error('Failed to load account details:', err);
+    }
+  }
+
+  /** "maria@gmail.com" -> "m***@gmail.com" */
+  private maskEmail(email: string): string {
+    const at = email.indexOf('@');
+    if (at < 1) return '';
+    return `${email[0]}***${email.slice(at)}`;
+  }
+
+  // ── Change password: sends Firebase's own reset link to the account email ──
+
+  startReset(): void {
+    if (!this.accountEmail) {
+      this.showToast("We couldn't find your account email. Please try again in a moment.", 'error');
+      return;
+    }
+    this.confirmingReset = true;
+  }
+
+  cancelReset(): void {
+    if (this.isSendingReset) return;
+    this.confirmingReset = false;
+  }
+
+  async sendReset(): Promise<void> {
+    if (this.isSendingReset || !this.accountEmail) return;
+    this.isSendingReset = true;
+    try {
+      await this.authService.resetPassword(this.accountEmail);
+      this.confirmingReset = false;
+      this.showToast(`Reset link sent to ${this.maskedEmail}. Check your inbox and spam folder.`, 'success');
+    } catch (err: any) {
+      this.showToast(err?.message || "Couldn't send the reset link. Please check your connection and try again.", 'error');
+    } finally {
+      this.isSendingReset = false;
+    }
+  }
+
+  // ── Data and deletion requests: an email to the MomCare team ──
+
+  requestMyData(): void {
+    this.openMail(
+      'MomCare data request',
+      'I would like a copy of the personal data MomCare holds about me.',
+    );
+  }
+
+  requestAccountDeletion(): void {
+    this.openMail(
+      'MomCare account deletion request',
+      'I would like to request deletion of my MomCare account and my personal data.',
+    );
+  }
+
+  private openMail(subject: string, request: string): void {
+    const body = [
+      request,
+      '',
+      `Account email: ${this.accountEmail || '(please type your account email)'}`,
+      `Username: ${this.accountUsername || '(please type your username)'}`,
+    ].join('\n');
+    window.location.href =
+      `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  }
+
+  goToPrivacy(): void {
+    this.router.navigate(['/privacy']);
+  }
+
+  private showToast(message: string, kind: 'success' | 'error'): void {
+    this.toastMessage = message;
+    this.toastKind = kind;
+    if (this.toastTimer) clearTimeout(this.toastTimer);
+    this.toastTimer = setTimeout(() => (this.toastMessage = ''), 4500);
+  }
+
   goBack(): void { this.location.back(); }
 
   ngOnDestroy(): void {
     this.themeSub?.unsubscribe();
+    if (this.toastTimer) clearTimeout(this.toastTimer);
   }
 }

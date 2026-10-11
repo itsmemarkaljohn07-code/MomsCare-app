@@ -578,3 +578,23 @@ ion-content { --background: var(--bg); }
   font-size: 0.74rem; font-weight: 700; color: var(--error, #e05580);
   font-family: 'Nunito','Poppins',sans-serif; margin: 0 0 12px; text-align: center;
 }
+
+/* -- Reminders: test button and result note -- */
+.test-btn {
+  flex-shrink: 0; height: 38px; padding: 0 16px; border-radius: 12px;
+  background: transparent; color: var(--purple);
+  border: 1.5px solid rgba(181,127,212,0.30);
+  font-size: 0.8rem; font-weight: 800; font-family: 'Nunito','Poppins',sans-serif;
+  cursor: pointer; transition: transform 0.15s, background 0.18s;
+  &:hover  { background: rgba(181,127,212,0.06); }
+  &:active { transform: scale(0.97); }
+  &[disabled] { opacity: 0.6; pointer-events: none; }
+}
+.reminder-note {
+  width: calc(100% - 32px); max-width: 440px;
+  font-size: 0.74rem; line-height: 1.5; color: var(--muted);
+  font-family: 'Nunito','Poppins',sans-serif; text-align: center; margin: 0 0 12px;
+}
+@media (min-width: 700px) {
+  .reminder-note { max-width: 560px; }
+}

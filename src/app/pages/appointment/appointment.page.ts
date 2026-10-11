@@ -90,6 +90,39 @@ export class AppointmentsPage implements OnInit, OnDestroy {
     };
   }
 
+  // Reminders follow the "Appointment Reminders" switch in Pregnancy
+  // Settings (notificationPrefs.appointmentReminders). Unset means on.
+  private remindersEnabled = true;
+  private latestRecords: AppointmentRecord[] = [];
+
+  private applyReminders(): void {
+    if (this.remindersEnabled) {
+      this.appointmentReminders.syncReminders(this.latestRecords);
+    } else {
+      this.appointmentReminders.cancelAllReminders();
+    }
+  }
+
+  private async loadReminderPreference(): Promise<void> {
+    try {
+      const profile = await this.authService.getProfile();
+      const enabled = profile?.notificationPrefs?.appointmentReminders !== false;
+      if (enabled !== this.remindersEnabled) {
+        this.remindersEnabled = enabled;
+        this.applyReminders();
+      }
+    } catch (err) {
+      console.error('Failed to load reminder preference:', err);
+    }
+  }
+
+  /** Runs every time this page becomes active (Ionic keeps it alive in the
+   *  background), so flipping the switch in Pregnancy Settings takes
+   *  effect as soon as the user comes back here. */
+  ionViewWillEnter(): void {
+    this.loadReminderPreference();
+  }
+
   private applyRecords(records: AppointmentRecord[]): void {
     const todayIso = new Date().toISOString().slice(0, 10);
     this.upcomingAppointments = records
@@ -102,7 +135,8 @@ export class AppointmentsPage implements OnInit, OnDestroy {
 
     // Recompute reminders whenever the appointment list changes — from
     // this device, the admin dashboard, or anywhere else.
-    this.appointmentReminders.syncReminders(records);
+    this.latestRecords = records;
+    this.applyReminders();
   }
 
   toggleCard(index: number): void {

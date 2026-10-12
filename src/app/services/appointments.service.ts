@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import {
-  Firestore, collection, collectionData, addDoc, doc,
-  updateDoc, deleteDoc, query, orderBy, Timestamp,
+  Firestore, collection, collectionData, addDoc, doc, getDocs,
+  updateDoc, deleteDoc, query, orderBy, serverTimestamp, Timestamp,
 } from '@angular/fire/firestore';
 import { AuthService } from './auth.service';
 import { Observable, of, firstValueFrom } from 'rxjs';
@@ -22,7 +22,23 @@ export interface AppointmentRecord {
   files?: string[];
   status: 'upcoming' | 'completed' | 'cancelled';
   createdAt?: any;
+  /** A patient's cancellation request. The app writes only 'requested' and
+   *  'withdrawn'; the dashboard server writes 'approved'/'declined' and the
+   *  decision fields, and sets status 'cancelled' on approval. */
+  cancellation?: AppointmentCancellation;
 }
+
+export interface AppointmentCancellation {
+  state: 'requested' | 'withdrawn' | 'declined' | 'approved';
+  reason?: string;
+  requestedAt?: any;
+  decidedAt?: any;
+  decidedBy?: string;
+  declineReason?: string;
+}
+
+/** Same limit firestore.rules enforces on `cancellation.reason`. */
+export const CANCELLATION_REASON_MAX = 300;
 
 @Injectable({ providedIn: 'root' })
 export class AppointmentsService {
@@ -42,20 +58,40 @@ export class AppointmentsService {
     );
   }
 
+  /** One-time read (no live listener), for scheduling reminders at app start. */
+  async getAppointmentsOnce(uid: string): Promise<AppointmentRecord[]> {
+    const snap = await getDocs(query(this.col(uid), orderBy('date', 'asc')));
+    return snap.docs.map(d => ({ ...(d.data() as AppointmentRecord), id: d.id }));
+  }
+
   async addAppointment(appt: Omit<AppointmentRecord, 'id' | 'createdAt'>): Promise<void> {
     const user = await firstValueFrom(this.auth.user$);
     if (!user) throw new Error('Not authenticated');
     await addDoc(this.col(user.uid), { ...appt, createdAt: Timestamp.now() });
   }
 
-  async updateAppointment(id: string, changes: Partial<AppointmentRecord>): Promise<void> {
-    const user = await firstValueFrom(this.auth.user$);
-    if (!user) throw new Error('Not authenticated');
-    await updateDoc(doc(this.firestore, `users/${user.uid}/appointments/${id}`), changes as any);
+  /** Asks the clinic to cancel an upcoming appointment. Writes ONLY the
+   *  `cancellation` field; the appointment stays booked (status is never
+   *  written from the app) until the clinic approves in the dashboard.
+   *  firestore.rules enforces the same shape and the allowed transitions. */
+  async requestCancellation(id: string, reason?: string): Promise<void> {
+    const trimmed = (reason ?? '').trim().slice(0, CANCELLATION_REASON_MAX);
+    await this.writeCancellation(id, {
+      state: 'requested',
+      ...(trimmed ? { reason: trimmed } : {}),
+      requestedAt: serverTimestamp(),
+    });
   }
 
-  cancelAppointment(id: string): Promise<void> {
-    return this.updateAppointment(id, { status: 'cancelled' });
+  /** Withdraws a pending cancellation request (only valid while 'requested'). */
+  async withdrawCancellationRequest(id: string): Promise<void> {
+    await this.writeCancellation(id, { state: 'withdrawn', requestedAt: serverTimestamp() });
+  }
+
+  private async writeCancellation(id: string, cancellation: Record<string, unknown>): Promise<void> {
+    const user = await firstValueFrom(this.auth.user$);
+    if (!user) throw new Error('Not authenticated');
+    await updateDoc(doc(this.firestore, `users/${user.uid}/appointments/${id}`), { cancellation });
   }
 
   async deleteAppointment(id: string): Promise<void> {

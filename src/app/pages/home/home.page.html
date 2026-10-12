@@ -82,7 +82,7 @@
       </p>
       <div class="greeting-pills">
         <span class="pill pill-week">Week {{ pregnancyWeek }}</span>
-        <span class="pill pill-trim">{{ trimester }}</span>
+        <span class="pill pill-trim">{{ actualTrimester }}</span>
         <span class="pill pill-days">{{ daysRemaining }}d to go</span>
       </div>
     </div>
@@ -92,119 +92,76 @@
     ════════════════════════════════════════ -->
     <div class="baby-hero" [class.visible]="animReady">
 
-      <!-- Week strip -->
+      <!-- Week selector -->
       <div class="week-strip">
-        <button class="week-nav" (click)="shiftWeekStrip(-1)" aria-label="Previous">
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+        <button class="week-nav" (click)="previousWeek()" [disabled]="viewingWeek <= 1"
+                aria-label="Previous week">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
             <path d="M9 2L4 7L9 12" stroke="currentColor" stroke-width="1.8"
                   stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
         </button>
-        <div class="week-cells">
-          <div *ngFor="let w of visibleWeeks"
-               class="week-cell"
-               [class.week-cell--active]="w === viewingWeek"
-               [class.week-cell--today]="w === pregnancyWeek"
-               (click)="selectWeek(w)">
-            <span class="week-cell-label">W{{ w }}</span>
-            <div class="week-cell-dot"></div>
+        <div class="week-scroller" #weekScroller>
+          <div class="week-cells">
+            <button *ngFor="let w of weeks"
+                    type="button"
+                    class="week-cell"
+                    [attr.data-week]="w"
+                    [class.week-cell--active]="w === viewingWeek"
+                    [class.week-cell--today]="w === pregnancyWeek"
+                    [attr.aria-pressed]="w === viewingWeek"
+                    [attr.aria-current]="w === pregnancyWeek ? 'date' : null"
+                    [attr.aria-label]="'Week ' + w + (w === pregnancyWeek ? ', this week' : '')"
+                    (click)="selectWeek(w)">
+              <span class="week-cell-label">Week</span>
+              <span class="week-cell-num">{{ w }}</span>
+              <span class="week-cell-today" *ngIf="w === pregnancyWeek" aria-hidden="true"></span>
+            </button>
           </div>
         </div>
-        <button class="week-nav" (click)="shiftWeekStrip(1)" aria-label="Next">
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+        <button class="week-nav" (click)="nextWeek()" [disabled]="viewingWeek >= weeks.length"
+                aria-label="Next week">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
             <path d="M5 2L10 7L5 12" stroke="currentColor" stroke-width="1.8"
                   stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
         </button>
       </div>
 
-      <!-- Womb visualization stage -->
-      <div class="womb-stage">
+      <!-- Illustration: a full-width stage painted in the image's own edge
+           colours (sampled when it loads), so the picture's baked-in
+           background reads as part of the page. The image is contained
+           (never cropped or stretched) and feathered into the stage; soft
+           fades above and below dissolve the stage into the page
+           (see .fetus-viewer in home.page.scss). -->
+      <div class="fetus-viewer" [style]="stageEdgeStyle">
+        <div class="fetus-stage" [style.--ar]="activeFetusAr">
+          <div class="fetus-backplate" aria-hidden="true"></div>
+          <img *ngFor="let layer of fetusLayers; trackBy: trackFetusLayer"
+               class="fetus-img"
+               [class.fetus-img--active]="isActiveFetusLayer(layer)"
+               [class.fetus-img--failed]="layer.failed"
+               [style.--ar]="layer.ar"
+               [src]="layer.src"
+               [alt]="isActiveFetusLayer(layer) ? 'Illustration of a baby at around week ' + fetusImageWeek + ' of pregnancy' : ''"
+               [attr.aria-hidden]="isActiveFetusLayer(layer) ? null : 'true'"
+               (load)="onFetusImageLoad(layer, $event)"
+               (error)="onFetusImageError(layer)"
+               decoding="async"/>
+        </div>
+      </div>
 
-        <div class="measure-chip measure-chip--left">
+      <div class="measure-row">
+        <div class="measure-chip">
           <span class="measure-chip-label">LENGTH</span>
           <span class="measure-chip-val">{{ babySize.length }}</span>
         </div>
-        <div class="measure-chip measure-chip--right">
+        <div class="measure-chip">
           <span class="measure-chip-label">WEIGHT</span>
           <span class="measure-chip-val">{{ babySize.weight }}</span>
         </div>
-
-        <div class="womb-visual">
-          <div class="womb-glow"></div>
-
-          <svg class="womb-svg" viewBox="57.5 60.8 92.7 109.6"
-               fill="none" xmlns="http://www.w3.org/2000/svg"
-               aria-label="Fetal development illustration">
-
-            <defs>
-              <radialGradient id="headGlow" cx="45%" cy="35%" r="70%">
-                <stop offset="0%" stop-color="rgba(255,190,175,0.95)"/>
-                <stop offset="55%" stop-color="rgba(240,120,115,0.92)"/>
-                <stop offset="100%" stop-color="rgba(200,70,75,0.88)"/>
-              </radialGradient>
-              <radialGradient id="bodyGlow" cx="40%" cy="30%" r="75%">
-                <stop offset="0%" stop-color="rgba(245,150,140,0.9)"/>
-                <stop offset="100%" stop-color="rgba(190,60,65,0.85)"/>
-              </radialGradient>
-            </defs>
-
-            <!-- Placenta + umbilical cord — the cord now actually leads
-                 somewhere, rather than fading into empty space. -->
-            <circle [attr.cx]="placenta.cx" [attr.cy]="placenta.cy" [attr.r]="placenta.r"
-                    fill="rgba(235,150,120,0.5)"/>
-            <path [attr.d]="umbilicalPath"
-                  stroke="rgba(220,120,100,0.55)" stroke-width="4.5"
-                  stroke-linecap="round" fill="none"/>
-
-            <!-- FETUS — a large, dominant round head (the reference
-                 images consistently show the head as the biggest single
-                 mass, not evenly matched with the body) over a tightly
-                 curled body, one prominent bent arm with the hand near
-                 the face, and a smaller, quieter bent leg tucked
-                 beneath. Each limb is a dense chain of tapering circles
-                 (see armPoints/legPoints) rather than a single stroked
-                 line, so it reads as a soft jointed limb. -->
-
-            <ellipse [attr.cx]="fetal.bx" [attr.cy]="fetal.by + fetal.bh * 0.9"
-                     [attr.rx]="fetal.bw * 1.3" [attr.ry]="fetal.bh * 0.35"
-                     fill="rgba(90,20,30,0.14)"/>
-
-            <circle *ngFor="let p of legPoints" [attr.cx]="p.cx" [attr.cy]="p.cy" [attr.r]="p.r"
-                    fill="rgba(232,120,118,0.82)"/>
-
-            <circle *ngFor="let p of armPoints" [attr.cx]="p.cx" [attr.cy]="p.cy" [attr.r]="p.r"
-                    fill="rgba(232,120,118,0.82)"/>
-
-            <path [attr.d]="bodyPath"
-                  fill="url(#bodyGlow)"
-                  stroke="rgba(150,40,50,0.3)" stroke-width="0.75"/>
-
-            <!-- Gentle heartbeat pulse — unchanged from the original:
-                 same position formula, same class, same animation. -->
-            <circle class="heartbeat-dot"
-                    [attr.cx]="fetal.bx + fetal.bw * 0.15"
-                    [attr.cy]="fetal.by - fetal.bh * 0.25"
-                    [attr.r]="fetal.bw * 0.09"
-                    fill="#e0507a"/>
-
-            <ellipse [attr.cx]="fetal.hx" [attr.cy]="fetal.hy"
-                     [attr.rx]="fetal.hr * 1.05" [attr.ry]="fetal.hr * 1.12"
-                     fill="url(#headGlow)" stroke="rgba(150,40,50,0.3)" stroke-width="0.75"/>
-
-            <!-- Ear -->
-            <ellipse [attr.cx]="fetal.hx - fetal.hr * 0.88" [attr.cy]="fetal.hy + fetal.hr * 0.08"
-                     [attr.rx]="fetal.hr * 0.13" [attr.ry]="fetal.hr * 0.22"
-                     fill="rgba(230,110,105,0.75)" stroke="rgba(150,40,50,0.2)" stroke-width="0.4"/>
-
-            <!-- The single most important cue for reading as a face: a
-                 small, dark, clearly visible eye. -->
-            <ellipse [attr.cx]="fetal.hx - fetal.hr * 0.15" [attr.cy]="fetal.hy - fetal.hr * 0.05"
-                     [attr.rx]="fetal.hr * 0.12" [attr.ry]="fetal.hr * 0.16"
-                     fill="#2a0508"/>
-          </svg>
-        </div>
       </div>
+      <p class="fetus-caption" *ngIf="!fetusImageIsExact">Illustration of week {{ fetusImageWeek }}</p>
 
       <!-- Week info -->
       <div class="fetal-info">

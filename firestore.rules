@@ -119,7 +119,10 @@ service cloud.firestore {
 
       // -- appointments --
       // Created and managed by clinic staff (the app never creates
-      // them). A patient can read their own, and cancel an upcoming one.
+      // them). A patient can read their own and, on an upcoming one, only
+      // REQUEST a cancellation (or withdraw that request). The clinic
+      // approves or declines from the dashboard server, which sets
+      // 'approved'/'declined' and, on approval, status 'cancelled'.
       // Admin/doctor dashboards listen to a single appointment document.
       match /appointments/{id} {
         allow get: if isOwner(uid) || isStaffFor(uid);
@@ -128,8 +131,52 @@ service cloud.firestore {
         allow update: if isOwner(uid)
           && resource.data.status == 'upcoming'
           && request.resource.data.diff(resource.data).affectedKeys()
-               .hasOnly(['status'])
-          && request.resource.data.status == 'cancelled';
+               .hasOnly(['cancellation'])
+          && validPatientCancellation();
+
+        // State of the existing request, or null when there is none.
+        function previousCancellationState() {
+          return resource.data.get('cancellation', {}).get('state', null);
+        }
+
+        // What the patient app may write as `cancellation`: only state,
+        // reason and requestedAt; state 'requested' or 'withdrawn' (never
+        // 'approved'/'declined'); a server timestamp; an optional short
+        // reason; and only these transitions:
+        //   none / declined / withdrawn -> requested
+        //   requested                   -> withdrawn
+        function validPatientCancellation() {
+          let next = request.resource.data.cancellation;
+          let prev = previousCancellationState();
+          return next is map
+            && next.keys().hasOnly(['state', 'reason', 'requestedAt'])
+            && next.keys().hasAll(['state', 'requestedAt'])
+            && next.requestedAt == request.time
+            && (!('reason' in next)
+                || (next.reason is string && next.reason.size() <= 300))
+            && ((next.state == 'requested'
+                   && (prev == null || prev in ['declined', 'withdrawn']))
+                || (next.state == 'withdrawn' && prev == 'requested'));
+        }
+      }
+
+      // -- devices (this patient's phones that can receive pushes) --
+      // The app stores one document per installation with its FCM token,
+      // and deletes it before signing out. Only the patient can see or
+      // change these; the dashboard reads them with the Admin SDK on the
+      // server, so no other client is ever allowed in.
+      match /devices/{deviceId} {
+        allow get, list, delete: if isOwner(uid);
+        allow create, update: if isOwner(uid) && validDevice();
+
+        function validDevice() {
+          let d = request.resource.data;
+          return d.keys().hasOnly(['token', 'platform', 'updatedAt'])
+            && d.keys().hasAll(['token', 'platform', 'updatedAt'])
+            && d.token is string && d.token.size() > 0 && d.token.size() <= 4096
+            && d.platform == 'android'
+            && d.updatedAt == request.time;
+        }
       }
 
       // -- snapshots (photos + the health reading logged with them) --

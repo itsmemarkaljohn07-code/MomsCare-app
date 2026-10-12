@@ -26,7 +26,8 @@ export interface PlannedReminder {
 }
 
 // Notification ID ranges used in this app. Reminders here own 990000-990099.
-// The Home page's daily checklist reminder is 991001, and appointment
+// Daily Checklist reminders use 991100-991199 (the old single one was
+// 991001; see checklist-reminder-plan.ts), and appointment
 // reminders start at 992000, so none of the three can collide, and
 // cancelling one family never touches another.
 export const REMINDER_IDS = {

@@ -21,3 +21,24 @@ export const authGuard: CanActivateFn = () => {
     })
   );
 };
+
+/** For Welcome and Login only: a patient who is already signed in goes
+ *  straight to Home. Waits for Firebase's first auth state, like
+ *  authGuard. Not used on signup or forgot-password — signup creates
+ *  and signs in the account mid-flow and must not be redirected. */
+export const redirectIfAuthenticated: CanActivateFn = () => {
+  const auth   = inject(Auth);
+  const router = inject(Router);
+
+  return user(auth).pipe(
+    take(1),
+    map(currentUser => {
+      if (currentUser) {
+        router.navigate(['/home'], { replaceUrl: true });
+        return false; // already signed in — redirect to home
+      } else {
+        return true; // signed out — allow access
+      }
+    })
+  );
+};

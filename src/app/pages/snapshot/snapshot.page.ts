@@ -1,6 +1,6 @@
 // snapshot.page.ts
 import { Component, OnInit, OnDestroy } from '@angular/core';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { IonicModule } from '@ionic/angular';
@@ -47,6 +47,10 @@ export class SnapshotPage implements OnInit, OnDestroy {
   private userSub!: Subscription;
   private healthSub!: Subscription;
   private historySub!: Subscription;
+  private routeSub?: Subscription;
+  /** Photo whose comment thread a tapped push asked to open (?photoId=). */
+  private pendingPhotoId: string | null = null;
+  private photosLoaded = false;
   private photosSub?: Subscription;
   private commentsSub?: Subscription;
   private currentUid: string | null = null;
@@ -284,6 +288,15 @@ export class SnapshotPage implements OnInit, OnDestroy {
     }
   }
 
+  /** Opens the requested photo's comment thread once the photos have
+   *  loaded. If it no longer exists, the page simply stays open. */
+  private openPendingPhoto(): void {
+    if (!this.pendingPhotoId || !this.photosLoaded) return;
+    const photo = this.photos.find(p => p.id === this.pendingPhotoId);
+    this.pendingPhotoId = null;
+    if (photo) this.openPhoto(photo);
+  }
+
   closePhoto(): void {
     this.viewingPhoto = null;
     this.commentsSub?.unsubscribe();
@@ -422,6 +435,7 @@ export class SnapshotPage implements OnInit, OnDestroy {
   // ════════════════════════════════════════════════════════
   constructor(
     private router: Router,
+    private route: ActivatedRoute,
     private theme: ThemeService,
     private authService: AuthService,
     private healthService: HealthService,
@@ -441,9 +455,12 @@ export class SnapshotPage implements OnInit, OnDestroy {
       this.currentUid = u?.uid ?? null;
 
       this.photosSub?.unsubscribe();
+      this.photosLoaded = false;
       if (this.currentUid) {
         this.photosSub = this.photoService.getPhotos$(this.currentUid).subscribe(records => {
           this.photos = records.map(r => this.toSnapshotPhoto(r));
+          this.photosLoaded = true;
+          this.openPendingPhoto();
         });
 
         this.authService.getProfile().then(profile => {
@@ -452,8 +469,16 @@ export class SnapshotPage implements OnInit, OnDestroy {
         });
       } else {
         this.photos = [];
+        this.photosLoaded = false;
         this.currentDueDate = null;
       }
+    });
+
+    // Read on every visit (Ionic keeps this page alive), so a push tapped
+    // while the page is already open still opens its photo.
+    this.routeSub = this.route.queryParamMap.subscribe(params => {
+      this.pendingPhotoId = params.get('photoId');
+      this.openPendingPhoto();
     });
 
     this.healthSub = this.healthService.getCurrentHealth$().subscribe(data => {
@@ -488,6 +513,7 @@ export class SnapshotPage implements OnInit, OnDestroy {
     this.userSub?.unsubscribe();
     this.healthSub?.unsubscribe();
     this.historySub?.unsubscribe();
+    this.routeSub?.unsubscribe();
     this.photosSub?.unsubscribe();
     this.commentsSub?.unsubscribe();
   }

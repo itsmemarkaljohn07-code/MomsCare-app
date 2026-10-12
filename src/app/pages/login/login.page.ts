@@ -25,7 +25,7 @@ export class LoginPage implements OnInit, OnDestroy {
   passFocused  = false;
   showPass     = false;
   isLoading    = false;
-  rememberMe   = false;
+  rememberMe   = true; // stay signed in by default; untick on a shared phone
 
     errors = {
     username: '',

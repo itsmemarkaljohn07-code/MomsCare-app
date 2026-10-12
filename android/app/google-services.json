@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "891621698364",
+    "project_id": "momscare-44b95",
+    "storage_bucket": "momscare-44b95.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:891621698364:android:185d71b49979437c1bcc39",
+        "android_client_info": {
+          "package_name": "io.ionic.starter"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDBssrZLn3U60QHTsoVOwVhtkzzSnGPf_Q"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

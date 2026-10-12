@@ -12,7 +12,7 @@ import {
   initializeTestEnvironment,
 } from '@firebase/rules-unit-testing';
 import {
-  addDoc, collection, deleteDoc, doc, getDoc, getDocs, setDoc, updateDoc, Timestamp,
+  addDoc, collection, deleteDoc, doc, getDoc, getDocs, serverTimestamp, setDoc, updateDoc, Timestamp,
 } from 'firebase/firestore';
 
 const PROJECT_ID = 'demo-momscare';
@@ -145,12 +145,223 @@ describe('patient A: comments', () => {
   });
 });
 
-describe('patient A: appointments', () => {
-  test("can cancel an 'upcoming' appointment", async () => {
-    await assertSucceeds(updateDoc(doc(patientA(), APPT), { status: 'cancelled' }));
+describe('patient A: appointment cancellation requests', () => {
+  // The patient only asks; the clinic decides from the dashboard server.
+  const request = (extra = {}) => ({ cancellation: { state: 'requested', requestedAt: serverTimestamp(), ...extra } });
+  const withdraw = () => ({ cancellation: { state: 'withdrawn', requestedAt: serverTimestamp() } });
+  const seed = (path, data) => env.withSecurityRulesDisabled(ctx => setDoc(doc(ctx.firestore(), path), data));
+  const APPT_DONE = `users/${PATIENT_A}/appointments/done`;
+  const APPT_CANCELLED = `users/${PATIENT_A}/appointments/cancelled`;
+  const withState = (state) => seed(APPT, {
+    status: 'upcoming', doctor: DOC_ASSIGNED.doctorName, date: '2026-10-20',
+    cancellation: { state, requestedAt: Timestamp.now() },
+  });
+
+  test('can request cancellation of an upcoming appointment', async () => {
+    await assertSucceeds(updateDoc(doc(patientA(), APPT), request()));
+  });
+  test('can request with a reason', async () => {
+    await assertSucceeds(updateDoc(doc(patientA(), APPT), request({ reason: 'Feeling unwell' })));
+  });
+
+  test("cannot change status to 'cancelled' directly", async () => {
+    await assertFails(updateDoc(doc(patientA(), APPT), { status: 'cancelled' }));
   });
   test("cannot set status 'completed'", async () => {
     await assertFails(updateDoc(doc(patientA(), APPT), { status: 'completed' }));
+  });
+  test('cannot change status together with a valid request', async () => {
+    await assertFails(updateDoc(doc(patientA(), APPT), { ...request(), status: 'cancelled' }));
+  });
+
+  test("cannot set state 'approved'", async () => {
+    await assertFails(updateDoc(doc(patientA(), APPT), { cancellation: { state: 'approved', requestedAt: serverTimestamp() } }));
+  });
+  test("cannot set state 'declined'", async () => {
+    await assertFails(updateDoc(doc(patientA(), APPT), { cancellation: { state: 'declined', requestedAt: serverTimestamp() } }));
+  });
+
+  test('cannot write decidedBy', async () => {
+    await assertFails(updateDoc(doc(patientA(), APPT), request({ decidedBy: PATIENT_A })));
+  });
+  test('cannot write decidedAt', async () => {
+    await assertFails(updateDoc(doc(patientA(), APPT), request({ decidedAt: serverTimestamp() })));
+  });
+  test('cannot write declineReason', async () => {
+    await assertFails(updateDoc(doc(patientA(), APPT), request({ declineReason: 'n/a' })));
+  });
+
+  test('cannot change another field alongside the request', async () => {
+    await assertFails(updateDoc(doc(patientA(), APPT), { ...request(), notes: 'changed' }));
+  });
+  test('cannot change the date alongside the request', async () => {
+    await assertFails(updateDoc(doc(patientA(), APPT), { ...request(), date: '2026-12-01' }));
+  });
+
+  test('requestedAt must be the server time', async () => {
+    await assertFails(updateDoc(doc(patientA(), APPT), { cancellation: { state: 'requested', requestedAt: Timestamp.now() } }));
+  });
+  test('requestedAt is required', async () => {
+    await assertFails(updateDoc(doc(patientA(), APPT), { cancellation: { state: 'requested' } }));
+  });
+
+  test('cannot request on a completed appointment', async () => {
+    await seed(APPT_DONE, { status: 'completed', doctor: DOC_ASSIGNED.doctorName, date: '2026-09-01' });
+    await assertFails(updateDoc(doc(patientA(), APPT_DONE), request()));
+  });
+  test('cannot request on a cancelled appointment', async () => {
+    await seed(APPT_CANCELLED, { status: 'cancelled', doctor: DOC_ASSIGNED.doctorName, date: '2026-10-25' });
+    await assertFails(updateDoc(doc(patientA(), APPT_CANCELLED), request()));
+  });
+
+  test("cannot request again while 'requested'", async () => {
+    await withState('requested');
+    await assertFails(updateDoc(doc(patientA(), APPT), request()));
+  });
+  test("can withdraw from 'requested'", async () => {
+    await withState('requested');
+    await assertSucceeds(updateDoc(doc(patientA(), APPT), withdraw()));
+  });
+
+  test('cannot withdraw when nothing was requested', async () => {
+    await assertFails(updateDoc(doc(patientA(), APPT), withdraw()));
+  });
+  test("cannot withdraw from 'declined'", async () => {
+    await withState('declined');
+    await assertFails(updateDoc(doc(patientA(), APPT), withdraw()));
+  });
+  test("cannot withdraw from 'withdrawn'", async () => {
+    await withState('withdrawn');
+    await assertFails(updateDoc(doc(patientA(), APPT), withdraw()));
+  });
+
+  test("can request again after 'declined'", async () => {
+    await withState('declined');
+    await assertSucceeds(updateDoc(doc(patientA(), APPT), request()));
+  });
+  test("can request again after 'withdrawn'", async () => {
+    await withState('withdrawn');
+    await assertSucceeds(updateDoc(doc(patientA(), APPT), request()));
+  });
+  test("cannot move 'approved' back to 'requested'", async () => {
+    await withState('approved');
+    await assertFails(updateDoc(doc(patientA(), APPT), request()));
+  });
+
+  test('reason of exactly 300 characters is allowed', async () => {
+    await assertSucceeds(updateDoc(doc(patientA(), APPT), request({ reason: 'x'.repeat(300) })));
+  });
+  test('reason over 300 characters fails', async () => {
+    await assertFails(updateDoc(doc(patientA(), APPT), request({ reason: 'x'.repeat(301) })));
+  });
+  test('reason must be a string', async () => {
+    await assertFails(updateDoc(doc(patientA(), APPT), request({ reason: 42 })));
+  });
+});
+
+describe("patient B cannot touch patient A's appointment", () => {
+  const patientB = () => env.authenticatedContext(PATIENT_B, { email: 'b@example.com' }).firestore();
+  const request = { cancellation: { state: 'requested', requestedAt: serverTimestamp() } };
+
+  test('A can request (the matching allowed case)', async () => {
+    await assertSucceeds(updateDoc(doc(patientA(), APPT), request));
+  });
+  test('B cannot request', async () => {
+    await assertFails(updateDoc(doc(patientB(), APPT), request));
+  });
+  test('B cannot withdraw', async () => {
+    await env.withSecurityRulesDisabled(ctx => setDoc(doc(ctx.firestore(), APPT), {
+      status: 'upcoming', doctor: DOC_ASSIGNED.doctorName, date: '2026-10-20',
+      cancellation: { state: 'requested', requestedAt: Timestamp.now() },
+    }));
+    await assertFails(updateDoc(doc(patientB(), APPT), { cancellation: { state: 'withdrawn', requestedAt: serverTimestamp() } }));
+  });
+  test('B cannot change status', async () => {
+    await assertFails(updateDoc(doc(patientB(), APPT), { status: 'cancelled' }));
+  });
+  test('B cannot read it', async () => {
+    await assertFails(getDoc(doc(patientB(), APPT)));
+  });
+});
+
+describe('push devices: users/{uid}/devices/{id}', () => {
+  const DEVICE = `users/${PATIENT_A}/devices/install-1`;
+  const patientB = () => env.authenticatedContext(PATIENT_B, { email: 'b@example.com' }).firestore();
+  const device = (overrides = {}) => ({ token: 'fcm-token-abc', platform: 'android', updatedAt: serverTimestamp(), ...overrides });
+  const seedDevice = () => env.withSecurityRulesDisabled(ctx =>
+    setDoc(doc(ctx.firestore(), DEVICE), { token: 'old-token', platform: 'android', updatedAt: Timestamp.now() }));
+
+  test('owner can create their device document', async () => {
+    await assertSucceeds(setDoc(doc(patientA(), DEVICE), device()));
+  });
+  test('owner can update the token (refresh)', async () => {
+    await seedDevice();
+    await assertSucceeds(setDoc(doc(patientA(), DEVICE), device({ token: 'fcm-token-new' })));
+  });
+  test('owner can read and list their devices', async () => {
+    await seedDevice();
+    await assertSucceeds(getDoc(doc(patientA(), DEVICE)));
+    await assertSucceeds(getDocs(collection(patientA(), `users/${PATIENT_A}/devices`)));
+  });
+  test('owner can delete their device document (sign-out)', async () => {
+    await seedDevice();
+    await assertSucceeds(deleteDoc(doc(patientA(), DEVICE)));
+  });
+  test('a token of exactly 4096 characters is allowed', async () => {
+    await assertSucceeds(setDoc(doc(patientA(), DEVICE), device({ token: 't'.repeat(4096) })));
+  });
+
+  test('another patient cannot read it', async () => {
+    await seedDevice();
+    await assertFails(getDoc(doc(patientB(), DEVICE)));
+  });
+  test('another patient cannot list them', async () => {
+    await assertFails(getDocs(collection(patientB(), `users/${PATIENT_A}/devices`)));
+  });
+  test('another patient cannot create one under A', async () => {
+    await assertFails(setDoc(doc(patientB(), DEVICE), device()));
+  });
+  test('another patient cannot overwrite it', async () => {
+    await seedDevice();
+    await assertFails(setDoc(doc(patientB(), DEVICE), device({ token: 'stolen' })));
+  });
+  test('another patient cannot delete it', async () => {
+    await seedDevice();
+    await assertFails(deleteDoc(doc(patientB(), DEVICE)));
+  });
+  test('a signed-out user cannot read it', async () => {
+    await seedDevice();
+    await assertFails(getDoc(doc(signedOut(), DEVICE)));
+  });
+  test('an assigned doctor cannot read it', async () => {
+    await seedDevice();
+    await assertFails(getDoc(doc(doctor(DOC_ASSIGNED), DEVICE)));
+  });
+  test('an admin client cannot read it (dashboard uses the Admin SDK)', async () => {
+    await seedDevice();
+    await assertFails(getDoc(doc(admin(), DEVICE)));
+  });
+
+  test('an extra field is denied', async () => {
+    await assertFails(setDoc(doc(patientA(), DEVICE), device({ uid: PATIENT_A })));
+  });
+  test('a missing field is denied', async () => {
+    await assertFails(setDoc(doc(patientA(), DEVICE), { token: 'fcm-token-abc', platform: 'android' }));
+  });
+  test('a non-string token is denied', async () => {
+    await assertFails(setDoc(doc(patientA(), DEVICE), device({ token: 12345 })));
+  });
+  test('an empty token is denied', async () => {
+    await assertFails(setDoc(doc(patientA(), DEVICE), device({ token: '' })));
+  });
+  test('a token over 4096 characters is denied', async () => {
+    await assertFails(setDoc(doc(patientA(), DEVICE), device({ token: 't'.repeat(4097) })));
+  });
+  test("a platform other than 'android' is denied", async () => {
+    await assertFails(setDoc(doc(patientA(), DEVICE), device({ platform: 'ios' })));
+  });
+  test('updatedAt must be the server time', async () => {
+    await assertFails(setDoc(doc(patientA(), DEVICE), device({ updatedAt: Timestamp.now() })));
   });
 });
 

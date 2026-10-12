@@ -1,8 +1,9 @@
 import { Injectable } from '@angular/core';
 import { NotificationsService } from './notifications.service';
 import { AppointmentRecord } from './appointments.service';
+import { ReminderSchedulerService } from './reminder-scheduler.service';
 
-// Distinct numeric range from CHECKLIST_REMINDER_ID (991001), so the
+// Distinct numeric range from the checklist reminders (991100-991199), so the
 // two reminder systems never collide on the same native notification ID.
 const REMINDER_ID_BASE = 992000;
 
@@ -31,10 +32,12 @@ function parseApptDateTime(date: string, time: string): Date | null {
 
 @Injectable({ providedIn: 'root' })
 export class AppointmentRemindersService {
-  private scheduledIds: number[] = [];
   private currentUid: string | null = null;
 
-  constructor(private notificationsService: NotificationsService) {}
+  constructor(
+    private notificationsService: NotificationsService,
+    private reminderScheduler: ReminderSchedulerService,
+  ) {}
 
   setUid(uid: string | null): void {
     this.currentUid = uid;
@@ -45,15 +48,25 @@ export class AppointmentRemindersService {
    *  schedules fresh reminders — the simplest way to stay correct when
    *  an appointment is rescheduled or cancelled elsewhere (e.g. from
    *  the admin dashboard), without needing to diff old vs new state. */
-  async syncReminders(appointments: AppointmentRecord[]): Promise<void> {
-    await this.cancelAll();
+  async syncReminders(
+    appointments: AppointmentRecord[],
+    options: { requestPermission: boolean } = { requestPermission: true },
+  ): Promise<void> {
+    // Clear every appointment reminder pending on the phone, not just the
+    // ones scheduled in this session, so an appointment cancelled while the
+    // app was closed doesn't keep its reminders. Only 'upcoming' ones are
+    // rescheduled below; a pending cancellation request keeps the status
+    // 'upcoming', so it keeps its reminders until the clinic approves.
+    await this.cancelAllReminders();
     const upcoming = appointments.filter(a => a.status === 'upcoming' && a.id);
     for (const appt of upcoming) {
-      await this.scheduleForAppointment(appt);
+      await this.scheduleForAppointment(appt, options.requestPermission);
     }
   }
 
-  private async scheduleForAppointment(appt: AppointmentRecord): Promise<void> {
+  /** `mayAskPermission: false` (app start) schedules only if notifications
+   *  are already allowed and never shows the permission dialog. */
+  private async scheduleForAppointment(appt: AppointmentRecord, mayAskPermission: boolean): Promise<void> {
     const apptDateTime = parseApptDateTime(appt.date, appt.time);
     if (!apptDateTime) return;
 
@@ -72,11 +85,8 @@ export class AppointmentRemindersService {
       const { Capacitor } = await import('@capacitor/core');
       if (Capacitor.isNativePlatform()) {
         const { LocalNotifications } = await import('@capacitor/local-notifications');
-        const perm = await LocalNotifications.checkPermissions();
-        if (perm.display !== 'granted') {
-          const req = await LocalNotifications.requestPermissions();
-          if (req.display !== 'granted') return;
-        }
+        // Shared with every other caller, so two permission dialogs never race.
+        if ((await this.reminderScheduler.ensurePermission(mayAskPermission)) !== 'granted') return;
 
         const notifications: any[] = [];
         if (dayBefore > now) {
@@ -97,7 +107,6 @@ export class AppointmentRemindersService {
         }
         if (notifications.length > 0) {
           await LocalNotifications.schedule({ notifications });
-          this.scheduledIds.push(...notifications.map(n => n.id));
         }
         return;
       }
@@ -133,13 +142,11 @@ export class AppointmentRemindersService {
   }
 
   /** Cancels every appointment reminder pending on this device, including
-   *  ones scheduled in an earlier session (scheduledIds below only lives
-   *  in memory and is empty after an app restart). Used when the user
-   *  switches appointment reminders off. Only IDs at or above
-   *  REMINDER_ID_BASE are touched, so the Home page's daily checklist
-   *  reminder (991001) is left alone. */
+   *  ones scheduled in an earlier session, by reading the phone's pending
+   *  list. Used when the user switches appointment reminders off and before
+   *  every re-sync. Only IDs at or above REMINDER_ID_BASE are touched, so
+   *  the Daily Checklist reminders (991100-991199) are left alone. */
   async cancelAllReminders(): Promise<void> {
-    this.scheduledIds = [];
     try {
       const { Capacitor } = await import('@capacitor/core');
       if (!Capacitor.isNativePlatform()) return;
@@ -151,23 +158,6 @@ export class AppointmentRemindersService {
       }
     } catch {
       // Plugin not available -- nothing scheduled to cancel.
-    }
-  }
-
-  private async cancelAll(): Promise<void> {
-    if (this.scheduledIds.length === 0) return;
-    try {
-      const { Capacitor } = await import('@capacitor/core');
-      if (Capacitor.isNativePlatform()) {
-        const { LocalNotifications } = await import('@capacitor/local-notifications');
-        await LocalNotifications.cancel({
-          notifications: this.scheduledIds.map(id => ({ id })),
-        });
-      }
-    } catch {
-      // Plugin not installed — nothing to cancel.
-    } finally {
-      this.scheduledIds = [];
     }
   }
 }

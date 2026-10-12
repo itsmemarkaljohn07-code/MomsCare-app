@@ -1,5 +1,5 @@
 // home.page.ts
-import { Component, OnInit, OnDestroy, inject, EnvironmentInjector, runInInjectionContext } from '@angular/core';
+import { Component, OnInit, OnDestroy, DoCheck, inject, EnvironmentInjector, runInInjectionContext, ViewChild, ElementRef } from '@angular/core';
 import { Router, ActivatedRoute } from '@angular/router';
 import { CommonModule, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -10,6 +10,10 @@ import { AuthService } from '../../services/auth.service';
 import { NotificationsService, AppNotification } from '../../services/notifications.service';
 import { AppointmentsService, AppointmentRecord } from '../../services/appointments.service';
 import { HealthService, HealthData } from '../../services/health.service';
+import { ChecklistRemindersService, VITAMIN_CHECKLIST_ITEM_ID } from '../../services/checklist-reminders.service';
+import { localDateKey } from '../../services/checklist-reminder-plan';
+import { FETUS_IMAGES, FetusImage, fetusImageFor } from '../../shared/fetus-images';
+import { FALLBACK_EDGES, StageEdges, edgeStyle, sampleEdges } from '../../shared/stage-edges';
 import { Subscription } from 'rxjs';
 
 export interface AppUser {
@@ -19,7 +23,18 @@ export interface AppUser {
   firstTimeMom: boolean | null;
 }
 
-const CHECKLIST_REMINDER_ID = 991001;
+/** One image on the fetus stage (two while crossfading). */
+interface FetusLayer {
+  id: number;
+  src: string;
+  loaded: boolean;
+  failed: boolean;
+  /** Width / height, once loaded: sizes the image to its own shape. */
+  ar: number;
+}
+
+/** Crossfade between illustrations; keep in sync with home.page.scss. */
+const FETUS_CROSSFADE_MS = 200;
 
 @Component({
   selector: 'app-home',
@@ -29,7 +44,7 @@ const CHECKLIST_REMINDER_ID = 991001;
   imports: [IonicModule, CommonModule, FormsModule],
   providers: [DatePipe],
 })
-export class HomePage implements OnInit, OnDestroy {
+export class HomePage implements OnInit, OnDestroy, DoCheck {
 
   animReady    = false;
   currentTime  = new Date();
@@ -68,11 +83,12 @@ export class HomePage implements OnInit, OnDestroy {
   pregnancyDays = 0;
 
   /** The week currently being DISPLAYED in the fetal illustration area —
-   *  defaults to the real pregnancyWeek, but the user can browse other
-   *  weeks via selectWeek() without ever changing pregnancyWeek/dueDate/
-   *  any stored data. Only set from pregnancyWeek automatically once, on
-   *  first load — never re-synced afterward, so browsing survives the
-   *  60s countdown refresh. */
+   *  the single source for the image, length, weight, size text, message
+   *  and progress bar, so they can never disagree. Defaults to the real
+   *  pregnancyWeek; browsing weeks (selectWeek) changes only this, never
+   *  pregnancyWeek/dueDate/any stored data. Only set from pregnancyWeek
+   *  automatically once, on first load — never re-synced afterward, so
+   *  browsing survives the 60s countdown refresh. */
   viewingWeek = 0;
   private viewingWeekInitialized = false;
 
@@ -82,6 +98,7 @@ export class HomePage implements OnInit, OnDestroy {
 
   resetToCurrentWeek(): void {
     this.viewingWeek = this.pregnancyWeek;
+    this.scrollSelectedWeekIntoView();
   }
 
   private recomputePregnancyFromDueDate(): void {
@@ -96,27 +113,42 @@ export class HomePage implements OnInit, OnDestroy {
     if (!this.viewingWeekInitialized) {
       this.viewingWeek = this.pregnancyWeek;
       this.viewingWeekInitialized = true;
+      this.scrollSelectedWeekIntoView();
     }
   }
 
   get dueDate(): Date { return this.currentUser.dueDate; }
 
-  weekStripOffset = 0;
-  get visibleWeeks(): number[] {
-    const center = this.pregnancyWeek + this.weekStripOffset;
-    const start  = Math.max(1, center - 2);
-    const end    = Math.min(40, start + 4);
-    return Array.from({ length: end - start + 1 }, (_, i) => start + i);
+  // ── Week selector ────────────────────────────────────
+  // Every week 1-40 in one scrollable strip. Selecting a week changes only
+  // viewingWeek.
+
+  readonly weeks: readonly number[] = Array.from({ length: 40 }, (_, i) => i + 1);
+
+  @ViewChild('weekScroller') private weekScroller?: ElementRef<HTMLElement>;
+
+  selectWeek(week: number): void {
+    this.viewingWeek = Math.max(1, Math.min(this.weeks.length, week));
+    this.scrollSelectedWeekIntoView();
   }
 
-  shiftWeekStrip(delta: number): void {
-    const newOffset = this.weekStripOffset + delta;
-    const center    = this.pregnancyWeek + newOffset;
-    if (center >= 1 && center <= 40) this.weekStripOffset = newOffset;
-  }
+  previousWeek(): void { this.selectWeek(this.viewingWeek - 1); }
+  nextWeek(): void { this.selectWeek(this.viewingWeek + 1); }
 
-  selectWeek(w: number): void {
-    this.viewingWeek = Math.max(1, Math.min(40, w));
+  /** Centres the selected week in the strip by scrolling the strip
+   *  itself (never the page). Waits a frame so the DOM reflects the new
+   *  selection first. */
+  private scrollSelectedWeekIntoView(): void {
+    requestAnimationFrame(() => {
+      const scroller = this.weekScroller?.nativeElement;
+      const selected = scroller?.querySelector<HTMLElement>(`[data-week="${this.viewingWeek}"]`);
+      if (!scroller || !selected) return;
+      const scrollerBox = scroller.getBoundingClientRect();
+      const selectedBox = selected.getBoundingClientRect();
+      const left = scroller.scrollLeft + (selectedBox.left - scrollerBox.left)
+        - (scroller.clientWidth - selectedBox.width) / 2;
+      scroller.scrollTo({ left: Math.max(0, left), behavior: 'smooth' });
+    });
   }
 
   babySizes: Record<number, { emoji: string; fruit: string; length: string; weight: string }> = {
@@ -184,159 +216,126 @@ export class HomePage implements OnInit, OnDestroy {
     return Math.min(100, Math.round((this.viewingWeek / 40) * 100));
   }
 
-  get trimester(): string {
-    if (this.viewingWeek <= 13) return '1st Trimester';
-    if (this.viewingWeek <= 26) return '2nd Trimester';
+  /** Trimester of the REAL pregnancy week, for the header chips. Browsing
+   *  other weeks never changes it (it used to follow viewingWeek, so the
+   *  header could read "Week 5" next to "3rd Trimester"). */
+  get actualTrimester(): string {
+    if (this.pregnancyWeek <= 13) return '1st Trimester';
+    if (this.pregnancyWeek <= 26) return '2nd Trimester';
     return '3rd Trimester';
   }
 
-  private get s(): number {
-    return Math.max(0.32, Math.min(1.0, 0.32 + (this.viewingWeek / 40) * 0.68));
+  // ── Fetus illustration ───────────────────────────────
+  // One image per illustrated week (shared/fetus-images.ts). Weeks in
+  // between show the closest earlier image, with a caption saying so.
+  //
+  // The images have their own dark-red backgrounds, which CSS can't make
+  // pale, so the viewer is a full-width "stage" painted in the image's own
+  // edge colours: once an image loads, its outer border is sampled and the
+  // stage (and the fades above and below it) use those colours, while the
+  // image's edges are feathered into them. Images crossfade on a change.
+
+  /** The images on the stage: the current one, plus the previous one while
+   *  it fades out. Rebuilt in ngDoCheck when the shown week's image changes. */
+  fetusLayers: FetusLayer[] = [];
+  /** CSS variables for the stage background, from the shown image's edges. */
+  stageEdgeStyle: Record<string, string> = edgeStyle(FALLBACK_EDGES);
+
+  private fetusLayerSrc: string | null = null;
+  private fetusLayerSeq = 0;
+  private readonly fetusEdgeCache = new Map<string, StageEdges>();
+
+  private get fetusImage(): FetusImage {
+    return fetusImageFor(this.viewingWeek);
   }
 
-  private get origin() {
-    return { cx: 110, cy: 128 };
+  get fetusImageSrc(): string {
+    return this.fetusImage.file;
   }
 
-  private get stageMix(): number {
-    return Math.max(0, Math.min(1, (this.viewingWeek - 4) / 36));
+  /** True when the image was drawn for exactly the week being shown. */
+  get fetusImageIsExact(): boolean {
+    return this.fetusImage.week === this.viewingWeek;
   }
 
-  get fetal() {
-    const s = this.s;
-    const mix = this.stageMix;
-    const headRatioMix = 1.15 - 0.25 * mix;
-    const bodyWidthMix = 0.85 + 0.35 * mix;
-    const bodyHeightMix = 0.92 + 0.12 * mix;
-    const { cx, cy } = this.origin;
-    return {
-      cx, cy, s, mix,
-      hx: cx + s * 22,
-      hy: cy - s * 34,
-      hr: s * 23 * headRatioMix,
-      bx: cx - s * 2,
-      by: cy + s * 6,
-      bw: s * 17 * bodyWidthMix,
-      bh: s * 26 * bodyHeightMix,
-    };
+  /** The week the shown image illustrates (for the caption and alt text). */
+  get fetusImageWeek(): number {
+    return this.fetusImage.week;
   }
 
-  /** Torso/body silhouette only — the head is its own separate ellipse
-   *  in the template now, so this no longer loops around a head bump.
-   *  A single rounded, gently belly-curved closed curve representing
-   *  the curled torso. Still driven entirely by the SAME fetal values
-   *  above — only how those numbers are turned into a shape changed,
-   *  not the numbers themselves. */
-  /** Torso/body silhouette only — the head is its own separate ellipse
-   *  in the template. A single rounded, gently belly-curved closed
-   *  curve representing the curled torso. Still driven entirely by the
-   *  SAME fetal values above — only how those numbers become a shape
-   *  changed, not the numbers themselves. */
-  /** Torso/body silhouette only — the head is its own separate ellipse
-   *  in the template, drawn LARGE and dominant (see the HTML), which
-   *  is deliberate: in the reference images the head is consistently
-   *  the biggest, most prominent single mass, with the body a smaller
-   *  curled shape beneath it — not two similarly-sized lobes. This
-   *  curve is also pulled in much tighter than the previous version,
-   *  for a more pronounced "C" curl. Still driven entirely by the
-   *  SAME fetal values above — only how those numbers become a shape
-   *  changed. */
-  get bodyPath(): string {
-    const f = this.fetal;
-    const { bx, by, bw, bh } = f;
-    return `
-      M ${bx - bw * 0.4} ${by - bh * 0.7}
-      C ${bx - bw * 1.05} ${by - bh * 0.3} ${bx - bw * 1.15} ${by + bh * 0.5} ${bx - bw * 0.55} ${by + bh * 0.95}
-      C ${bx - bw * 0.1} ${by + bh * 1.3} ${bx + bw * 0.6} ${by + bh * 1.15} ${bx + bw * 0.75} ${by + bh * 0.55}
-      C ${bx + bw * 0.85} ${by + bh * 0.1} ${bx + bw * 0.7} ${by - bh * 0.4} ${bx + bw * 0.35} ${by - bh * 0.65}
-      C ${bx + bw * 0.1} ${by - bh * 0.85} ${bx - bw * 0.15} ${by - bh * 0.9} ${bx - bw * 0.4} ${by - bh * 0.7}
-      Z
-    `.replace(/\s+/g, ' ').trim();
+  /** Starts a new layer when the image to show changes. Cheap: one string
+   *  comparison per change detection. */
+  ngDoCheck(): void {
+    const src = this.fetusImageSrc;
+    if (src === this.fetusLayerSrc) return;
+    this.fetusLayerSrc = src;
+    // Keep only the layer currently visible (to fade out) plus the new one.
+    const visible = this.fetusLayers.filter(l => l.loaded && !l.failed).slice(-1);
+    this.fetusLayers = [...visible, { id: ++this.fetusLayerSeq, src, loaded: false, failed: false, ar: 4 / 3 }];
   }
 
-  /** A limb (arm or leg) rendered as a dense chain of overlapping
-   *  circles that taper from wide (near the body) to narrow
-   *  (hand/foot), bending through a genuine elbow/knee point in the
-   *  middle. Denser sampling (n=28) than earlier versions so it reads
-   *  as a smooth soft limb rather than an angular tapered wedge. */
-  private taperedLimbPoints(
-    p0: { x: number; y: number; r: number },
-    p1: { x: number; y: number; r: number },
-    p2: { x: number; y: number; r: number },
-    n = 28
-  ): { cx: number; cy: number; r: number }[] {
-    const pts: { cx: number; cy: number; r: number }[] = [];
-    for (let i = 0; i <= n; i++) {
-      const t = i / n;
-      pts.push({
-        cx: (1 - t) * p0.x + t * p1.x,
-        cy: (1 - t) * p0.y + t * p1.y,
-        r:  (1 - t) * p0.r + t * p1.r,
-      });
+  trackFetusLayer(_: number, layer: FetusLayer): number {
+    return layer.id;
+  }
+
+  /** Width / height of the image currently shown (sizes the backplate). */
+  get activeFetusAr(): number {
+    const shown = this.fetusLayers.filter(l => l.loaded && !l.failed);
+    return shown.length ? shown[shown.length - 1].ar : 4 / 3;
+  }
+
+  /** True for the layer that should be fully visible: the newest loaded one. */
+  isActiveFetusLayer(layer: FetusLayer): boolean {
+    const shown = this.fetusLayers.filter(l => l.loaded && !l.failed);
+    return shown.length > 0 && shown[shown.length - 1] === layer;
+  }
+
+  onFetusImageLoad(layer: FetusLayer, event: Event): void {
+    const img = event.target as HTMLImageElement;
+    if (img.naturalWidth > 0 && img.naturalHeight > 0) layer.ar = img.naturalWidth / img.naturalHeight;
+    layer.loaded = true;
+    this.stageEdgeStyle = edgeStyle(this.edgesFor(layer.src, img));
+    this.dropOlderFetusLayers(layer);
+    this.preloadNeighbouringFetusImages(layer.src);
+  }
+
+  /** A missing or broken file: hidden (no broken-image icon), logged, and
+   *  the stage falls back to its default colour. The chart keeps working. */
+  onFetusImageError(layer: FetusLayer): void {
+    console.warn('[home] fetus image failed to load:', layer.src);
+    layer.failed = true;
+    if (layer.src === this.fetusLayerSrc) {
+      this.stageEdgeStyle = edgeStyle(FALLBACK_EDGES);
+      this.fetusLayers = this.fetusLayers.filter(l => l === layer);
     }
-    for (let i = 1; i <= n; i++) {
-      const t = i / n;
-      pts.push({
-        cx: (1 - t) * p1.x + t * p2.x,
-        cy: (1 - t) * p1.y + t * p2.y,
-        r:  (1 - t) * p1.r + t * p2.r,
-      });
+  }
+
+  /** Removes the layers behind `layer` once its crossfade has finished. */
+  private dropOlderFetusLayers(layer: FetusLayer): void {
+    setTimeout(() => {
+      const i = this.fetusLayers.indexOf(layer);
+      if (i > 0) this.fetusLayers = this.fetusLayers.slice(i);
+    }, FETUS_CROSSFADE_MS + 100);
+  }
+
+  /** The image's edge colours, sampled once per file and cached. */
+  private edgesFor(src: string, img: HTMLImageElement): StageEdges {
+    const cached = this.fetusEdgeCache.get(src);
+    if (cached) return cached;
+    const edges = sampleEdges(img) ?? FALLBACK_EDGES;
+    this.fetusEdgeCache.set(src, edges);
+    return edges;
+  }
+
+  /** Warms the cache with the images either side of the one shown, so
+   *  stepping a week either way swaps without a visible load. */
+  private preloadNeighbouringFetusImages(src: string): void {
+    const i = FETUS_IMAGES.findIndex(img => img.file === src);
+    if (i < 0) return;
+    for (const neighbour of [FETUS_IMAGES[i - 1], FETUS_IMAGES[i + 1]]) {
+      if (neighbour) new Image().src = neighbour.file;
     }
-    return pts;
   }
-
-  /** The single dominant limb cue — a bent arm with the hand tucked up
-   *  near the face — matching the pose that reads most clearly as
-   *  "baby" across the reference images. Deliberately the more
-   *  prominent of the two limbs (see legPoints below). */
-  get armPoints(): { cx: number; cy: number; r: number }[] {
-    const f = this.fetal;
-    const { bx, by, bw, bh, hx, hy, hr } = f;
-    const limbW = bw * 0.42;
-    return this.taperedLimbPoints(
-      { x: bx + bw * 0.5,  y: by - bh * 0.9,  r: limbW * 0.56 },
-      { x: bx + bw * 1.5,  y: by - bh * 1.0,  r: limbW * 0.42 },
-      { x: hx - hr * 0.35, y: hy + hr * 0.55, r: limbW * 0.32 }
-    );
-  }
-
-  /** A smaller, quieter leg — tucked under the body rather than
-   *  crossing boldly outward, so it doesn't visually compete with the
-   *  arm for attention (an earlier version made both limbs equally
-   *  bold, which read as a harsh "V" rather than a gentle curl). */
-  get legPoints(): { cx: number; cy: number; r: number }[] {
-    const f = this.fetal;
-    const { bx, by, bw, bh } = f;
-    const limbW = bw * 0.42;
-    return this.taperedLimbPoints(
-      { x: bx + bw * 0.1,  y: by + bh * 0.5,  r: limbW * 0.5 },
-      { x: bx + bw * 1.05, y: by + bh * 0.85, r: limbW * 0.4 },
-      { x: bx + bw * 0.55, y: by + bh * 0.15, r: limbW * 0.32 }
-    );
-  }
-
-  /** The placenta — a soft round shape the umbilical cord leads to.
-   *  The previous version's cord just faded into empty space; the
-   *  reference images consistently show it connecting to something,
-   *  which is a small addition but makes the whole illustration read
-   *  as "inside the womb" rather than "a shape floating alone." */
-  get placenta(): { cx: number; cy: number; r: number } {
-    const f = this.fetal;
-    const { bx, by, bw, bh } = f;
-    return { cx: bx - bw * 1.9, cy: by - bh * 0.3, r: bw * 0.75 };
-  }
-
-  /** NOTE: this replaces the previous umbilicalPath, which routed to a
-   *  fixed point (110, 56) with no visible placenta at the other end.
-   *  This version routes to the placenta shape above instead — a
-   *  deliberate change this round, not an oversight. */
-  get umbilicalPath(): string {
-    const f = this.fetal;
-    const { bx, by, bw, bh } = f;
-    const p = this.placenta;
-    return `M ${bx - bw * 0.35} ${by - bh * 0.1} C ${bx - bw * 1.0} ${by - bh * 0.4} ${p.cx + p.r * 0.6} ${p.cy + p.r * 0.3} ${p.cx + p.r} ${p.cy}`;
-  }
-
 
   activeTab = 'home';
 
@@ -456,7 +455,7 @@ export class HomePage implements OnInit, OnDestroy {
   // ════════════════════════════════════════════════════════
   // DAILY CHECKLIST — stored per-user in Firestore
   // (users/{uid}/checklist/current), auto-resets daily, and drives a
-  // reminder that repeats every 24h until all items are done.
+  // reminders every 2 hours while items are unchecked (checklist-reminders).
   // ════════════════════════════════════════════════════════
   checklist = [
     { id: 1, task: 'Take prenatal vitamins',   done: false, icon: '💊' },
@@ -470,7 +469,10 @@ export class HomePage implements OnInit, OnDestroy {
   get checklistPercent(): number { return Math.round((this.checklistDone / this.checklist.length) * 100); }
 
   private getTodayDateString(): string {
-    return new Date().toISOString().split('T')[0];
+    // Local date: the checklist resets at local midnight (scheduleMidnightReset).
+    // toISOString() gave the UTC date, so in UTC+8 anything ticked before
+    // 08:00 was saved under the previous day and wiped on the next load.
+    return localDateKey();
   }
 
   private checklistDocRef() {
@@ -520,40 +522,33 @@ export class HomePage implements OnInit, OnDestroy {
     this.updateChecklistReminders();
   }
 
+  /** On the phone: replaces the whole Daily Checklist reminder range from
+   *  the current checklist (ChecklistRemindersService). Never asks for
+   *  notification permission here; only saving Pregnancy Settings asks.
+   *  In a browser: the existing once-a-day in-app notification. */
   private async updateChecklistReminders(): Promise<void> {
-    const allDone = this.checklistDone === this.checklist.length;
-    if (allDone) {
-      await this.cancelChecklistReminder();
-    } else {
-      await this.scheduleChecklistReminder();
-    }
-  }
-
-  private async scheduleChecklistReminder(): Promise<void> {
+    const anyUnchecked = this.checklistDone < this.checklist.length;
     try {
       const { Capacitor } = await import('@capacitor/core');
       if (Capacitor.isNativePlatform()) {
-        const { LocalNotifications } = await import('@capacitor/local-notifications');
-        const perm = await LocalNotifications.checkPermissions();
-        if (perm.display !== 'granted') {
-          const req = await LocalNotifications.requestPermissions();
-          if (req.display !== 'granted') return;
-        }
-        await LocalNotifications.schedule({
-          notifications: [{
-            id: CHECKLIST_REMINDER_ID,
-            title: 'Daily Checklist Reminder',
-            body: "You still have items on today's checklist — take a moment for you and baby 💕",
-            schedule: { at: new Date(Date.now() + 24 * 60 * 60 * 1000), repeats: true, every: 'day' },
-          }],
-        });
+        if (!this.currentUid) return;
+        const profile = await this.authService.getProfile();
+        const vitamin = this.checklist.find(c => c.id === VITAMIN_CHECKLIST_ITEM_ID);
+        await this.checklistReminders.sync(
+          { anyUnchecked, vitaminUnchecked: !vitamin?.done },
+          { enabled: profile?.notificationPrefs?.checklistReminders !== false, requestPermission: false },
+        );
         return;
       }
-    } catch {
-      // @capacitor/local-notifications not installed, or running on
-      // web — fall through to the in-app fallback below.
+    } catch (err) {
+      console.error('Failed to update checklist reminders:', err);
+      return;
     }
+    if (anyUnchecked) await this.sendInAppChecklistReminder();
+  }
 
+  /** Browser fallback: one in-app notification a day while items remain. */
+  private async sendInAppChecklistReminder(): Promise<void> {
     if (!this.currentUid) return;
     const today   = this.getTodayDateString();
     const flagKey = `momscare_checklist_reminder_sent_${today}`;
@@ -569,18 +564,6 @@ export class HomePage implements OnInit, OnDestroy {
       localStorage.setItem(flagKey, '1');
     } catch (err) {
       console.error('Failed to send checklist reminder notification:', err);
-    }
-  }
-
-  private async cancelChecklistReminder(): Promise<void> {
-    try {
-      const { Capacitor } = await import('@capacitor/core');
-      if (Capacitor.isNativePlatform()) {
-        const { LocalNotifications } = await import('@capacitor/local-notifications');
-        await LocalNotifications.cancel({ notifications: [{ id: CHECKLIST_REMINDER_ID }] });
-      }
-    } catch {
-      // Plugin not installed — nothing to cancel.
     }
   }
 
@@ -636,6 +619,7 @@ export class HomePage implements OnInit, OnDestroy {
     private appointmentsService: AppointmentsService,
     private healthService: HealthService,
     private firestore: Firestore,
+    private checklistReminders: ChecklistRemindersService,
   ) {}
 
   private async loadUserProfile(): Promise<void> {

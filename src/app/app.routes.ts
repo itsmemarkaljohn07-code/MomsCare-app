@@ -1,5 +1,5 @@
 import { Routes } from '@angular/router';
-import { authGuard } from './guards/auth.guard';
+import { authGuard, redirectIfAuthenticated } from './guards/auth.guard';
 
 export const routes: Routes = [
   {
@@ -14,11 +14,13 @@ export const routes: Routes = [
   },
   {
     path: 'welcome',
+    canActivate: [redirectIfAuthenticated],
     loadComponent: () =>
       import('./pages/welcome/welcome.page').then(m => m.WelcomePage),
   },
   {
     path: 'login',
+    canActivate: [redirectIfAuthenticated],
     loadComponent: () =>
       import('./pages/login/login.page').then(m => m.LoginPage),
   },

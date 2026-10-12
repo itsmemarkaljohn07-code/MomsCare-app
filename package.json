@@ -10,7 +10,8 @@
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
     "lint": "ng lint",
-    "test:rules": "firebase emulators:exec --only firestore --project demo-momscare --config tests/rules/firebase.json \"node --test tests/rules/firestore.rules.test.mjs\""
+    "test:rules": "firebase emulators:exec --only firestore --project demo-momscare --config tests/rules/firebase.json \"node --test tests/rules/firestore.rules.test.mjs\"",
+    "check:fetus": "node scripts/check-fetus-assets.mjs"
   },
   "private": true,
   "dependencies": {
@@ -30,6 +31,7 @@
     "@capacitor/haptics": "8.0.2",
     "@capacitor/keyboard": "8.0.3",
     "@capacitor/local-notifications": "^8.3.1",
+    "@capacitor/push-notifications": "8.1.2",
     "@capacitor/status-bar": "8.0.2",
     "@emailjs/browser": "^4.4.1",
     "@ionic/angular": "^8.0.0",

@@ -49,6 +49,9 @@ ion-content[data-theme="dark"] {
   .summary-divider { background: rgba(181,127,212,0.12); }
   .advice-item span { color: var(--dark); }
   .file-chip       { background: rgba(224,126,184,0.08); border-color: rgba(224,126,184,0.2); }
+  .card-tag.tag-cancel-requested { background: rgba(245, 166, 35, 0.18); color: #f0b45a; }
+  .cancel-status--requested { color: #f0b45a; }
+  .cancel-confirm  { background: rgba(224,126,184,0.06); border-color: rgba(224,126,184,0.18); }
 }
 
 /* ══════════════════════════════════════════ */
@@ -462,6 +465,8 @@ ion-content[data-theme="dark"] {
   &.tag-past     { background: rgba(158, 122, 181, 0.1); color: var(--muted); }
   &.tag-pending  { background: rgba(244, 149, 106, 0.14); color: #c9702f; }
   &.tag-rejected { background: rgba(224, 85, 128, 0.14); color: #e05580; }
+  &.tag-cancel-requested { background: rgba(245, 166, 35, 0.16); color: #b7791f; }
+  &.tag-cancelled { background: rgba(224, 85, 128, 0.10); color: #c2456d; }
 }
 
 /* ── Chevron ── */
@@ -572,9 +577,9 @@ ion-content[data-theme="dark"] {
 }
 
 /* ── Summary Actions ──
-   Right-aligned, natural width — Cancel is currently the only
-   action here (creation/rescheduling now happen admin-side), so it
-   no longer needs to stretch full-width the way a two-button row did. */
+   Right-aligned, natural width — "Request cancellation" (or "Withdraw
+   request") is the only action here (creation/rescheduling happen
+   admin-side), so it doesn't need to stretch full-width. */
 .summary-actions {
   display: flex;
   justify-content: flex-end;
@@ -609,6 +614,78 @@ ion-content[data-theme="dark"] {
       box-shadow: 0 4px 14px rgba(224, 85, 128, 0.16);
     }
   }
+
+  &.action-secondary {
+    background: rgba(181, 127, 212, 0.08);
+    color: var(--purple);
+    border: 1px solid rgba(181, 127, 212, 0.22);
+
+    &:hover { background: rgba(181, 127, 212, 0.14); }
+  }
+
+  &:disabled { opacity: 0.6; cursor: default; transform: none; }
+}
+
+/* ── Cancellation request ── */
+.cancel-status {
+  &--requested { color: #b7791f; }
+  &--declined  { color: #d44b7a; }
+}
+
+.cancel-confirm {
+  margin-top: 14px;
+  padding: 12px;
+  border-radius: 14px;
+  background: rgba(224, 85, 128, 0.05);
+  border: 1px solid rgba(224, 85, 128, 0.14);
+}
+
+.cancel-confirm-text {
+  margin: 0 0 10px;
+  font-size: 0.78rem; font-weight: 600; line-height: 1.45;
+  color: var(--dark);
+  font-family: 'Nunito', 'Poppins', sans-serif;
+}
+
+.cancel-confirm-label {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 0.66rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.4px;
+  color: var(--muted);
+  font-family: 'Nunito', 'Poppins', sans-serif;
+}
+
+.cancel-confirm-input {
+  width: 100%; box-sizing: border-box;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(181, 127, 212, 0.25);
+  background: var(--card-bg);
+  color: var(--dark);
+  font-size: 0.8rem;
+  font-family: 'Nunito', 'Poppins', sans-serif;
+  resize: vertical;
+  &:focus { outline: 2px solid rgba(181, 127, 212, 0.45); outline-offset: 1px; }
+}
+
+.cancel-confirm-count {
+  margin: 4px 0 0;
+  text-align: right;
+  font-size: 0.64rem; color: var(--muted);
+  font-family: 'Nunito', 'Poppins', sans-serif;
+}
+
+.cancel-confirm-actions {
+  display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 10px;
+  margin-top: 10px;
+}
+
+.cancel-message {
+  margin: 12px 0 0;
+  font-size: 0.76rem; font-weight: 700;
+  color: #00a884;
+  font-family: 'Nunito', 'Poppins', sans-serif;
+  &--error { color: #d44b7a; }
 }
 
 /* ══════════════════════════════════════════ */

@@ -90,10 +90,16 @@ export interface UserProfile {
     vitaminReminder: boolean;
     kickAlerts: boolean;
     hydrationReminders: boolean;
+    /** Daily Checklist reminders every few hours. Missing means on. */
+    checklistReminders?: boolean;
+    /** Push notifications from the care team. Missing means on. */
+    clinicUpdates?: boolean;
   };
 }
 
 const FIRESTORE_SAVE_TIMEOUT_MS = 45000;
+/** Longest a before-sign-out step may hold up signing out. */
+const BEFORE_SIGN_OUT_TIMEOUT_MS = 6000;
 const PENDING_KEY = 'momscare_pending_profile';
 const REMEMBERED_EMAIL_KEY = 'momscare_remembered_email';
 
@@ -325,7 +331,7 @@ export class AuthService {
    * rememberMe = false → browserSessionPersistence — signed out once
    *                       the current app/browser session ends.
    */
-  async login(email: string, password: string, rememberMe: boolean = false): Promise<void> {
+  async login(email: string, password: string, rememberMe: boolean = true): Promise<void> {
     try {
       await runInInjectionContext(this.envInjector, async () => {
         try {
@@ -347,8 +353,46 @@ export class AuthService {
     }
   }
 
+  /** Set while the patient signs out on purpose, so AppComponent can
+   *  tell that apart from a session that ended on its own. */
+  private explicitSignOut = false;
+
+  /** Work that must finish while still signed in, before sign-out (e.g.
+   *  deleting this phone's push device document). Registered by the
+   *  services that own it, so AuthService doesn't depend on them. */
+  private beforeSignOutHooks: ((uid: string) => Promise<void>)[] = [];
+
+  onBeforeSignOut(hook: (uid: string) => Promise<void>): void {
+    this.beforeSignOutHooks.push(hook);
+  }
+
   async logout(): Promise<void> {
-    await runInInjectionContext(this.envInjector, () => signOut(this.auth));
+    // Hooks never block sign-out for long or stop it: each one is given
+    // a few seconds, and a failure is only logged.
+    const uid = this.currentUid;
+    if (uid) {
+      await Promise.all(this.beforeSignOutHooks.map(hook =>
+        Promise.race([
+          hook(uid).catch(err => console.error('[AuthService] before-sign-out step failed:', err)),
+          new Promise<void>(resolve => setTimeout(resolve, BEFORE_SIGN_OUT_TIMEOUT_MS)),
+        ])));
+    }
+    // Set before signOut(): the sign-in stream can emit null before
+    // signOut() itself resolves.
+    this.explicitSignOut = true;
+    try {
+      await runInInjectionContext(this.envInjector, () => signOut(this.auth));
+    } catch (err) {
+      this.explicitSignOut = false;
+      throw err;
+    }
+  }
+
+  /** True once after logout() was called; reading it clears it. */
+  consumeExplicitSignOut(): boolean {
+    const wasExplicit = this.explicitSignOut;
+    this.explicitSignOut = false;
+    return wasExplicit;
   }
 
   async getProfile(): Promise<UserProfile | null> {
@@ -441,7 +485,7 @@ export class AuthService {
     return snap.exists() ? (snap.data() as any).email ?? null : null;
   }
 
-  async loginWithUsername(username: string, password: string, rememberMe: boolean = false): Promise<void> {
+  async loginWithUsername(username: string, password: string, rememberMe: boolean = true): Promise<void> {
     const email = await this.getEmailForUsername(username.trim());
     if (!email) {
       const err: any = new Error('No account found with that username.');

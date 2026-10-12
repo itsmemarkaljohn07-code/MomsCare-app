@@ -117,8 +117,17 @@
             <p class="toggle-title">Send a test reminder</p>
             <p class="toggle-sub">See how a reminder looks on this phone</p>
           </div>
-          <button class="test-btn" (click)="sendTest()" [disabled]="isTesting">
+          <button class="test-btn" (click)="sendTest()" [disabled]="isTesting || isTestingScheduled">
             {{ isTesting ? 'Sending...' : 'Test' }}
+          </button>
+        </div>
+        <div class="toggle-row toggle-row--subfield">
+          <div class="toggle-info">
+            <p class="toggle-title">Test a scheduled reminder</p>
+            <p class="toggle-sub">Arrives in about a minute, even with the phone locked</p>
+          </div>
+          <button class="test-btn" (click)="sendScheduledTest()" [disabled]="isTesting || isTestingScheduled">
+            {{ isTestingScheduled ? 'Scheduling...' : 'Test' }}
           </button>
         </div>
       </div>

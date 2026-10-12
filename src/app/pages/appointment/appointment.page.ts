@@ -5,7 +5,12 @@ import { FormsModule } from '@angular/forms';
 import { IonicModule } from '@ionic/angular';
 import { ThemeService } from '../../services/theme';
 import { AuthService } from '../../services/auth.service';
-import { AppointmentsService, AppointmentRecord } from '../../services/appointments.service';
+import {
+  AppointmentsService,
+  AppointmentRecord,
+  AppointmentCancellation,
+  CANCELLATION_REASON_MAX,
+} from '../../services/appointments.service';
 import { AppointmentRemindersService } from '../../services/appointment-reminders.service';
 import { Subscription } from 'rxjs';
 
@@ -25,7 +30,15 @@ export interface Appointment {
   id?: string;
   doctorApproval?: 'pending' | 'approved' | 'rejected';
   rejectionReason?: string;
+  status: AppointmentRecord['status'];
+  /** Cancellation request state, if the patient has ever asked. */
+  cancellationState?: AppointmentCancellation['state'];
+  declineReason?: string;
 }
+
+/** How long a request/withdraw may take before the spinner stops. Firestore
+ *  keeps an offline write queued and sends it once the phone reconnects. */
+const CANCELLATION_WRITE_TIMEOUT_MS = 15000;
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const DAYS   = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
@@ -87,6 +100,9 @@ export class AppointmentsPage implements OnInit, OnDestroy {
       files: rec.files || [],
       doctorApproval: (rec as any).doctorApproval,
       rejectionReason: (rec as any).rejectionReason,
+      status: rec.status,
+      cancellationState: rec.cancellation?.state,
+      declineReason: rec.cancellation?.declineReason,
     };
   }
 
@@ -153,15 +169,82 @@ export class AppointmentsPage implements OnInit, OnDestroy {
     this.expandedPast = null;
   }
 
-  /** Patients can still cancel their own appointment — creation and
-   *  rescheduling now happen exclusively through the admin dashboard,
-   *  but cancellation remains a normal patient action. */
-  async cancelAppointment(id?: string): Promise<void> {
+  // ── Cancellation requests ─────────────────────────────
+  // Patients no longer cancel directly: they ask, and the clinic approves
+  // or declines in the dashboard. The appointment stays booked (and keeps
+  // its reminders) until it is approved.
+
+  readonly cancelReasonMax = CANCELLATION_REASON_MAX;
+  /** Appointment whose "Request cancellation" confirmation is open. */
+  confirmingCancelId: string | null = null;
+  cancelReason = '';
+  /** Appointment with a request/withdraw in flight. */
+  busyCancelId: string | null = null;
+  /** Result message shown on one card. */
+  cancelMessage: { id: string; kind: 'success' | 'error'; text: string } | null = null;
+
+  openCancelRequest(id?: string): void {
     if (!id) return;
+    this.confirmingCancelId = id;
+    this.cancelReason = '';
+    this.cancelMessage = null;
+  }
+
+  closeCancelRequest(): void {
+    this.confirmingCancelId = null;
+    this.cancelReason = '';
+  }
+
+  async sendCancelRequest(appt: Appointment): Promise<void> {
+    if (!appt.id || this.busyCancelId) return;
+    await this.runCancellationWrite(
+      appt.id,
+      () => this.appointmentsService.requestCancellation(appt.id!, this.cancelReason),
+      'Request sent. The clinic will review it; your appointment stays booked until then.',
+      "We couldn't send your request. Please try again.",
+    );
+  }
+
+  async withdrawCancelRequest(appt: Appointment): Promise<void> {
+    if (!appt.id || this.busyCancelId) return;
+    await this.runCancellationWrite(
+      appt.id,
+      () => this.appointmentsService.withdrawCancellationRequest(appt.id!),
+      'Request withdrawn. Your appointment stays booked.',
+      "We couldn't withdraw your request. Please try again.",
+    );
+  }
+
+  /** Runs one write with a timeout, so the button never stays on
+   *  "Sending..." forever (e.g. offline, where Firestore holds the write
+   *  until it reconnects). */
+  private async runCancellationWrite(
+    id: string,
+    write: () => Promise<void>,
+    successText: string,
+    errorText: string,
+  ): Promise<void> {
+    this.busyCancelId = id;
+    this.cancelMessage = null;
+    let timer: ReturnType<typeof setTimeout> | undefined;
     try {
-      await this.appointmentsService.cancelAppointment(id);
+      const timeout = new Promise<'timeout'>(resolve => {
+        timer = setTimeout(() => resolve('timeout'), CANCELLATION_WRITE_TIMEOUT_MS);
+      });
+      const pending = write();
+      // If it finishes (or fails) after the timeout, still log a failure.
+      pending.catch(err => console.error('Cancellation request failed after timeout:', err));
+      const outcome = await Promise.race([pending.then(() => 'done' as const), timeout]);
+      this.closeCancelRequest();
+      this.cancelMessage = outcome === 'done'
+        ? { id, kind: 'success', text: successText }
+        : { id, kind: 'error', text: "You seem to be offline. It will be sent to the clinic when you're back online." };
     } catch (err) {
-      console.error('Failed to cancel appointment:', err);
+      console.error('Cancellation request failed:', err);
+      this.cancelMessage = { id, kind: 'error', text: errorText };
+    } finally {
+      clearTimeout(timer);
+      this.busyCancelId = null;
     }
   }
 

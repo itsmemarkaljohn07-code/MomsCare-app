@@ -46,12 +46,12 @@ ion-content[data-theme="dark"] {
   .health-summary-card, .checklist-card, .appt-row, .due-countdown { background: var(--card-bg); border-color: var(--card-border); }
   .bottom-nav { background: var(--nav-bg); border-color: var(--nav-border); }
   .measure-chip { background: rgba(45, 25, 65, 0.92); border-color: rgba(155,111,196,0.25); }
-  .week-nav { background: rgba(255,255,255,0.10); &:hover { background: rgba(255,255,255,0.18); } }
+  .week-nav { background: rgba(255,255,255,0.10); &:hover:not(:disabled) { background: rgba(255,255,255,0.18); } }
   .notif-panel { background: #1e1030; border-color: rgba(155,111,196,0.2); }
   .notif-item { border-color: rgba(155,111,196,0.12); }
   .notif-item.notif-unread { background: rgba(155,111,196,0.10); }
   .check-box { background: rgba(255,255,255,0.08); border-color: rgba(155,111,196,0.3); }
-  .week-cell { background: rgba(255,255,255,0.06); }
+  .week-cell { background: rgba(255,255,255,0.06); &:hover:not(.week-cell--active) { background: rgba(255,255,255,0.12); } }
   .week-cell.week-cell--active { background: linear-gradient(135deg, var(--pink), var(--purple)); }
   .countdown-block { background: rgba(255,255,255,0.06); }
   .hs-icon-wrap { background: rgba(255,255,255,0.08); }
@@ -189,40 +189,61 @@ ion-content[data-theme="dark"] {
   &.visible { opacity: 1; transform: translateY(0); }
 }
 
+/* Week selector: chevrons either side of a strip that scrolls on its own
+   (never the page). The inner row centres itself if it ever fits and
+   scrolls otherwise, so neither end is clipped. */
 .week-strip {
-  display: flex; align-items: center; gap: 6px;
-  padding: 14px 16px 10px;
+  display: flex; align-items: center; gap: 4px;
+  padding: 12px 8px 10px;
+  max-width: 720px; margin: 0 auto;
 }
 
 .week-nav {
-  width: 28px; height: 28px; flex-shrink: 0;
+  width: 44px; height: 44px; flex-shrink: 0;
   border: none; background: rgba(255,255,255,0.55);
   border-radius: 50%; cursor: pointer;
   display: flex; align-items: center; justify-content: center;
-  color: var(--dark); transition: background 0.2s;
-  &:hover { background: rgba(255,255,255,0.85); }
+  color: var(--dark); transition: background 0.2s, opacity 0.2s;
+  &:hover:not(:disabled) { background: rgba(255,255,255,0.85); }
+  &:disabled { opacity: 0.35; cursor: default; }
+}
+
+.week-scroller {
+  flex: 1; min-width: 0;
+  overflow-x: auto; overflow-y: hidden;
+  scroll-snap-type: x proximity;
+  scroll-behavior: smooth;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+  &::-webkit-scrollbar { display: none; }
 }
 
 .week-cells {
-  display: flex; gap: 5px; flex: 1;
-  justify-content: center; overflow: hidden;
+  display: flex; gap: 6px;
+  width: max-content; margin-inline: auto;
+  padding: 4px 2px 14px; /* room for the lifted active cell and its shadow */
 }
 
 .week-cell {
-  display: flex; flex-direction: column; align-items: center; gap: 4px;
-  padding: 6px 10px; border-radius: 12px;
+  position: relative;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px;
+  min-width: 52px; min-height: 48px;
+  padding: 4px 8px; border: none; border-radius: 14px;
   background: rgba(255,255,255,0.42);
-  cursor: pointer; flex-shrink: 0; min-width: 44px;
+  cursor: pointer; flex-shrink: 0;
+  scroll-snap-align: center;
+  font-family: 'Nunito', 'Poppins', sans-serif;
   transition: background 0.2s, transform 0.18s, box-shadow 0.2s;
 
   &:hover:not(.week-cell--active) { background: rgba(255,255,255,0.68); }
+  &:focus-visible { outline: 2px solid var(--purple); outline-offset: 2px; }
 
   &.week-cell--active {
     background: linear-gradient(135deg, var(--pink), var(--purple));
     box-shadow: 0 4px 14px rgba(217,96,154,0.32);
     transform: translateY(-2px);
-    .week-cell-label { color: white; }
-    .week-cell-dot   { background: rgba(255,255,255,0.85); }
+    .week-cell-label, .week-cell-num { color: white; }
+    .week-cell-today { background: white; }
   }
 
   &.week-cell--today:not(.week-cell--active) {
@@ -231,78 +252,168 @@ ion-content[data-theme="dark"] {
 }
 
 .week-cell-label {
-  font-size: 0.68rem; font-weight: 800;
-  color: var(--dark); font-family: 'Nunito', 'Poppins', sans-serif;
+  font-size: 0.56rem; font-weight: 800; letter-spacing: 0.3px;
+  text-transform: uppercase; color: var(--muted);
 }
-.week-cell-dot {
-  width: 4px; height: 4px; border-radius: 50%;
-  background: rgba(155,111,196,0.4);
+.week-cell-num {
+  font-size: 1rem; font-weight: 900; line-height: 1.1; color: var(--dark);
+}
+/* "Today" marker on the real pregnancy week. */
+.week-cell-today {
+  position: absolute; top: 5px; right: 6px;
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--pink);
 }
 
 /* ══════════════════════════════════════════
-   WOMB VISUALIZATION
+   FETUS ILLUSTRATION
 ══════════════════════════════════════════ */
-.womb-stage {
+/* The illustrations carry their own dark-red backgrounds, which no CSS can
+   turn pale. So the viewer is a deliberate full-width stage painted in the
+   current image's own edge colours (sampled in the component, set as
+   --stage-* variables) and the image is feathered into it:
+     - .fetus-viewer paints one continuous background (edge colours, a little
+       lighter in the centre) over the stage AND the fade areas above and
+       below it, then a mask fades it to transparent at the top and bottom,
+       so it dissolves into the page in light and dark mode with no seam;
+     - each image is sized to its own shape and feathered on all four sides,
+       so letterboxing of portrait and landscape images can't be seen.
+   The fetus itself stays sharp: no blur or filter on the image. */
+
+/* All fades below use a smoothstep curve (3t^2 - 2t^3) sampled at eighths:
+   an even ramp leaves a faint line where it meets the flat colour. */
+
+/* Registered so the stage colours crossfade along with the image. */
+@property --stage-edge   { syntax: '<color>'; inherits: true; initial-value: #3a0f1c; }
+@property --stage-centre { syntax: '<color>'; inherits: true; initial-value: #3a0f1c; }
+@property --stage-top    { syntax: '<color>'; inherits: true; initial-value: #3a0f1c; }
+@property --stage-bottom { syntax: '<color>'; inherits: true; initial-value: #3a0f1c; }
+@property --stage-left   { syntax: '<color>'; inherits: true; initial-value: #3a0f1c; }
+@property --stage-right  { syntax: '<color>'; inherits: true; initial-value: #3a0f1c; }
+
+.fetus-viewer {
+  --fetus-fade: 80px;      /* the soft fade above and below the stage */
+  --fetus-feather: 14%;    /* the image's own feathered edge (eased) */
+  --fetus-fade-time: 200ms;
+
   position: relative;
-  display: flex; align-items: center; justify-content: center;
-  height: 280px;
-  margin: 4px 16px 0;
-}
-
-.womb-glow {
-  position: absolute; inset: -8% -8%;
-  background: radial-gradient(60% 55% at 50% 45%,
-    rgba(220, 160, 195, 0.26) 0%,
-    rgba(195, 155, 220, 0.13) 45%,
-    transparent 75%
-  );
-  pointer-events: none;
-}
-
-.womb-visual {
-  position: relative; z-index: 1;
-  animation: wombFloat 4.5s ease-in-out infinite;
-}
-
-@keyframes wombFloat {
-  0%,100% { transform: translateY(0) scale(1); }
-  50%      { transform: translateY(-7px) scale(1.015); }
-}
-
-.womb-svg {
   width: 100%;
-  max-width: 200px;
-  height: auto;
-  aspect-ratio: 220 / 260;
-  filter:
-    drop-shadow(0 8px 28px rgba(190, 120, 160, 0.28))
-    drop-shadow(0 2px 8px rgba(155, 90, 130, 0.15));
+  max-width: 720px;
+  margin: 0 auto;
+  padding: var(--fetus-fade) 0;
+  background:
+    radial-gradient(60% 55% at 50% 50%, var(--stage-centre), transparent 75%),
+    linear-gradient(to bottom,
+      var(--stage-top) 0, var(--stage-edge) 45%, var(--stage-edge) 55%, var(--stage-bottom) 100%);
+  -webkit-mask-image: linear-gradient(to bottom, rgba(0,0,0,0) 0, rgba(0,0,0,0.043) calc(var(--fetus-fade) * 0.125), rgba(0,0,0,0.156) calc(var(--fetus-fade) * 0.25), rgba(0,0,0,0.316) calc(var(--fetus-fade) * 0.375), rgba(0,0,0,0.5) calc(var(--fetus-fade) * 0.5), rgba(0,0,0,0.684) calc(var(--fetus-fade) * 0.625), rgba(0,0,0,0.844) calc(var(--fetus-fade) * 0.75), rgba(0,0,0,0.957) calc(var(--fetus-fade) * 0.875), #000 var(--fetus-fade), #000 calc(100% - var(--fetus-fade)), rgba(0,0,0,0.957) calc(100% - var(--fetus-fade) * 0.875), rgba(0,0,0,0.844) calc(100% - var(--fetus-fade) * 0.75), rgba(0,0,0,0.684) calc(100% - var(--fetus-fade) * 0.625), rgba(0,0,0,0.5) calc(100% - var(--fetus-fade) * 0.5), rgba(0,0,0,0.316) calc(100% - var(--fetus-fade) * 0.375), rgba(0,0,0,0.156) calc(100% - var(--fetus-fade) * 0.25), rgba(0,0,0,0.043) calc(100% - var(--fetus-fade) * 0.125), rgba(0,0,0,0) 100%);
+  mask-image: linear-gradient(to bottom, rgba(0,0,0,0) 0, rgba(0,0,0,0.043) calc(var(--fetus-fade) * 0.125), rgba(0,0,0,0.156) calc(var(--fetus-fade) * 0.25), rgba(0,0,0,0.316) calc(var(--fetus-fade) * 0.375), rgba(0,0,0,0.5) calc(var(--fetus-fade) * 0.5), rgba(0,0,0,0.684) calc(var(--fetus-fade) * 0.625), rgba(0,0,0,0.844) calc(var(--fetus-fade) * 0.75), rgba(0,0,0,0.957) calc(var(--fetus-fade) * 0.875), #000 var(--fetus-fade), #000 calc(100% - var(--fetus-fade)), rgba(0,0,0,0.957) calc(100% - var(--fetus-fade) * 0.875), rgba(0,0,0,0.844) calc(100% - var(--fetus-fade) * 0.75), rgba(0,0,0,0.684) calc(100% - var(--fetus-fade) * 0.625), rgba(0,0,0,0.5) calc(100% - var(--fetus-fade) * 0.5), rgba(0,0,0,0.316) calc(100% - var(--fetus-fade) * 0.375), rgba(0,0,0,0.156) calc(100% - var(--fetus-fade) * 0.25), rgba(0,0,0,0.043) calc(100% - var(--fetus-fade) * 0.125), rgba(0,0,0,0) 100%);
+  transition:
+    --stage-edge var(--fetus-fade-time) ease, --stage-centre var(--fetus-fade-time) ease,
+    --stage-top var(--fetus-fade-time) ease, --stage-bottom var(--fetus-fade-time) ease,
+    --stage-left var(--fetus-fade-time) ease, --stage-right var(--fetus-fade-time) ease;
 }
 
-.heartbeat-dot {
-  animation: heartbeatPulse 1.15s ease-in-out infinite;
-  transform-origin: center;
-  transform-box: fill-box;
-}
-@keyframes heartbeatPulse {
-  0%, 100% { opacity: 0.55; transform: scale(0.85); }
-  50%       { opacity: 1;    transform: scale(1.15); }
+/* Wider than the stage (tablets, desktop, landscape): the sides sit inside
+   the page instead of at the screen edge, so feather them too. */
+@media (min-width: 721px) {
+  .fetus-viewer {
+    --fetus-side-fade: 15%;
+    -webkit-mask-image:
+      linear-gradient(to bottom, rgba(0,0,0,0) 0, rgba(0,0,0,0.043) calc(var(--fetus-fade) * 0.125), rgba(0,0,0,0.156) calc(var(--fetus-fade) * 0.25), rgba(0,0,0,0.316) calc(var(--fetus-fade) * 0.375), rgba(0,0,0,0.5) calc(var(--fetus-fade) * 0.5), rgba(0,0,0,0.684) calc(var(--fetus-fade) * 0.625), rgba(0,0,0,0.844) calc(var(--fetus-fade) * 0.75), rgba(0,0,0,0.957) calc(var(--fetus-fade) * 0.875), #000 var(--fetus-fade), #000 calc(100% - var(--fetus-fade)), rgba(0,0,0,0.957) calc(100% - var(--fetus-fade) * 0.875), rgba(0,0,0,0.844) calc(100% - var(--fetus-fade) * 0.75), rgba(0,0,0,0.684) calc(100% - var(--fetus-fade) * 0.625), rgba(0,0,0,0.5) calc(100% - var(--fetus-fade) * 0.5), rgba(0,0,0,0.316) calc(100% - var(--fetus-fade) * 0.375), rgba(0,0,0,0.156) calc(100% - var(--fetus-fade) * 0.25), rgba(0,0,0,0.043) calc(100% - var(--fetus-fade) * 0.125), rgba(0,0,0,0) 100%),
+      linear-gradient(to right, rgba(0,0,0,0) 0, rgba(0,0,0,0.043) calc(var(--fetus-side-fade) * 0.125), rgba(0,0,0,0.156) calc(var(--fetus-side-fade) * 0.25), rgba(0,0,0,0.316) calc(var(--fetus-side-fade) * 0.375), rgba(0,0,0,0.5) calc(var(--fetus-side-fade) * 0.5), rgba(0,0,0,0.684) calc(var(--fetus-side-fade) * 0.625), rgba(0,0,0,0.844) calc(var(--fetus-side-fade) * 0.75), rgba(0,0,0,0.957) calc(var(--fetus-side-fade) * 0.875), #000 var(--fetus-side-fade), #000 calc(100% - var(--fetus-side-fade)), rgba(0,0,0,0.957) calc(100% - var(--fetus-side-fade) * 0.875), rgba(0,0,0,0.844) calc(100% - var(--fetus-side-fade) * 0.75), rgba(0,0,0,0.684) calc(100% - var(--fetus-side-fade) * 0.625), rgba(0,0,0,0.5) calc(100% - var(--fetus-side-fade) * 0.5), rgba(0,0,0,0.316) calc(100% - var(--fetus-side-fade) * 0.375), rgba(0,0,0,0.156) calc(100% - var(--fetus-side-fade) * 0.25), rgba(0,0,0,0.043) calc(100% - var(--fetus-side-fade) * 0.125), rgba(0,0,0,0) 100%);
+    -webkit-mask-composite: source-in;
+    mask-image:
+      linear-gradient(to bottom, rgba(0,0,0,0) 0, rgba(0,0,0,0.043) calc(var(--fetus-fade) * 0.125), rgba(0,0,0,0.156) calc(var(--fetus-fade) * 0.25), rgba(0,0,0,0.316) calc(var(--fetus-fade) * 0.375), rgba(0,0,0,0.5) calc(var(--fetus-fade) * 0.5), rgba(0,0,0,0.684) calc(var(--fetus-fade) * 0.625), rgba(0,0,0,0.844) calc(var(--fetus-fade) * 0.75), rgba(0,0,0,0.957) calc(var(--fetus-fade) * 0.875), #000 var(--fetus-fade), #000 calc(100% - var(--fetus-fade)), rgba(0,0,0,0.957) calc(100% - var(--fetus-fade) * 0.875), rgba(0,0,0,0.844) calc(100% - var(--fetus-fade) * 0.75), rgba(0,0,0,0.684) calc(100% - var(--fetus-fade) * 0.625), rgba(0,0,0,0.5) calc(100% - var(--fetus-fade) * 0.5), rgba(0,0,0,0.316) calc(100% - var(--fetus-fade) * 0.375), rgba(0,0,0,0.156) calc(100% - var(--fetus-fade) * 0.25), rgba(0,0,0,0.043) calc(100% - var(--fetus-fade) * 0.125), rgba(0,0,0,0) 100%),
+      linear-gradient(to right, rgba(0,0,0,0) 0, rgba(0,0,0,0.043) calc(var(--fetus-side-fade) * 0.125), rgba(0,0,0,0.156) calc(var(--fetus-side-fade) * 0.25), rgba(0,0,0,0.316) calc(var(--fetus-side-fade) * 0.375), rgba(0,0,0,0.5) calc(var(--fetus-side-fade) * 0.5), rgba(0,0,0,0.684) calc(var(--fetus-side-fade) * 0.625), rgba(0,0,0,0.844) calc(var(--fetus-side-fade) * 0.75), rgba(0,0,0,0.957) calc(var(--fetus-side-fade) * 0.875), #000 var(--fetus-side-fade), #000 calc(100% - var(--fetus-side-fade)), rgba(0,0,0,0.957) calc(100% - var(--fetus-side-fade) * 0.875), rgba(0,0,0,0.844) calc(100% - var(--fetus-side-fade) * 0.75), rgba(0,0,0,0.684) calc(100% - var(--fetus-side-fade) * 0.625), rgba(0,0,0,0.5) calc(100% - var(--fetus-side-fade) * 0.5), rgba(0,0,0,0.316) calc(100% - var(--fetus-side-fade) * 0.375), rgba(0,0,0,0.156) calc(100% - var(--fetus-side-fade) * 0.25), rgba(0,0,0,0.043) calc(100% - var(--fetus-side-fade) * 0.125), rgba(0,0,0,0) 100%);
+    mask-composite: intersect;
+  }
 }
 
-/* Measurement chips */
-.measure-chip {
+/* Fixed shape, so the layout never jumps between landscape, square and
+   portrait images. */
+.fetus-stage {
+  position: relative;
+  width: 100%;
+  max-height: 55vh;
+  aspect-ratio: 4 / 3;
+  margin: 0 auto;
+  container-type: size; /* lets each image size itself with cqw/cqh */
+}
+
+/* Behind the image: its per-side edge colours, on a soft plate 1.4x the
+   image's size that fades out elliptically. Keeps each side's colour next
+   to that side of the picture, however wide the stage is. */
+.fetus-backplate {
   position: absolute;
-  top: 50%; transform: translateY(-50%);
+  top: 50%; left: 50%;
+  width: calc(1.4 * min(100cqw, calc(100cqh * var(--ar))));
+  height: calc(1.4 * min(100cqh, calc(100cqw / var(--ar))));
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  background:
+    linear-gradient(to right, var(--stage-left), transparent 40%, transparent 60%, var(--stage-right)),
+    linear-gradient(to bottom, var(--stage-top), var(--stage-centre) 50%, var(--stage-bottom));
+  -webkit-mask-image: radial-gradient(closest-side, #000 55%, rgba(0,0,0,0.5) 78%, rgba(0,0,0,0) 100%);
+  mask-image: radial-gradient(closest-side, #000 55%, rgba(0,0,0,0.5) 78%, rgba(0,0,0,0) 100%);
+}
+
+/* Each image is sized to its own aspect ratio (--ar, set when it loads)
+   and centred, so its feathered edges sit on the picture's real edges.
+   The feather combines eased straight edges with an ellipse, so the
+   corners dissolve too and no rectangle shape is left. */
+.fetus-img {
+  --ar: 1.3333;
+  position: absolute;
+  top: 50%; left: 50%;
+  width: min(100cqw, calc(100cqh * var(--ar)));
+  height: min(100cqh, calc(100cqw / var(--ar)));
+  transform: translate(-50%, -50%);
+  display: block;
+  object-fit: contain;
+  opacity: 0;
+  transition: opacity var(--fetus-fade-time) ease;
+
+  -webkit-mask-image:
+    linear-gradient(to right, rgba(0,0,0,0) 0, rgba(0,0,0,0.043) calc(var(--fetus-feather) * 0.125), rgba(0,0,0,0.156) calc(var(--fetus-feather) * 0.25), rgba(0,0,0,0.316) calc(var(--fetus-feather) * 0.375), rgba(0,0,0,0.5) calc(var(--fetus-feather) * 0.5), rgba(0,0,0,0.684) calc(var(--fetus-feather) * 0.625), rgba(0,0,0,0.844) calc(var(--fetus-feather) * 0.75), rgba(0,0,0,0.957) calc(var(--fetus-feather) * 0.875), #000 var(--fetus-feather), #000 calc(100% - var(--fetus-feather)), rgba(0,0,0,0.957) calc(100% - var(--fetus-feather) * 0.875), rgba(0,0,0,0.844) calc(100% - var(--fetus-feather) * 0.75), rgba(0,0,0,0.684) calc(100% - var(--fetus-feather) * 0.625), rgba(0,0,0,0.5) calc(100% - var(--fetus-feather) * 0.5), rgba(0,0,0,0.316) calc(100% - var(--fetus-feather) * 0.375), rgba(0,0,0,0.156) calc(100% - var(--fetus-feather) * 0.25), rgba(0,0,0,0.043) calc(100% - var(--fetus-feather) * 0.125), rgba(0,0,0,0) 100%),
+    linear-gradient(to bottom, rgba(0,0,0,0) 0, rgba(0,0,0,0.043) calc(var(--fetus-feather) * 0.125), rgba(0,0,0,0.156) calc(var(--fetus-feather) * 0.25), rgba(0,0,0,0.316) calc(var(--fetus-feather) * 0.375), rgba(0,0,0,0.5) calc(var(--fetus-feather) * 0.5), rgba(0,0,0,0.684) calc(var(--fetus-feather) * 0.625), rgba(0,0,0,0.844) calc(var(--fetus-feather) * 0.75), rgba(0,0,0,0.957) calc(var(--fetus-feather) * 0.875), #000 var(--fetus-feather), #000 calc(100% - var(--fetus-feather)), rgba(0,0,0,0.957) calc(100% - var(--fetus-feather) * 0.875), rgba(0,0,0,0.844) calc(100% - var(--fetus-feather) * 0.75), rgba(0,0,0,0.684) calc(100% - var(--fetus-feather) * 0.625), rgba(0,0,0,0.5) calc(100% - var(--fetus-feather) * 0.5), rgba(0,0,0,0.316) calc(100% - var(--fetus-feather) * 0.375), rgba(0,0,0,0.156) calc(100% - var(--fetus-feather) * 0.25), rgba(0,0,0,0.043) calc(100% - var(--fetus-feather) * 0.125), rgba(0,0,0,0) 100%),
+    radial-gradient(closest-side, #000 72%, rgba(0,0,0,0.6) 86%, rgba(0,0,0,0) 100%);
+  -webkit-mask-composite: source-in, source-in;
+  mask-image:
+    linear-gradient(to right, rgba(0,0,0,0) 0, rgba(0,0,0,0.043) calc(var(--fetus-feather) * 0.125), rgba(0,0,0,0.156) calc(var(--fetus-feather) * 0.25), rgba(0,0,0,0.316) calc(var(--fetus-feather) * 0.375), rgba(0,0,0,0.5) calc(var(--fetus-feather) * 0.5), rgba(0,0,0,0.684) calc(var(--fetus-feather) * 0.625), rgba(0,0,0,0.844) calc(var(--fetus-feather) * 0.75), rgba(0,0,0,0.957) calc(var(--fetus-feather) * 0.875), #000 var(--fetus-feather), #000 calc(100% - var(--fetus-feather)), rgba(0,0,0,0.957) calc(100% - var(--fetus-feather) * 0.875), rgba(0,0,0,0.844) calc(100% - var(--fetus-feather) * 0.75), rgba(0,0,0,0.684) calc(100% - var(--fetus-feather) * 0.625), rgba(0,0,0,0.5) calc(100% - var(--fetus-feather) * 0.5), rgba(0,0,0,0.316) calc(100% - var(--fetus-feather) * 0.375), rgba(0,0,0,0.156) calc(100% - var(--fetus-feather) * 0.25), rgba(0,0,0,0.043) calc(100% - var(--fetus-feather) * 0.125), rgba(0,0,0,0) 100%),
+    linear-gradient(to bottom, rgba(0,0,0,0) 0, rgba(0,0,0,0.043) calc(var(--fetus-feather) * 0.125), rgba(0,0,0,0.156) calc(var(--fetus-feather) * 0.25), rgba(0,0,0,0.316) calc(var(--fetus-feather) * 0.375), rgba(0,0,0,0.5) calc(var(--fetus-feather) * 0.5), rgba(0,0,0,0.684) calc(var(--fetus-feather) * 0.625), rgba(0,0,0,0.844) calc(var(--fetus-feather) * 0.75), rgba(0,0,0,0.957) calc(var(--fetus-feather) * 0.875), #000 var(--fetus-feather), #000 calc(100% - var(--fetus-feather)), rgba(0,0,0,0.957) calc(100% - var(--fetus-feather) * 0.875), rgba(0,0,0,0.844) calc(100% - var(--fetus-feather) * 0.75), rgba(0,0,0,0.684) calc(100% - var(--fetus-feather) * 0.625), rgba(0,0,0,0.5) calc(100% - var(--fetus-feather) * 0.5), rgba(0,0,0,0.316) calc(100% - var(--fetus-feather) * 0.375), rgba(0,0,0,0.156) calc(100% - var(--fetus-feather) * 0.25), rgba(0,0,0,0.043) calc(100% - var(--fetus-feather) * 0.125), rgba(0,0,0,0) 100%),
+    radial-gradient(closest-side, #000 72%, rgba(0,0,0,0.6) 86%, rgba(0,0,0,0) 100%);
+  mask-composite: intersect, intersect;
+
+  &--active { opacity: 1; }
+  &--failed { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fetus-viewer, .fetus-img { transition: none; }
+}
+
+.fetus-caption {
+  margin: 8px 16px 0;
+  text-align: center;
+  font-size: 0.68rem; font-weight: 700;
+  color: var(--muted);
+  font-family: 'Nunito', 'Poppins', sans-serif;
+}
+
+/* Measurement chips: a compact row under the image, never over it. */
+.measure-row {
+  display: flex; justify-content: center; gap: 10px;
+  padding: 12px 16px 0;
+}
+
+.measure-chip {
+  min-width: 96px;
+  text-align: center;
   background: rgba(255,255,255,0.92);
   border: 1px solid rgba(155, 111, 196, 0.15);
   border-radius: 12px;
   padding: 8px 12px;
   box-shadow: 0 4px 16px rgba(155,111,196,0.13);
-  backdrop-filter: blur(8px);
-  z-index: 2;
-
-  &--left  { left: 0; }
-  &--right { right: 0; }
 }
 
 .measure-chip-label {

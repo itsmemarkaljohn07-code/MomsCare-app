@@ -55,6 +55,7 @@
                 <span class="card-tag" [class]="'tag-' + appt.accentColor">In-Person</span>
                 <span class="card-tag tag-pending" *ngIf="appt.doctorApproval === 'pending'">Awaiting Approval</span>
                 <span class="card-tag tag-rejected" *ngIf="appt.doctorApproval === 'rejected'">Declined</span>
+                <span class="card-tag tag-cancel-requested" *ngIf="appt.cancellationState === 'requested'">Cancellation requested</span>
               </div>
             </div>
 
@@ -103,14 +104,64 @@
               </div>
             </div>
 
-                        <div class="summary-actions">
-              <button class="action-btn action-cancel" (click)="$event.stopPropagation(); cancelAppointment(appt.id)">
+            <!-- Cancellation: the patient requests, the clinic decides. -->
+            <div class="summary-section" *ngIf="appt.cancellationState === 'requested'">
+              <p class="summary-label">Cancellation</p>
+              <p class="summary-value cancel-status cancel-status--requested">
+                Requested. Your appointment stays booked until the clinic approves it.
+              </p>
+            </div>
+            <div class="summary-section" *ngIf="appt.cancellationState === 'declined'">
+              <p class="summary-label">Cancellation declined</p>
+              <p class="summary-value cancel-status cancel-status--declined">
+                {{ appt.declineReason ? appt.declineReason : 'The clinic declined your cancellation request. Your appointment is still booked.' }}
+              </p>
+            </div>
 
+            <div class="cancel-confirm" *ngIf="confirmingCancelId === appt.id" (click)="$event.stopPropagation()">
+              <p class="cancel-confirm-text">
+                Your request is sent to the clinic. Your appointment stays booked until it is approved.
+              </p>
+              <label class="cancel-confirm-label" [attr.for]="'cancel-reason-' + appt.id">Reason (optional)</label>
+              <textarea class="cancel-confirm-input"
+                        [id]="'cancel-reason-' + appt.id"
+                        rows="3"
+                        [maxlength]="cancelReasonMax"
+                        [(ngModel)]="cancelReason"
+                        [disabled]="busyCancelId === appt.id"
+                        placeholder="Let the clinic know why, if you like"></textarea>
+              <p class="cancel-confirm-count">{{ cancelReason.length }}/{{ cancelReasonMax }}</p>
+              <div class="cancel-confirm-actions">
+                <button class="action-btn action-secondary" (click)="closeCancelRequest()"
+                        [disabled]="busyCancelId === appt.id">Keep appointment</button>
+                <button class="action-btn action-cancel" (click)="sendCancelRequest(appt)"
+                        [disabled]="busyCancelId === appt.id">
+                  {{ busyCancelId === appt.id ? 'Sending...' : 'Send request' }}
+                </button>
+              </div>
+            </div>
+
+            <p class="cancel-message"
+               *ngIf="cancelMessage?.id === appt.id"
+               [class.cancel-message--error]="cancelMessage?.kind === 'error'"
+               role="status">{{ cancelMessage?.text }}</p>
+
+            <div class="summary-actions" *ngIf="confirmingCancelId !== appt.id">
+              <button class="action-btn action-cancel"
+                      *ngIf="appt.cancellationState !== 'requested'"
+                      [disabled]="busyCancelId === appt.id"
+                      (click)="$event.stopPropagation(); openCancelRequest(appt.id)">
                 <svg width="14" height="14" viewBox="0 0 22 22" fill="none">
                   <circle cx="11" cy="11" r="9" stroke="currentColor" stroke-width="1.7"/>
                   <path d="M7 7l8 8M15 7l-8 8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
                 </svg>
-                Cancel
+                Request cancellation
+              </button>
+              <button class="action-btn action-secondary"
+                      *ngIf="appt.cancellationState === 'requested'"
+                      [disabled]="busyCancelId === appt.id"
+                      (click)="$event.stopPropagation(); withdrawCancelRequest(appt)">
+                {{ busyCancelId === appt.id ? 'Withdrawing...' : 'Withdraw request' }}
               </button>
             </div>
           </div>
@@ -159,7 +210,8 @@
                   </svg>
                   {{ appt.day }}, {{ appt.date }} · {{ appt.time }}
                 </span>
-                <span class="card-tag tag-past">Completed</span>
+                <span class="card-tag tag-cancelled" *ngIf="appt.status === 'cancelled'">Cancelled</span>
+                <span class="card-tag tag-past" *ngIf="appt.status !== 'cancelled'">Completed</span>
               </div>
             </div>
 

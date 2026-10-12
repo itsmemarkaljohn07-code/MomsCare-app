@@ -1,5 +1,5 @@
 // pregnancy-settings.page.ts
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Component, OnInit, OnDestroy, NgZone } from '@angular/core';
 import { Location } from '@angular/common';
 import { IonicModule, ViewWillEnter } from '@ionic/angular';
 import { CommonModule } from '@angular/common';
@@ -7,9 +7,38 @@ import { FormsModule } from '@angular/forms';
 import { ThemeService } from '../../services/theme';
 import { AuthService, UserProfile } from '../../services/auth.service';
 import { toDateInputValue, fromDateInputValue, formatLocalDate } from '../../shared/date-utils';
-import { ReminderSchedulerService, ReminderSyncResult } from '../../services/reminder-scheduler.service';
+import {
+  ReminderSchedulerService,
+  ReminderSyncResult,
+  ReminderTimeoutError,
+  ScheduledTestResult,
+  TestReminderResult,
+} from '../../services/reminder-scheduler.service';
 import { DEFAULT_KICK_TIME } from '../../services/reminder-plan';
+import { ChecklistRemindersService } from '../../services/checklist-reminders.service';
+import { PushNotificationsService } from '../../services/push-notifications.service';
 import { Subscription } from 'rxjs';
+
+/** What the note under the reminders card says after "Test". */
+const TEST_MESSAGES: Record<TestReminderResult, string> = {
+  'delivered': 'Test reminder delivered. You should see it in your notifications.',
+  'scheduled-not-seen': "The reminder was scheduled but hasn't appeared yet. Check that notifications and the Reminders channel are on and Do Not Disturb is off, then try again.",
+  'denied': 'Notifications are turned off for MomCare. Open Settings > Apps > MomCare > Notifications and turn them on.',
+  'channel-off': 'The Reminders notification channel is turned off. Open Settings > Apps > MomCare > Notifications > Reminders and turn it on.',
+  'unavailable': 'Test reminders work in the MomCare phone app, not in the browser.',
+};
+/** What the note says after "Test a scheduled reminder". */
+const SCHEDULED_TEST_MESSAGES: Record<ScheduledTestResult, string> = {
+  'scheduled': 'Scheduled. It should arrive in about a minute. You can lock your phone.',
+  'not-scheduled': 'The reminder was not scheduled on this phone. Please try again.',
+  'denied': TEST_MESSAGES['denied'],
+  'channel-off': TEST_MESSAGES['channel-off'],
+  'unavailable': TEST_MESSAGES['unavailable'],
+};
+const TEST_TIMEOUT_MESSAGE = "Your phone didn't respond in time. Please try again. If it keeps happening, restart the app.";
+const PUSH_DENIED_MESSAGE = "Updates from your care team can't reach this phone because notifications are turned off for MomCare. Turn them on in Settings > Apps > MomCare > Notifications, then save again.";
+const PUSH_ERROR_MESSAGE = "We couldn't set up updates from your care team on this phone. Please check your connection and save again.";
+const TEST_ERROR_MESSAGE = 'Something went wrong sending the test reminder. Please try again.';
 
 @Component({
   selector: 'app-pregnancy-settings',
@@ -27,6 +56,7 @@ export class PregnancySettingsPage implements OnInit, OnDestroy, ViewWillEnter {
   isSaving  = false;
   saveError = '';
   isTesting = false;
+  isTestingScheduled = false;
   // Plain-language result of setting up reminders on this phone, shown
   // under the Notifications card (blocked permission, how many were set...).
   reminderNote = '';
@@ -58,6 +88,8 @@ export class PregnancySettingsPage implements OnInit, OnDestroy, ViewWillEnter {
     { key: 'vitaminReminder',      label: 'Daily Vitamin Reminder',   desc: 'Every morning, around 9:00 AM',                 on: false },
     { key: 'kickAlerts',           label: 'Kick Count Alerts',        desc: 'Every day at the time you choose below',        on: false },
     { key: 'hydrationReminders',   label: 'Hydration Reminders',      desc: 'Three a day, around 11 AM, 2 PM and 5 PM',      on: false },
+    { key: 'checklistReminders',   label: 'Daily Checklist Reminders', desc: 'Every 2 hours, 9 AM to 9 PM, while items are unchecked', on: true },
+    { key: 'clinicUpdates',        label: 'Updates from my care team', desc: 'Messages from your doctor or clinic, sent to this phone', on: true },
   ];
 
   /** Same 280-day formula every other page uses -- computed from
@@ -105,6 +137,9 @@ export class PregnancySettingsPage implements OnInit, OnDestroy, ViewWillEnter {
     private theme: ThemeService,
     private authService: AuthService,
     private reminders: ReminderSchedulerService,
+    private checklistReminders: ChecklistRemindersService,
+    private push: PushNotificationsService,
+    private zone: NgZone,
   ) {}
 
   ngOnInit(): void {
@@ -157,6 +192,8 @@ export class PregnancySettingsPage implements OnInit, OnDestroy, ViewWillEnter {
         vitaminReminder:      this.notifToggles.find(t => t.key === 'vitaminReminder')!.on,
         kickAlerts:           this.notifToggles.find(t => t.key === 'kickAlerts')!.on,
         hydrationReminders:   this.notifToggles.find(t => t.key === 'hydrationReminders')!.on,
+        checklistReminders:   this.notifToggles.find(t => t.key === 'checklistReminders')!.on,
+        clinicUpdates:        this.notifToggles.find(t => t.key === 'clinicUpdates')!.on,
       };
       const changes: Partial<UserProfile> = {
         calcMethod: this.settings.calcMethod as 'lmp' | 'ultrasound' | 'ivf',
@@ -176,6 +213,8 @@ export class PregnancySettingsPage implements OnInit, OnDestroy, ViewWillEnter {
       this.showToast = true;
       setTimeout(() => (this.showToast = false), 2500);
       await this.updateReminders(notificationPrefs);
+      await this.updateChecklistReminders(notificationPrefs.checklistReminders);
+      await this.updatePush(notificationPrefs.clinicUpdates);
     } catch (err) {
       console.error('Failed to save pregnancy settings:', err);
       this.saveError = "Couldn't save your changes. Please check your connection and try again.";
@@ -202,6 +241,44 @@ export class PregnancySettingsPage implements OnInit, OnDestroy, ViewWillEnter {
     }
   }
 
+  /** Daily Checklist reminders follow their switch: on asks for
+   *  notification permission (this save is the only place that may ask)
+   *  and schedules from today's checklist; off cancels them all. Never
+   *  throws, for the same reason as updateReminders. */
+  private async updateChecklistReminders(enabled: boolean): Promise<void> {
+    try {
+      const uid = this.authService.currentUid;
+      if (!uid) return;
+      if (!enabled) {
+        await this.checklistReminders.cancelAll();
+        return;
+      }
+      const state = await this.checklistReminders.loadState(uid);
+      await this.checklistReminders.sync(state, { enabled: true, requestPermission: true });
+    } catch (err) {
+      console.error('Failed to update checklist reminders:', err);
+    }
+  }
+
+  /** "Updates from my care team": on asks for notification permission and
+   *  stores this phone's push token; off removes it. Never throws. */
+  private async updatePush(enabled: boolean): Promise<void> {
+    const uid = this.authService.currentUid;
+    if (!uid) return;
+    try {
+      if (!enabled) {
+        await this.push.unregister(uid);
+        return;
+      }
+      if ((await this.push.register(uid, true)) === 'denied') {
+        this.reminderNote = [this.reminderNote, PUSH_DENIED_MESSAGE].filter(Boolean).join(' ');
+      }
+    } catch (err) {
+      console.error('Failed to set up care team updates:', err);
+      this.reminderNote = [this.reminderNote, PUSH_ERROR_MESSAGE].filter(Boolean).join(' ');
+    }
+  }
+
   private describeReminders(r: ReminderSyncResult, anyOn: boolean): string {
     if (!anyOn) return '';
     if (r.permission === 'unavailable') {
@@ -209,6 +286,9 @@ export class PregnancySettingsPage implements OnInit, OnDestroy, ViewWillEnter {
     }
     if (r.permission === 'denied') {
       return 'Saved, but notifications are blocked for MomCare on this phone. Turn them on in Settings > Apps > MomCare > Notifications, then save again.';
+    }
+    if (r.permission === 'granted' && r.channel === 'off') {
+      return 'Saved, but the Reminders notification channel is turned off. Open Settings > Apps > MomCare > Notifications > Reminders and turn it on.';
     }
     if (r.permission === 'granted' && r.scheduled > 0) {
       const base = `${r.scheduled} reminder${r.scheduled === 1 ? '' : 's'} scheduled on this phone.`;
@@ -220,22 +300,46 @@ export class PregnancySettingsPage implements OnInit, OnDestroy, ViewWillEnter {
   }
 
   /** Shows a sample reminder in a few seconds, so the patient (or an
-   *  examiner) can see reminders work without waiting for a scheduled time. */
+   *  examiner) can see reminders work without waiting for a scheduled time.
+   *  Only says "delivered" once the phone has actually shown it. */
   async sendTest(): Promise<void> {
-    if (this.isTesting) return;
+    if (this.isTesting || this.isTestingScheduled) return;
     this.isTesting = true;
     this.reminderNote = '';
+    let note = TEST_ERROR_MESSAGE;
     try {
-      const result = await this.reminders.sendTestReminder();
-      this.reminderNote =
-        result === 'sent'   ? 'Test reminder sent. It should appear in a few seconds.'
-        : result === 'denied' ? 'Notifications are blocked for MomCare on this phone. Turn them on in Settings > Apps > MomCare > Notifications.'
-        : 'Test reminders work in the MomCare phone app, not in the browser.';
+      note = TEST_MESSAGES[await this.reminders.sendTestReminder()];
     } catch (err) {
-      console.error('Failed to send test reminder:', err);
-      this.reminderNote = "Couldn't send a test reminder on this phone.";
+      console.error('[reminders] test reminder failed:', err);
+      note = err instanceof ReminderTimeoutError ? TEST_TIMEOUT_MESSAGE : TEST_ERROR_MESSAGE;
     } finally {
-      this.isTesting = false;
+      // Native plugin callbacks arrive from outside Angular; run the final
+      // update in the zone so the button always returns to "Test".
+      this.zone.run(() => {
+        this.isTesting = false;
+        this.reminderNote = note;
+      });
+    }
+  }
+
+  /** Schedules one reminder a minute from now, the same way the daily
+   *  reminders are scheduled, so the patient can lock the phone and see it
+   *  arrive. Only says "Scheduled" once the phone lists it as pending. */
+  async sendScheduledTest(): Promise<void> {
+    if (this.isTesting || this.isTestingScheduled) return;
+    this.isTestingScheduled = true;
+    this.reminderNote = '';
+    let note = TEST_ERROR_MESSAGE;
+    try {
+      note = SCHEDULED_TEST_MESSAGES[await this.reminders.scheduleTestReminder()];
+    } catch (err) {
+      console.error('[reminders] scheduled test reminder failed:', err);
+      note = err instanceof ReminderTimeoutError ? TEST_TIMEOUT_MESSAGE : TEST_ERROR_MESSAGE;
+    } finally {
+      this.zone.run(() => {
+        this.isTestingScheduled = false;
+        this.reminderNote = note;
+      });
     }
   }
 

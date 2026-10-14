@@ -97,12 +97,14 @@ export class ChecklistRemindersService {
       readSettledDoc(doc(this.firestore, `users/${uid}/checklist/current`), CHECKLIST_READ_TIMEOUT_MS));
     const data = snap.exists() ? (snap.data() as any) : null;
     if (!data || data.date !== localDateKey() || !Array.isArray(data.items)) {
-      return { anyUnchecked: true, vitaminUnchecked: true };
+      return { anyUnchecked: true, vitaminUnchecked: true, nextUnchecked: VITAMIN_CHECKLIST_ITEM_ID };
     }
     const done = (id: number) => data.items.some((i: any) => i.id === id && i.done === true);
     return {
       anyUnchecked: data.items.length === 0 || data.items.some((i: any) => i.done !== true),
       vitaminUnchecked: !done(VITAMIN_CHECKLIST_ITEM_ID),
+      // Saved in checklist order, so the first not-done item comes first.
+      nextUnchecked: data.items.find((i: any) => i.done !== true)?.id,
     };
   }
 

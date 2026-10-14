@@ -51,7 +51,7 @@
           <div class="notif-item-body">
             <p class="notif-item-title">{{ n.title }}</p>
             <p class="notif-item-msg">{{ n.message }}</p>
-            <p class="notif-item-time">{{ n.time }}</p>
+            <p class="notif-item-time" *ngIf="notifTime(n) as when">{{ when }}</p>
           </div>
           <div class="notif-unread-dot" *ngIf="!n.read"></div>
         </div>

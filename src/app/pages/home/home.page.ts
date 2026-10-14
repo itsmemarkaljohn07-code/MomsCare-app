@@ -381,6 +381,17 @@ export class HomePage implements OnInit, OnDestroy, DoCheck {
 
   get unreadCount(): number { return this.notifications.filter(n => !n.read).length; }
 
+  /** The time under a bell entry. Entries from the clinic dashboard don't
+   *  store the display text, so it comes from when they were created, in
+   *  the same format ("Oct 14, 5:00 PM"). */
+  notifTime(n: AppNotification): string {
+    if (n.time) return n.time;
+    const created: Date | undefined = n.createdAt?.toDate?.();
+    return created && !isNaN(created.getTime())
+      ? created.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+      : '';
+  }
+
   /** Which minimal icon a bell entry shows. Dashboard entries carry a
    *  type; the app's own (checklist, appointment reminders) are known by
    *  their stored emoji or title. The stored data is not changed. */
@@ -581,7 +592,11 @@ export class HomePage implements OnInit, OnDestroy, DoCheck {
       const vitamin = this.checklist.find(c => c.id === VITAMIN_CHECKLIST_ITEM_ID);
       const slots = dueChecklistBellSlots(
         new Date(),
-        { anyUnchecked: this.checklistDone < this.checklist.length, vitaminUnchecked: !vitamin?.done },
+        {
+          anyUnchecked: this.checklistDone < this.checklist.length,
+          vitaminUnchecked: !vitamin?.done,
+          nextUnchecked: this.checklist.find(c => !c.done)?.id,
+        },
         profile?.notificationPrefs?.checklistReminders !== false,
       );
       for (const slot of slots) {
@@ -637,7 +652,7 @@ export class HomePage implements OnInit, OnDestroy, DoCheck {
         const profile = await this.profileStore.whenLoaded();
         const vitamin = this.checklist.find(c => c.id === VITAMIN_CHECKLIST_ITEM_ID);
         await this.checklistReminders.sync(
-          { anyUnchecked, vitaminUnchecked: !vitamin?.done },
+          { anyUnchecked, vitaminUnchecked: !vitamin?.done, nextUnchecked: this.checklist.find(c => !c.done)?.id },
           { enabled: profile?.notificationPrefs?.checklistReminders !== false, requestPermission: false },
         );
         return;

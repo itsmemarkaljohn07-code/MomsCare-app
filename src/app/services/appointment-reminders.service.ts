@@ -79,7 +79,7 @@ export class AppointmentRemindersService {
         if (dayBefore > now) {
           notifications.push({
             id: dayBeforeId,
-            title: 'Appointment Tomorrow',
+            title: 'Appointment Tomorrow 📅',
             body: `${appt.label} with ${appt.doctor} tomorrow at ${appt.time}`,
             schedule: { at: dayBefore },
           });
@@ -87,7 +87,7 @@ export class AppointmentRemindersService {
         if (sameDay > now) {
           notifications.push({
             id: sameDayId,
-            title: 'Appointment Today',
+            title: 'Appointment Today 📅',
             body: `${appt.label} with ${appt.doctor} today at ${appt.time}`,
             schedule: { at: sameDay },
           });
@@ -117,7 +117,7 @@ export class AppointmentRemindersService {
       try {
         await this.notificationsService.createNotification(this.currentUid, {
           icon: '📅',
-          title: isToday ? 'Appointment Today' : 'Appointment Tomorrow',
+          title: isToday ? 'Appointment Today 📅' : 'Appointment Tomorrow 📅',
           message: `${appt.label} with ${appt.doctor} ${isToday ? 'today' : 'tomorrow'} at ${appt.time}`,
           route: '/appointments',
         });

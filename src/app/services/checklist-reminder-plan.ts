@@ -31,9 +31,28 @@ export const ALL_CHECKLIST_REMINDER_IDS: number[] = Array.from(
 export const LEGACY_CHECKLIST_REMINDER_ID = 991001;
 
 export const CHECKLIST_REMINDER_TITLE = 'A Little Reminder for Mommy 💗';
-export const CHECKLIST_REMINDER_VITAMIN_BODY = 'Take your prenatal vitamins every day, Mommy!';
+export const CHECKLIST_REMINDER_VITAMIN_BODY = 'Take your prenatal vitamins every day, Mommy! 💊';
 export const CHECKLIST_REMINDER_GENERAL_BODY =
-  "You still have a few things left on today's checklist. One small step at a time!";
+  "You still have a few things left on today's checklist. One small step at a time! ✨";
+
+/** The reminder text for each Home checklist item (by item id, in checklist
+ *  order), with the same emoji the checklist shows. A reminder names the
+ *  first item still unchecked today. */
+export const CHECKLIST_ITEM_REMINDER_BODIES: Record<number, string> = {
+  1: CHECKLIST_REMINDER_VITAMIN_BODY,
+  2: "Don't forget to drink your 8 glasses of water today, Mommy! 💧",
+  3: 'Time for a light walk or some gentle stretching, Mommy! 🚶',
+  4: 'Have you had a veggie-rich meal today, Mommy? 🥗',
+  5: 'Remember to rest for 30 minutes today, Mommy! 😴',
+};
+
+/** Today's reminder text: the first unchecked item's, or (if that isn't
+ *  known) the vitamin or general text. */
+export function checklistReminderBody(state: ChecklistState): string {
+  const forItem = state.nextUnchecked !== undefined ? CHECKLIST_ITEM_REMINDER_BODIES[state.nextUnchecked] : undefined;
+  if (forItem) return forItem;
+  return state.vitaminUnchecked ? CHECKLIST_REMINDER_VITAMIN_BODY : CHECKLIST_REMINDER_GENERAL_BODY;
+}
 
 /** Skip a slot that is about to pass, so it isn't fired immediately. */
 const MIN_LEAD_MS = 60 * 1000;
@@ -43,6 +62,8 @@ export interface ChecklistState {
   anyUnchecked: boolean;
   /** The prenatal-vitamin item is unchecked today. */
   vitaminUnchecked: boolean;
+  /** Id of the first unchecked item today, in checklist order. */
+  nextUnchecked?: number;
 }
 
 export interface ChecklistReminder {
@@ -57,7 +78,7 @@ export interface ChecklistReminder {
  * window, for today's remaining slots (only while something is unchecked)
  * and for the next days. The checklist resets every day, so on those days
  * everything, the vitamin included, will be unchecked: they always get the
- * vitamin text. Today's text follows today's vitamin item.
+ * vitamin text. Today's text names today's first unchecked item.
  */
 export function buildChecklistReminderPlan(
   now: Date,
@@ -70,9 +91,7 @@ export function buildChecklistReminderPlan(
 
   for (let day = 0; day < CHECKLIST_REMINDER_HORIZON_DAYS; day++) {
     if (day === 0 && !state.anyUnchecked) continue;
-    const body = day === 0 && !state.vitaminUnchecked
-      ? CHECKLIST_REMINDER_GENERAL_BODY
-      : CHECKLIST_REMINDER_VITAMIN_BODY;
+    const body = day === 0 ? checklistReminderBody(state) : CHECKLIST_REMINDER_VITAMIN_BODY;
 
     const start = new Date(now.getFullYear(), now.getMonth(), now.getDate() + day,
       CHECKLIST_REMINDER_WINDOW_START_HOUR, 0, 0, 0);
@@ -114,7 +133,7 @@ export function dueChecklistBellSlots(
   enabled: boolean,
 ): ChecklistBellSlot[] {
   if (!enabled || !state.anyUnchecked) return [];
-  const body = state.vitaminUnchecked ? CHECKLIST_REMINDER_VITAMIN_BODY : CHECKLIST_REMINDER_GENERAL_BODY;
+  const body = checklistReminderBody(state);
   const slots: ChecklistBellSlot[] = [];
   for (let hour = CHECKLIST_REMINDER_WINDOW_START_HOUR; hour <= CHECKLIST_REMINDER_WINDOW_END_HOUR;
     hour += CHECKLIST_REMINDER_INTERVAL_HOURS) {

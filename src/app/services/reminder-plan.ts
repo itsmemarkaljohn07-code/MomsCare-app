@@ -109,7 +109,7 @@ export function buildReminderPlan(
   if (p.weeklyUpdates) {
     plan.push({
       id: REMINDER_IDS.weekly,
-      title: 'Your weekly update',
+      title: 'Your weekly update 🌸',
       body: "See what's new for you and your baby this week in MomCare.",
       weekday: MONDAY, hour: 8, minute: 0,
     });
@@ -118,7 +118,7 @@ export function buildReminderPlan(
   if (p.vitaminReminder) {
     plan.push({
       id: REMINDER_IDS.vitamin,
-      title: 'Vitamin reminder',
+      title: 'Vitamin reminder 💊',
       body: 'Remember your daily prenatal vitamin, as advised by your provider.',
       hour: 9, minute: 0,
     });
@@ -129,7 +129,7 @@ export function buildReminderPlan(
     times.forEach(([hour, minute], i) => {
       plan.push({
         id: REMINDER_IDS.hydration[i],
-        title: 'Time for some water',
+        title: 'Time for some water 💧',
         body: 'A glass of water now helps you stay hydrated through the day.',
         hour, minute,
       });
@@ -141,7 +141,7 @@ export function buildReminderPlan(
     const t = parseTime(kickTime, fallback);
     plan.push({
       id: REMINDER_IDS.kick,
-      title: 'Kick count time',
+      title: 'Kick count time 👣',
       body: "Take a few minutes to count your baby's movements. Contact your provider if you notice a change.",
       hour: t.hour, minute: t.minute, userChosen: true,
     });

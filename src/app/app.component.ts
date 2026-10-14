@@ -1,7 +1,9 @@
 import { Component } from '@angular/core';
 import { Router } from '@angular/router';
 import { IonApp, IonRouterOutlet, ToastController } from '@ionic/angular/standalone';
+import { distinctUntilChanged, filter } from 'rxjs/operators';
 import { AuthService, UserProfile } from './services/auth.service';
+import { ProfileStoreService } from './services/profile-store.service';
 import { ReminderSchedulerService } from './services/reminder-scheduler.service';
 import { AppointmentsService } from './services/appointments.service';
 import { AppointmentRemindersService } from './services/appointment-reminders.service';
@@ -18,6 +20,7 @@ import { authGuard } from './guards/auth.guard';
 export class AppComponent {
   constructor(
     authService: AuthService,
+    profileStore: ProfileStoreService,
     reminders: ReminderSchedulerService,
     private router: Router,
     private toastCtrl: ToastController,
@@ -35,22 +38,32 @@ export class AppComponent {
     // sign-out (a user who WAS here, then isn't) should cancel reminders.
     let hadUser = false;
 
+    // Re-establish this patient's reminders every time she signs in or the
+    // app opens (covers reinstalling or clearing app data), from her saved
+    // preferences. Only once the profile has really loaded: while it can't
+    // be read (offline after a cold start), the reminders and push
+    // registration already on this phone are left as they are, and this
+    // runs as soon as it loads. Once per account, plus once more when a
+    // brand-new account's profile appears. Never shows the permission
+    // dialog; that only happens when she saves the settings herself.
+    profileStore.state$.pipe(
+      distinctUntilChanged((a, b) => a.uid === b.uid && a.status === b.status),
+      filter(s => !!s.uid && (s.status === 'ready' || s.status === 'missing')),
+    ).subscribe(({ uid, profile }) => {
+      // Appointment reminders too, so they're set without opening the
+      // Appointments page. Each runs on its own; one failing can't stop
+      // the others.
+      void this.syncAppointmentReminders(uid!, profile);
+      void this.syncChecklistReminders(uid!, profile);
+      void this.syncPush(uid!, profile);
+      reminders.sync(profile, { requestPermission: false })
+        .catch(err => console.error('Reminder sync failed:', err));
+    });
+
     authService.user$.subscribe(async fbUser => {
       try {
         if (fbUser) {
           hadUser = true;
-          // Re-establish this patient's reminders every time she signs in or
-          // the app opens (covers reinstalling or clearing app data). This
-          // never shows the permission dialog; that only happens when she
-          // saves the settings herself.
-          const profile = await authService.getProfile();
-          // Appointment reminders too, so they're set without opening the
-          // Appointments page. Runs on its own; a failure there can't stop
-          // the reminder sync below.
-          void this.syncAppointmentReminders(fbUser.uid, profile);
-          void this.syncChecklistReminders(fbUser.uid, profile);
-          void this.syncPush(fbUser.uid, profile);
-          await reminders.sync(profile, { requestPermission: false });
         } else if (hadUser) {
           hadUser = false;
           // The session ended without the patient signing out (account

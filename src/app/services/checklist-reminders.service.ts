@@ -1,6 +1,7 @@
 // checklist-reminders.service.ts
 import { Injectable, EnvironmentInjector, inject, runInInjectionContext } from '@angular/core';
-import { Firestore, doc, getDoc } from '@angular/fire/firestore';
+import { Firestore, doc } from '@angular/fire/firestore';
+import { readSettledDoc } from '../shared/firestore-read';
 import { ReminderSchedulerService } from './reminder-scheduler.service';
 import { REMINDER_CHANNEL_ID } from './reminder-plan';
 import type { LocalNotificationsPlugin } from '@capacitor/local-notifications';
@@ -13,6 +14,8 @@ import {
 } from './checklist-reminder-plan';
 
 const STEP_TIMEOUT_MS = 8000;
+/** Longest loadState waits for the server before giving up. */
+const CHECKLIST_READ_TIMEOUT_MS = 15000;
 /** The prenatal-vitamin item in the Home checklist. */
 export const VITAMIN_CHECKLIST_ITEM_ID = 1;
 
@@ -85,10 +88,13 @@ export class ChecklistRemindersService {
 
   /** Today's checklist for a user, read once (app start / sign-in, before
    *  Home has loaded). A saved checklist from an earlier day counts as
-   *  fully unchecked: it resets every day. */
+   *  fully unchecked: it resets every day. Waits for the connection, and
+   *  if the checklist can't be read it throws (ReadUnavailableError)
+   *  rather than reporting "everything unchecked", so the caller leaves
+   *  the reminders already scheduled as they are. */
   async loadState(uid: string): Promise<ChecklistState> {
     const snap = await runInInjectionContext(this.envInjector, () =>
-      getDoc(doc(this.firestore, `users/${uid}/checklist/current`)));
+      readSettledDoc(doc(this.firestore, `users/${uid}/checklist/current`), CHECKLIST_READ_TIMEOUT_MS));
     const data = snap.exists() ? (snap.data() as any) : null;
     if (!data || data.date !== localDateKey() || !Array.isArray(data.items)) {
       return { anyUnchecked: true, vitaminUnchecked: true };

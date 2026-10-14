@@ -27,6 +27,11 @@ import {
   updateDoc
 } from '@angular/fire/firestore';
 import { Observable } from 'rxjs';
+import { ReadUnavailableError } from '../shared/firestore-read';
+
+/** The profile could not be read (offline, timed out, signed out while
+ *  waiting). Never means "there is no profile": that is a plain null. */
+export class ProfileUnavailableError extends ReadUnavailableError {}
 
 export interface AvatarSelection {
   emoji: string;
@@ -395,17 +400,24 @@ export class AuthService {
     return wasExplicit;
   }
 
+  /** The signed-in patient's profile, read once. null means nobody is
+   *  signed in, or the server confirmed there is no profile document.
+   *  A read that fails (e.g. "client is offline" right after a cold start)
+   *  throws ProfileUnavailableError instead, so it can never pass for an
+   *  empty profile. Pages use ProfileStoreService.whenLoaded(), which
+   *  waits for the connection instead of failing at once. */
   async getProfile(): Promise<UserProfile | null> {
     if (!this.currentUid) return null;
+    let snap;
     try {
-      const snap = await runInInjectionContext(this.envInjector, () =>
+      snap = await runInInjectionContext(this.envInjector, () =>
         getDoc(doc(this.firestore, 'users', this.currentUid))
       );
-      return snap.exists() ? (snap.data() as UserProfile) : null;
-    } catch (err) {
-      console.error('[AuthService] getProfile failed:', err);
-      return null;
+    } catch (err: any) {
+      console.error('[AuthService] getProfile failed:', err?.code ?? err);
+      throw new ProfileUnavailableError("Couldn't read the profile.");
     }
+    return snap.exists() ? (snap.data() as UserProfile) : null;
   }
 
   async updateProfile(data: Partial<UserProfile>): Promise<void> {

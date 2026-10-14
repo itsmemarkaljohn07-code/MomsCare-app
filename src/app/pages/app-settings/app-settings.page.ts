@@ -5,6 +5,8 @@ import { Router } from '@angular/router';
 import { IonicModule } from '@ionic/angular';
 import { ThemeService } from '../../services/theme';
 import { AuthService } from '../../services/auth.service';
+import { ProfileStoreService } from '../../services/profile-store.service';
+import { SaveFeedbackService } from '../../services/save-feedback.service';
 import { Subscription } from 'rxjs';
 
 // The one place the contact address for data and deletion requests lives.
@@ -33,20 +35,21 @@ export class AppSettingsPage implements OnInit, OnDestroy {
 
   private accountEmail = '';
   private accountUsername = '';
+  /** False until the profile was really read (not just empty). */
+  private accountLoaded = false;
   maskedEmail = '';
 
   confirmingReset = false;
   isSendingReset  = false;
 
-  toastMessage = '';
-  toastKind: 'success' | 'error' = 'success';
-  private toastTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(
     private location: Location,
     private router: Router,
     private theme: ThemeService,
     private authService: AuthService,
+    private profileStore: ProfileStoreService,
+    private feedback: SaveFeedbackService,
   ) {}
 
   ngOnInit(): void {
@@ -59,12 +62,13 @@ export class AppSettingsPage implements OnInit, OnDestroy {
    *  password reset link and to fill in the request emails. */
   private async loadAccount(): Promise<void> {
     try {
-      const profile = await this.authService.getProfile();
+      const profile = await this.profileStore.whenLoaded();
       this.accountEmail    = profile?.email ?? '';
       this.accountUsername = profile?.username ?? '';
       this.maskedEmail     = this.maskEmail(this.accountEmail);
-    } catch (err) {
-      console.error('Failed to load account details:', err);
+      this.accountLoaded   = true;
+    } catch (err: any) {
+      console.error('Failed to load account details:', err?.reason ?? err);
     }
   }
 
@@ -78,6 +82,12 @@ export class AppSettingsPage implements OnInit, OnDestroy {
   // ── Change password: sends Firebase's own reset link to the account email ──
 
   startReset(): void {
+    if (!this.accountLoaded) {
+      // Not "no email": the details couldn't be read yet. Try again.
+      this.showToast("We couldn't load your account details. Check your connection and try again.", 'error');
+      void this.loadAccount();
+      return;
+    }
     if (!this.accountEmail) {
       this.showToast("We couldn't find your account email. Please try again in a moment.", 'error');
       return;
@@ -135,17 +145,14 @@ export class AppSettingsPage implements OnInit, OnDestroy {
     this.router.navigate(['/privacy']);
   }
 
+  /** The shared toast (SaveFeedbackService), same look as the other settings pages. */
   private showToast(message: string, kind: 'success' | 'error'): void {
-    this.toastMessage = message;
-    this.toastKind = kind;
-    if (this.toastTimer) clearTimeout(this.toastTimer);
-    this.toastTimer = setTimeout(() => (this.toastMessage = ''), 4500);
+    void this.feedback.show(message, kind, 4500);
   }
 
   goBack(): void { this.location.back(); }
 
   ngOnDestroy(): void {
     this.themeSub?.unsubscribe();
-    if (this.toastTimer) clearTimeout(this.toastTimer);
   }
 }

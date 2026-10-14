@@ -361,15 +361,25 @@
     <div class="section-header" [class.visible]="animReady">
       <p class="section-title">Daily Checklist</p>
       <div class="checklist-header-right">
-        <span class="section-badge">{{ checklistDone }}/{{ checklist.length }}</span>
+        <span class="section-badge">{{ checklistStatus === 'ready' ? checklistDone : '–' }}/{{ checklist.length }}</span>
         <span class="checklist-reset-label" *ngIf="nextResetLabel">
           Resets {{ nextResetLabel }}
         </span>
       </div>
     </div>
 
-    <div class="checklist-card" [class.visible]="animReady">
-      <div class="checklist-complete" *ngIf="checklistDone === checklist.length">
+    <div class="checklist-card" [class.visible]="animReady"
+         [class.checklist-card--locked]="checklistStatus !== 'ready'"
+         [attr.aria-busy]="checklistStatus === 'loading'">
+      <!-- Ticking waits until today's saved checklist has loaded. -->
+      <div class="checklist-status" *ngIf="checklistStatus !== 'ready'" aria-live="polite">
+        <ng-container *ngIf="checklistStatus === 'loading'">Loading your checklist...</ng-container>
+        <ng-container *ngIf="checklistStatus === 'failed'">
+          <span>We couldn't load your checklist. Check your connection and try again.</span>
+          <button type="button" class="checklist-retry-btn" (click)="retryChecklist()">Retry</button>
+        </ng-container>
+      </div>
+      <div class="checklist-complete" *ngIf="checklistStatus === 'ready' && checklistDone === checklist.length">
         <span class="checklist-complete-icon">🎉</span>
         <p class="checklist-complete-title">All done for today!</p>
         <p class="checklist-complete-sub">Your checklist resets at midnight. Great job, Mama! 💕</p>
@@ -383,7 +393,7 @@
         </div>
       </div>
 
-      <ng-container *ngIf="checklistDone < checklist.length">
+      <ng-container *ngIf="checklistStatus !== 'ready' || checklistDone < checklist.length">
         <div class="checklist-progress-bar">
           <div class="checklist-progress-fill"
                [style.width.%]="checklistPercent"></div>
@@ -391,6 +401,7 @@
         <div class="checklist-items">
           <div class="checklist-item" *ngFor="let item of checklist"
                (click)="toggleChecklist(item)"
+               [attr.aria-disabled]="checklistStatus !== 'ready' ? 'true' : null"
                [class.done]="item.done">
             <div class="check-box" [class.checked]="item.done">
               <svg *ngIf="item.done" width="10" height="10" viewBox="0 0 10 10" fill="none">

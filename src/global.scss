@@ -89,3 +89,27 @@ body.dark {
     --color: #f0e4fa;
   }
 }
+
+/* ── Shared save feedback (SaveFeedbackService) ──
+   Ionic toasts render outside the pages, so they're styled here. Shown at
+   the top of the screen, so they never cover a Save button. */
+ion-toast.momcare-toast {
+  --border-radius: 16px;
+  --box-shadow: 0 8px 24px rgba(155, 111, 196, 0.28);
+  --color: #ffffff;
+  --button-color: #ffffff;
+  --max-width: 440px;
+  --width: calc(100% - 32px);
+  --start: 16px;
+  --end: 16px;
+  font-family: 'Nunito', 'Poppins', sans-serif;
+  font-weight: 700;
+
+  &::part(message) { font-size: 0.85rem; line-height: 1.45; }
+  &::part(button) { font-weight: 800; min-height: 44px; min-width: 44px; }
+}
+ion-toast.momcare-toast--success { --background: linear-gradient(135deg, #e07eb8, #b57fd4); }
+ion-toast.momcare-toast--error   { --background: linear-gradient(135deg, #e05580, #c4456b); }
+ion-toast.momcare-toast--info    { --background: #6b4f8a; }
+body.dark ion-toast.momcare-toast { --box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5); }
+body.dark ion-toast.momcare-toast--info { --background: #4a3566; }

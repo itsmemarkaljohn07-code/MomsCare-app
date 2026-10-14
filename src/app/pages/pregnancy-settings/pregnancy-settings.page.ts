@@ -1,12 +1,18 @@
 // pregnancy-settings.page.ts
 import { Component, OnInit, OnDestroy, NgZone } from '@angular/core';
 import { Location } from '@angular/common';
-import { IonicModule, ViewWillEnter } from '@ionic/angular';
+import { IonicModule, ViewWillEnter, ViewWillLeave } from '@ionic/angular';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ThemeService } from '../../services/theme';
 import { AuthService, UserProfile } from '../../services/auth.service';
-import { toDateInputValue, fromDateInputValue, formatLocalDate } from '../../shared/date-utils';
+import { SaveFeedbackService } from '../../services/save-feedback.service';
+import { ProfileStoreService } from '../../services/profile-store.service';
+import { McDropdownComponent, McDropdownOption } from '../../shared/mc-dropdown/mc-dropdown.component';
+import { McDatepickerComponent } from '../../shared/mc-datepicker/mc-datepicker.component';
+import { toDateInputValue, fromDateInputValue, formatLocalDate, parseStoredDate } from '../../shared/date-utils';
+import { pregnancyStatus } from '../../shared/pregnancy-status';
+import { PregnancySettingsForm, pregnancySettingsChanges } from '../../shared/profile-changes';
 import {
   ReminderSchedulerService,
   ReminderSyncResult,
@@ -45,15 +51,27 @@ const TEST_ERROR_MESSAGE = 'Something went wrong sending the test reminder. Plea
   templateUrl: './pregnancy-settings.page.html',
   styleUrls: ['./pregnancy-settings.page.scss'],
   standalone: true,
-  imports: [IonicModule, CommonModule, FormsModule],
+  imports: [IonicModule, CommonModule, FormsModule, McDropdownComponent, McDatepickerComponent],
 })
-export class PregnancySettingsPage implements OnInit, OnDestroy, ViewWillEnter {
+export class PregnancySettingsPage implements OnInit, OnDestroy, ViewWillEnter, ViewWillLeave {
 
   darkMode = false;
   private themeSub!: Subscription;
   animReady = false;
-  showToast = false;
   isSaving  = false;
+  readonly calcMethodOptions: McDropdownOption[] = [
+    { value: 'lmp', label: 'Last Menstrual Period (LMP)' },
+    { value: 'ultrasound', label: 'Ultrasound Dating' },
+    { value: 'ivf', label: 'IVF / Transfer Date' },
+  ];
+  readonly highRiskOptions: McDropdownOption[] = [
+    { value: 'no', label: 'No' },
+    { value: 'yes', label: 'Yes — monitoring closely' },
+  ];
+  readonly weightUnitOptions: McDropdownOption[] = [
+    { value: 'kg', label: 'Kilograms (kg)' },
+    { value: 'lbs', label: 'Pounds (lbs)' },
+  ];
   saveError = '';
   isTesting = false;
   isTestingScheduled = false;
@@ -68,16 +86,26 @@ export class PregnancySettingsPage implements OnInit, OnDestroy, ViewWillEnter {
   // in two separate settings pages would just be two UIs for one
   // value -- still confusing to edit from two places even though it's
   // the same underlying data.
+  // The dropdowns start empty (not LMP / kg / No), so nothing on screen
+  // looks like saved data before the profile has loaded.
   settings = {
     dueDate: '', lmpDate: '',
-    calcMethod: 'lmp', weightUnit: 'kg', kickReminderTime: DEFAULT_KICK_TIME,
-    highRisk: 'no',
+    calcMethod: '', weightUnit: '', kickReminderTime: DEFAULT_KICK_TIME,
+    highRisk: '',
   };
 
-  // Dates as they were when the page loaded (yyyy-MM-dd). A date the user
-  // doesn't change is left out of the save, so the value stored at
-  // registration is never rewritten or shifted by a timezone.
-  private loaded = { dueDate: '', lmpDate: '' };
+  /** 'ready' once the saved profile filled the form; only then can it be
+   *  edited and saved. 'failed' after PROFILE_LOAD_TIMEOUT_MS, with Retry;
+   *  'missing' if the server says there is no profile. */
+  loadState: 'loading' | 'ready' | 'failed' | 'missing' = 'loading';
+  get isLoaded(): boolean { return this.loadState === 'ready'; }
+  /** Bumped on every load and when the page is left. */
+  private visit = 0;
+
+  // The form as it was loaded on this visit. Save sends only the fields
+  // that differ from it, so an untouched field (e.g. a date stored at
+  // registration) is never rewritten, shifted or reset.
+  private loaded: PregnancySettingsForm = { ...this.settings, notificationPrefs: {} };
 
   notifToggles = [
     // Descriptions state when each one really fires. Weekly and vitamin
@@ -98,15 +126,8 @@ export class PregnancySettingsPage implements OnInit, OnDestroy, ViewWillEnter {
    *  of sync with each other, which is exactly the conflicting
    *  pregnancy data the app is required to avoid. */
   get pregnancyWeek(): number {
-    const dueIso = fromDateInputValue(this.settings.dueDate);
-    if (!dueIso) return 0;
-    const TOTAL_DAYS = 280;
-    const msPerDay = 24 * 60 * 60 * 1000;
-    const dueTime = new Date(dueIso).getTime();
-    if (isNaN(dueTime)) return 0;
-    const daysUntilDue = Math.round((dueTime - Date.now()) / msPerDay);
-    const daysElapsed = Math.max(0, Math.min(TOTAL_DAYS, TOTAL_DAYS - daysUntilDue));
-    return Math.min(40, Math.floor(daysElapsed / 7));
+    // The shared formula, so this preview matches Home exactly.
+    return pregnancyStatus(parseStoredDate(fromDateInputValue(this.settings.dueDate))).week;
   }
 
   get trimester(): string {
@@ -140,6 +161,8 @@ export class PregnancySettingsPage implements OnInit, OnDestroy, ViewWillEnter {
     private checklistReminders: ChecklistRemindersService,
     private push: PushNotificationsService,
     private zone: NgZone,
+    private feedback: SaveFeedbackService,
+    private profileStore: ProfileStoreService,
   ) {}
 
   ngOnInit(): void {
@@ -150,30 +173,69 @@ export class PregnancySettingsPage implements OnInit, OnDestroy, ViewWillEnter {
   /** Ionic keeps this page's instance alive when navigating away and
    *  back, so OnInit alone wouldn't re-fire -- same reasoning as
    *  profile.page.ts and profile-edit.page.ts. */
-  async ionViewWillEnter(): Promise<void> {
+  ionViewWillEnter(): void {
+    void this.loadProfile();
+  }
+
+  /** A load still running when the page is left is ignored. */
+  ionViewWillLeave(): void {
+    this.visit++;
+  }
+
+  retryLoad(): void {
+    this.profileStore.retry();
+    void this.loadProfile();
+  }
+
+  /** Fills the form from the saved profile once per visit, so a live update
+   *  never overwrites what is being edited. Waits for the profile to really
+   *  load (ProfileStoreService.whenLoaded): until then the form is locked
+   *  and Save is disabled, so defaults can never be saved over real data. */
+  private async loadProfile(): Promise<void> {
+    const visit = ++this.visit;
+    this.loadState = 'loading';
+    let profile: UserProfile | null;
     try {
-      const profile = await this.authService.getProfile();
-      if (!profile) return;
-
-      this.settings = {
-        dueDate: toDateInputValue(profile.dueDate),
-        lmpDate: toDateInputValue(profile.lmpDate),
-        calcMethod: profile.calcMethod ?? 'lmp',
-        weightUnit: profile.weightUnit ?? 'kg',
-        kickReminderTime: profile.kickReminderTime || DEFAULT_KICK_TIME,
-        highRisk: profile.highRisk ? 'yes' : 'no',
-      };
-      this.loaded = { dueDate: this.settings.dueDate, lmpDate: this.settings.lmpDate };
-
-      if (profile.notificationPrefs) {
-        const prefs = profile.notificationPrefs;
-        for (const t of this.notifToggles) {
-          if (t.key in prefs) t.on = (prefs as any)[t.key];
-        }
-      }
-    } catch (err) {
-      console.error('Failed to load pregnancy settings:', err);
+      profile = await this.profileStore.whenLoaded();
+    } catch (err: any) {
+      if (visit !== this.visit) return;
+      console.error('Failed to load pregnancy settings:', err?.reason ?? err);
+      this.loadState = 'failed';
+      return;
     }
+    if (visit !== this.visit) return;
+    if (!profile) {
+      this.loadState = 'missing';
+      return;
+    }
+    this.applyProfile(profile);
+    this.loadState = 'ready';
+  }
+
+  private applyProfile(profile: UserProfile): void {
+    this.settings = {
+      dueDate: toDateInputValue(profile.dueDate),
+      lmpDate: toDateInputValue(profile.lmpDate),
+      calcMethod: profile.calcMethod ?? 'lmp',
+      weightUnit: profile.weightUnit ?? 'kg',
+      kickReminderTime: profile.kickReminderTime || DEFAULT_KICK_TIME,
+      highRisk: profile.highRisk ? 'yes' : 'no',
+    };
+    if (profile.notificationPrefs) {
+      const prefs = profile.notificationPrefs;
+      for (const t of this.notifToggles) {
+        if (t.key in prefs) t.on = (prefs as any)[t.key];
+      }
+    }
+    this.loaded = this.currentForm();
+  }
+
+  /** The form as it stands, including the switches, for comparing with
+   *  what was loaded (profile-changes.ts). */
+  private currentForm(): PregnancySettingsForm {
+    const notificationPrefs: Record<string, boolean> = {};
+    for (const t of this.notifToggles) notificationPrefs[t.key] = t.on;
+    return { ...this.settings, notificationPrefs };
   }
 
   /** Saves to the same users/{uid} document every other real-data page
@@ -181,43 +243,36 @@ export class PregnancySettingsPage implements OnInit, OnDestroy, ViewWillEnter {
    *  momscare_preg_settings localStorage key. On failure, shows an
    *  error instead of silently claiming success. */
   async saveSettings(): Promise<void> {
-    if (this.isSaving) return;
+    // Never save the placeholder form over the saved profile.
+    if (this.isSaving || !this.isLoaded) return;
     this.isSaving = true;
     this.saveError = '';
     this.reminderNote = '';
     try {
-      const notificationPrefs = {
-        weeklyUpdates:        this.notifToggles.find(t => t.key === 'weeklyUpdates')!.on,
-        appointmentReminders: this.notifToggles.find(t => t.key === 'appointmentReminders')!.on,
-        vitaminReminder:      this.notifToggles.find(t => t.key === 'vitaminReminder')!.on,
-        kickAlerts:           this.notifToggles.find(t => t.key === 'kickAlerts')!.on,
-        hydrationReminders:   this.notifToggles.find(t => t.key === 'hydrationReminders')!.on,
-        checklistReminders:   this.notifToggles.find(t => t.key === 'checklistReminders')!.on,
-        clinicUpdates:        this.notifToggles.find(t => t.key === 'clinicUpdates')!.on,
-      };
-      const changes: Partial<UserProfile> = {
-        calcMethod: this.settings.calcMethod as 'lmp' | 'ultrasound' | 'ivf',
-        weightUnit: this.settings.weightUnit as 'kg' | 'lbs',
-        kickReminderTime: this.settings.kickReminderTime,
-        highRisk: this.settings.highRisk === 'yes',
-        notificationPrefs,
-      };
-      if (this.settings.dueDate !== this.loaded.dueDate) {
-        changes.dueDate = fromDateInputValue(this.settings.dueDate);
+      const current = this.currentForm();
+      const notificationPrefs = current.notificationPrefs;
+      // Only the fields changed on this visit, so nothing untouched is
+      // ever rewritten (or reset to a default shown for a missing field).
+      const changes = pregnancySettingsChanges(this.loaded, current);
+      if (Object.keys(changes).length === 0) {
+        void this.feedback.show('No changes to save.', 'info');
+      } else {
+        // Shared feedback: success only once the write resolves, a reason on
+        // failure, and an "offline, will sync" note if it doesn't finish in time.
+        const result = await this.feedback.save(() => this.authService.updateProfile(changes));
+        if (result.outcome === 'failed') {
+          this.saveError = result.message;
+          return;
+        }
+        this.loaded = current;
       }
-      if (this.settings.lmpDate !== this.loaded.lmpDate) {
-        changes.lmpDate = fromDateInputValue(this.settings.lmpDate);
-      }
-      await this.authService.updateProfile(changes);
-      this.loaded = { dueDate: this.settings.dueDate, lmpDate: this.settings.lmpDate };
-      this.showToast = true;
-      setTimeout(() => (this.showToast = false), 2500);
+      // Reminders live on this phone, so they follow the saved switches
+      // even while the write is still waiting to reach the server.
       await this.updateReminders(notificationPrefs);
-      await this.updateChecklistReminders(notificationPrefs.checklistReminders);
-      await this.updatePush(notificationPrefs.clinicUpdates);
+      await this.updateChecklistReminders(notificationPrefs['checklistReminders']);
+      await this.updatePush(notificationPrefs['clinicUpdates']);
     } catch (err) {
-      console.error('Failed to save pregnancy settings:', err);
-      this.saveError = "Couldn't save your changes. Please check your connection and try again.";
+      console.error('Failed to update this phone after saving:', err);
     } finally {
       this.isSaving = false;
     }

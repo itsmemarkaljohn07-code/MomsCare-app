@@ -759,6 +759,24 @@ ion-content[data-theme="dark"] {
 .check-ico  { font-size: 1rem; flex-shrink: 0; }
 .check-task { font-size: 0.82rem; font-weight: 600; color: var(--dark); font-family: 'Nunito', 'Poppins', sans-serif; }
 
+/* Until today's saved checklist has loaded: items can't be ticked. */
+.checklist-card--locked .checklist-item {
+  opacity: 0.5; cursor: default; pointer-events: none;
+}
+.checklist-status {
+  display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 8px 10px;
+  margin-bottom: 12px; text-align: center;
+  font-size: 0.76rem; font-weight: 700; line-height: 1.4; color: var(--muted);
+  font-family: 'Nunito', 'Poppins', sans-serif;
+}
+.checklist-retry-btn {
+  height: 32px; padding: 0 14px; border-radius: 10px;
+  background: transparent; color: var(--purple);
+  border: 1.5px solid rgba(181,127,212,0.30);
+  font-size: 0.76rem; font-weight: 800; font-family: 'Nunito', 'Poppins', sans-serif;
+  cursor: pointer;
+}
+
 /* All-done celebration */
 .checklist-complete {
   display: flex; flex-direction: column; align-items: center;

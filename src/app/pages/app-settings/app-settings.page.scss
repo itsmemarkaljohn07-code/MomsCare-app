@@ -259,13 +259,6 @@ ion-content { --background: var(--bg); }
 .app-info-copy { font-size: 0.65rem; color: var(--muted-light); }
 
 .btn-wrap { width: calc(100% - 32px); max-width: 440px; margin-top: 8px; }
-.toast {
-  position: fixed; bottom: 32px; left: 50%; transform: translateX(-50%);
-  background: linear-gradient(135deg, #e07eb8, #b57fd4); color: white;
-  font-size: 0.82rem; font-weight: 800; font-family: 'Nunito','Poppins',sans-serif;
-  padding: 10px 22px; border-radius: 99px; z-index: 999;
-  box-shadow: 0 6px 20px rgba(224,126,184,0.35);
-}
 
 /* -- Added with the App Settings cleanup -- */
 .info-text {
@@ -290,11 +283,6 @@ ion-content { --background: var(--bg); }
   opacity: 0.6; pointer-events: none;
 }
 /* long messages (e.g. the password-reset confirmation) wrap instead of overflowing */
-.toast { max-width: calc(100% - 32px); text-align: center; border-radius: 18px; line-height: 1.4; }
-.toast--error {
-  background: linear-gradient(135deg, #e05580, #c4456b);
-  box-shadow: 0 6px 20px rgba(224,85,128,0.35);
-}
 
 /* tablet / desktop: same breakpoint and approach as the Profile page */
 @media (min-width: 700px) {

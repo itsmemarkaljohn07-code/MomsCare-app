@@ -6,8 +6,11 @@ import { FormsModule } from '@angular/forms';
 import { IonicModule } from '@ionic/angular';
 import { ThemeService } from '../../services/theme';
 import { AuthService } from '../../services/auth.service';
+import { ProfileStoreService } from '../../services/profile-store.service';
+import { parseStoredDate } from '../../shared/date-utils';
+import { pregnancyStatus } from '../../shared/pregnancy-status';
 import { HealthService, HealthData } from '../../services/health.service';
-import { PhotoService, SnapshotPhotoRecord, HealthSnapshotAtUpload } from '../../services/photo.service';
+import { PhotoService, SnapshotPhotoRecord, HealthSnapshotAtUpload, PickerProblem } from '../../services/photo.service';
 import { CommentService, SnapshotComment } from '../../services/comment.service';
 import { Subscription } from 'rxjs';
 
@@ -48,6 +51,7 @@ export class SnapshotPage implements OnInit, OnDestroy {
   private healthSub!: Subscription;
   private historySub!: Subscription;
   private routeSub?: Subscription;
+  private profileSub?: Subscription;
   /** Photo whose comment thread a tapped push asked to open (?photoId=). */
   private pendingPhotoId: string | null = null;
   private photosLoaded = false;
@@ -56,25 +60,16 @@ export class SnapshotPage implements OnInit, OnDestroy {
   private currentUid: string | null = null;
   currentUserName = 'You';
 
-  // The patient's due date, fetched once when their profile loads
-  // (see ngOnInit). pregnancyWeek below is computed FROM this on every
-  // read, rather than being a value that has to be manually kept in
-  // sync — that's what let it silently go stale/wrong before.
+  // The patient's due date, from the live profile (ProfileStoreService),
+  // so an edited due date shows here at once. pregnancyWeek below is
+  // computed FROM it on every read.
   private currentDueDate: string | null = null;
 
-  /** Current pregnancy week, computed live from the patient's due
-   *  date. Same 280-day/40-week formula as computeWeek() in the admin
-   *  dashboard's patient-view-live.tsx, so both apps always agree.
-   *  Returns 0 if no due date is on file yet. */
+  /** Current pregnancy week from the patient's due date: the shared
+   *  formula (shared/pregnancy-status.ts), the same 280-day/40-week rule
+   *  as the admin dashboard. Returns 0 if no due date is on file yet. */
   get pregnancyWeek(): number {
-    if (!this.currentDueDate) return 0;
-    const TOTAL_DAYS = 280;
-    const msPerDay = 24 * 60 * 60 * 1000;
-    const dueTime = new Date(this.currentDueDate).getTime();
-    if (isNaN(dueTime)) return 0;
-    const daysUntilDue = Math.round((dueTime - Date.now()) / msPerDay);
-    const daysElapsed = Math.max(0, Math.min(TOTAL_DAYS, TOTAL_DAYS - daysUntilDue));
-    return Math.min(40, Math.floor(daysElapsed / 7));
+    return pregnancyStatus(parseStoredDate(this.currentDueDate)).week;
   }
 
   today = new Date();
@@ -101,6 +96,11 @@ export class SnapshotPage implements OnInit, OnDestroy {
   captionDraft = '';
   isUploadingPhoto = false;
   uploadError = '';
+  /** A neutral note (cancelled picker, saved offline). */
+  uploadNote = '';
+  /** The photo whose upload failed, kept so "Try again" doesn't need a new pick. */
+  private pendingDataUrl: string | null = null;
+  get canRetryUpload(): boolean { return !!this.pendingDataUrl && !this.isUploadingPhoto; }
 
   photos: SnapshotPhoto[] = [];
 
@@ -166,20 +166,56 @@ export class SnapshotPage implements OnInit, OnDestroy {
   }
 
   private async captureAndUpload(getDataUrl: () => Promise<string | null>): Promise<void> {
-    if (!this.currentUid) return;
+    if (!this.currentUid || this.isUploadingPhoto) return;
     this.uploadError = '';
+    this.uploadNote = '';
 
     let dataUrl: string | null;
     try {
       dataUrl = await getDataUrl();
-    } catch {
+    } catch (err) {
+      this.showPickerProblem(PhotoService.classifyPickerError(err), err);
       return;
     }
-    if (!dataUrl) return;
+    if (!dataUrl) {
+      this.uploadNote = 'No photo selected.';
+      return;
+    }
+    this.pendingDataUrl = dataUrl;
+    await this.uploadPending();
+  }
 
+  /** Uploads the kept photo again after a failure. */
+  async retryUpload(): Promise<void> {
+    if (!this.canRetryUpload) return;
+    this.uploadError = '';
+    this.uploadNote = '';
+    await this.uploadPending();
+  }
+
+  private showPickerProblem(problem: PickerProblem, err: unknown): void {
+    switch (problem) {
+      case 'cancelled':
+        this.uploadNote = 'No photo selected.';
+        return;
+      case 'no-camera':
+        this.uploadError = "This phone has no camera MomCare can use. You can choose a photo from your gallery instead.";
+        return;
+      case 'denied':
+        this.uploadError = "MomCare isn't allowed to use the camera. Allow it in Settings > Apps > MomCare > Permissions, then try again.";
+        return;
+      default:
+        console.error('Camera or gallery failed:', err);
+        this.uploadError = "Couldn't open the camera or gallery. Please try again.";
+    }
+  }
+
+  private async uploadPending(): Promise<void> {
+    const dataUrl = this.pendingDataUrl;
+    if (!this.currentUid || !dataUrl) return;
     this.isUploadingPhoto = true;
     try {
-      await this.photoService.uploadPhoto(this.currentUid, dataUrl, {
+      const outcome = await this.photoService.uploadPhoto(this.currentUid, dataUrl, {
         type: this.selectedType,
         week: this.pregnancyWeek,
         caption: this.captionDraft,
@@ -192,6 +228,10 @@ export class SnapshotPage implements OnInit, OnDestroy {
         },
       });
       this.captionDraft = '';
+      this.pendingDataUrl = null;
+      if (outcome === 'queued') {
+        this.uploadNote = "Photo uploaded. It will appear in your gallery when you're back online.";
+      }
     } catch (err: any) {
       console.error('Photo upload failed:', err);
       this.uploadError = err?.message || 'Failed to upload photo. Please try again.';
@@ -438,6 +478,7 @@ export class SnapshotPage implements OnInit, OnDestroy {
     private route: ActivatedRoute,
     private theme: ThemeService,
     private authService: AuthService,
+    private profileStore: ProfileStoreService,
     private healthService: HealthService,
     private photoService: PhotoService,
     private commentService: CommentService,
@@ -463,15 +504,15 @@ export class SnapshotPage implements OnInit, OnDestroy {
           this.openPendingPhoto();
         });
 
-        this.authService.getProfile().then(profile => {
-          if (profile?.fullName) this.currentUserName = profile.fullName;
-          this.currentDueDate = profile?.dueDate ?? null;
-        });
       } else {
         this.photos = [];
         this.photosLoaded = false;
-        this.currentDueDate = null;
       }
+    });
+
+    this.profileSub = this.profileStore.profile$.subscribe(profile => {
+      if (profile?.fullName) this.currentUserName = profile.fullName;
+      this.currentDueDate = profile?.dueDate ?? null;
     });
 
     // Read on every visit (Ionic keeps this page alive), so a push tapped
@@ -514,6 +555,7 @@ export class SnapshotPage implements OnInit, OnDestroy {
     this.healthSub?.unsubscribe();
     this.historySub?.unsubscribe();
     this.routeSub?.unsubscribe();
+    this.profileSub?.unsubscribe();
     this.photosSub?.unsubscribe();
     this.commentsSub?.unsubscribe();
   }

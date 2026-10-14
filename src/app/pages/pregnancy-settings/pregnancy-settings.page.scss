@@ -276,13 +276,7 @@ ion-content { --background: var(--bg); }
 .stepper-val { font-size: 1rem; font-weight: 900; color: var(--dark); font-family: 'Nunito','Poppins',sans-serif; min-width: 80px; text-align: center; }
 
 .btn-wrap { width: calc(100% - 32px); max-width: 440px; margin-top: 4px; }
-.toast {
-  position: fixed; bottom: 32px; left: 50%; transform: translateX(-50%);
-  background: linear-gradient(135deg, #e07eb8, #b57fd4); color: white;
-  font-size: 0.82rem; font-weight: 800; font-family: 'Nunito','Poppins',sans-serif;
-  padding: 10px 22px; border-radius: 99px; z-index: 999;
-  box-shadow: 0 6px 20px rgba(224,126,184,0.35);
-}/* inner-page.shared.scss — shared base for all inner profile pages */
+/* inner-page.shared.scss — shared base for all inner profile pages */
 
 :host {
   --pink:         #e07eb8;
@@ -560,13 +554,6 @@ ion-content { --background: var(--bg); }
 .stepper-val { font-size: 1rem; font-weight: 900; color: var(--dark); font-family: 'Nunito','Poppins',sans-serif; min-width: 80px; text-align: center; }
 
 .btn-wrap { width: calc(100% - 32px); max-width: 440px; margin-top: 4px; }
-.toast {
-  position: fixed; bottom: 32px; left: 50%; transform: translateX(-50%);
-  background: linear-gradient(135deg, #e07eb8, #b57fd4); color: white;
-  font-size: 0.82rem; font-weight: 800; font-family: 'Nunito','Poppins',sans-serif;
-  padding: 10px 22px; border-radius: 99px; z-index: 999;
-  box-shadow: 0 6px 20px rgba(224,126,184,0.35);
-}
 /* A toggle-row that holds a plain input (the relocated kick-reminder
    time) instead of the on/off switch -- same row rhythm, just a
    compact inline field on the right instead of a full-width one. */
@@ -598,3 +585,25 @@ ion-content { --background: var(--bg); }
 @media (min-width: 700px) {
   .reminder-note { max-width: 560px; }
 }
+
+/* Until the saved profile has loaded (see loadState): a notice, and the
+   form dimmed and locked. */
+.load-notice {
+  width: calc(100% - 32px); max-width: 440px; box-sizing: border-box;
+  display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 8px 10px;
+  margin: 0 0 12px; padding: 12px 14px; border-radius: 14px;
+  background: var(--card-bg); border: 1px solid var(--card-border);
+  font-size: 0.78rem; font-weight: 700; line-height: 1.45; text-align: center;
+  color: var(--muted); font-family: 'Nunito','Poppins',sans-serif;
+}
+.load-notice--error { color: var(--error, #e05580); }
+.load-retry-btn {
+  height: 34px; padding: 0 16px; border-radius: 12px;
+  background: transparent; color: var(--purple);
+  border: 1.5px solid rgba(181,127,212,0.30);
+  font-size: 0.78rem; font-weight: 800; font-family: 'Nunito','Poppins',sans-serif;
+  cursor: pointer;
+  &:active { transform: scale(0.97); }
+}
+.card.is-locked, .toggle-row.is-locked { opacity: 0.55; }
+.btn-primary:disabled { opacity: 0.55; cursor: default; box-shadow: none; transform: none; }

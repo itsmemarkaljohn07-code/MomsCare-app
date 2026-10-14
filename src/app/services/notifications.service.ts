@@ -2,6 +2,7 @@
 import { Injectable } from '@angular/core';
 import {
   Firestore, collection, collectionData, doc, updateDoc, addDoc, query, orderBy, Timestamp,
+  runTransaction,
 } from '@angular/fire/firestore';
 import { AuthService } from './auth.service';
 import { Observable, of, map } from 'rxjs';
@@ -69,6 +70,32 @@ export class NotificationsService {
       read: false,
       route: data.route || null,
       createdAt: Timestamp.now(),
+    });
+  }
+
+  /** Creates the notification with this exact id, dated `at`, only if it
+   *  doesn't exist yet: an existing one (and whether it was read) is left
+   *  untouched, so calling this again never duplicates or resets it. */
+  async createIfMissing(
+    uid: string,
+    id: string,
+    data: { icon: string; title: string; message: string; route?: string },
+    at: Date,
+  ): Promise<void> {
+    const ref = doc(this.firestore, `users/${uid}/notifications/${id}`);
+    await runTransaction(this.firestore, async tx => {
+      if ((await tx.get(ref)).exists()) return;
+      tx.set(ref, {
+        icon: data.icon,
+        title: data.title,
+        message: data.message,
+        time: at.toLocaleString('en-US', {
+          month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit',
+        }),
+        read: false,
+        route: data.route || null,
+        createdAt: Timestamp.fromDate(at),
+      });
     });
   }
 }

@@ -4,7 +4,10 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { IonicModule } from '@ionic/angular';
 import { ThemeService } from '../../services/theme';
-import { AuthService } from '../../services/auth.service';
+import { AuthService, UserProfile } from '../../services/auth.service';
+import { ProfileStoreService } from '../../services/profile-store.service';
+import { parseStoredDate } from '../../shared/date-utils';
+import { pregnancyStatus } from '../../shared/pregnancy-status';
 import {
   AppointmentsService,
   AppointmentRecord,
@@ -57,6 +60,7 @@ export class AppointmentsPage implements OnInit, OnDestroy {
   private themeSub!: Subscription;
   private apptSub!: Subscription;
   private userSub!: Subscription;
+  private profileSub?: Subscription;
   private currentUid: string | null = null;
 
   /** Computed from the user's real stored due date (same source and
@@ -108,10 +112,13 @@ export class AppointmentsPage implements OnInit, OnDestroy {
 
   // Reminders follow the "Appointment Reminders" switch in Pregnancy
   // Settings (notificationPrefs.appointmentReminders). Unset means on.
-  private remindersEnabled = true;
+  // null until the saved switch has loaded: nothing is scheduled or
+  // cancelled on a guess.
+  private remindersEnabled: boolean | null = null;
   private latestRecords: AppointmentRecord[] = [];
 
   private applyReminders(): void {
+    if (this.remindersEnabled === null) return;
     if (this.remindersEnabled) {
       this.appointmentReminders.syncReminders(this.latestRecords);
     } else {
@@ -121,14 +128,16 @@ export class AppointmentsPage implements OnInit, OnDestroy {
 
   private async loadReminderPreference(): Promise<void> {
     try {
-      const profile = await this.authService.getProfile();
+      const profile = await this.profileStore.whenLoaded();
       const enabled = profile?.notificationPrefs?.appointmentReminders !== false;
       if (enabled !== this.remindersEnabled) {
         this.remindersEnabled = enabled;
         this.applyReminders();
       }
-    } catch (err) {
-      console.error('Failed to load reminder preference:', err);
+    } catch (err: any) {
+      // Not loaded: keep the reminders as they are (AppComponent syncs
+      // them once the profile loads).
+      console.error('Failed to load reminder preference:', err?.reason ?? err);
     }
   }
 
@@ -254,32 +263,15 @@ export class AppointmentsPage implements OnInit, OnDestroy {
     private authService: AuthService,
     private appointmentsService: AppointmentsService,
     private appointmentReminders: AppointmentRemindersService,
+    private profileStore: ProfileStoreService,
   ) {}
 
-  /** Same formula as Home's recomputePregnancyFromDueDate() — reads the
-   *  same stored dueDate via the same shared AuthService, so this stays
-   *  in sync with the rest of the app rather than being a second,
-   *  separate calculation. */
-  private recomputePregnancyWeek(): void {
-    if (!this.dueDate) return;
-    const TOTAL_PREGNANCY_DAYS = 280;
-    const msPerDay = 24 * 60 * 60 * 1000;
-    const now = new Date();
-    const daysUntilDue = Math.round((this.dueDate.getTime() - now.getTime()) / msPerDay);
-    const daysElapsed = Math.max(0, Math.min(TOTAL_PREGNANCY_DAYS, TOTAL_PREGNANCY_DAYS - daysUntilDue));
-    this.pregnancyWeek = Math.min(40, Math.floor(daysElapsed / 7));
-  }
-
-  private async loadPregnancyWeek(): Promise<void> {
-    try {
-      const profile = await this.authService.getProfile();
-      if (profile?.dueDate) {
-        this.dueDate = new Date(profile.dueDate);
-        this.recomputePregnancyWeek();
-      }
-    } catch (err) {
-      console.error('Failed to load pregnancy week:', err);
-    }
+  /** The shared formula (shared/pregnancy-status.ts), the same one Home
+   *  uses, from the live profile, so a due date edited anywhere shows up
+   *  here at once. */
+  private applyProfileDueDate(profile: UserProfile | null): void {
+    this.dueDate = parseStoredDate(profile?.dueDate);
+    this.pregnancyWeek = pregnancyStatus(this.dueDate).week;
   }
 
   ngOnInit(): void {
@@ -293,7 +285,7 @@ export class AppointmentsPage implements OnInit, OnDestroy {
     this.apptSub = this.appointmentsService.getAppointments$()
       .subscribe((records: AppointmentRecord[]) => this.applyRecords(records));
 
-    this.loadPregnancyWeek();
+    this.profileSub = this.profileStore.profile$.subscribe(profile => this.applyProfileDueDate(profile));
 
     requestAnimationFrame(() => {
       setTimeout(() => (this.animReady = true), 80);
@@ -304,6 +296,7 @@ export class AppointmentsPage implements OnInit, OnDestroy {
     this.themeSub?.unsubscribe();
     this.apptSub?.unsubscribe();
     this.userSub?.unsubscribe();
+    this.profileSub?.unsubscribe();
   }
 
   navigate(route: string, tab?: string): void {

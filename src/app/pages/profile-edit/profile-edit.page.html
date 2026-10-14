@@ -14,7 +14,7 @@
         <h1 class="page-title">My Profile</h1>
         <p class="page-sub">Personal &amp; pregnancy information</p>
       </div>
-      <button class="save-header-btn" (click)="saveProfile()" *ngIf="editMode">Save</button>
+      <button class="save-header-btn" (click)="saveProfile()" *ngIf="editMode" [disabled]="isSaving || !isLoaded">Save</button>
     </div>
 
     <div class="content-body" [class.visible]="animReady">
@@ -39,13 +39,25 @@
 
       <!-- Edit toggle -->
       <div class="edit-toggle-row">
-        <button class="edit-toggle-btn" (click)="editMode = !editMode">
+        <button class="edit-toggle-btn" (click)="editMode = !editMode" [disabled]="!isLoaded">
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
             <path d="M9.5 1.5l3 3-7.5 7.5H2v-3l7.5-7.5z" stroke="currentColor"
                   stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
-          {{ editMode ? 'Cancel Editing' : 'Edit Profile' }}
+          {{ loadState === 'loading' ? 'Loading your profile...' : editMode ? 'Cancel Editing' : 'Edit Profile' }}
         </button>
+      </div>
+
+      <!-- Until the saved profile has loaded, Edit and Save stay disabled, so
+           the blank form can never be saved over real data. -->
+      <div class="load-notice" *ngIf="!isLoaded && loadState !== 'loading'" aria-live="polite">
+        <ng-container *ngIf="loadState === 'failed'">
+          <span>We couldn't load your profile. Check your connection and try again.</span>
+          <button type="button" class="load-retry-btn" (click)="retryLoad()">Retry</button>
+        </ng-container>
+        <ng-container *ngIf="loadState === 'missing'">
+          We couldn't find your profile. Please sign out and sign in again.
+        </ng-container>
       </div>
 
       <!-- Personal Info -->
@@ -71,10 +83,6 @@
           <input class="field-input" type="tel" [(ngModel)]="form.phone" [disabled]="!editMode" placeholder="+63 900 000 0000"/>
         </div>
         <div class="field-group">
-          <label class="field-label">Date of Birth <span class="field-optional">(optional)</span></label>
-          <input class="field-input" type="date" [(ngModel)]="form.dob" [disabled]="!editMode"/>
-        </div>
-        <div class="field-group">
           <label class="field-label">Address <span class="field-optional">(optional)</span></label>
           <input class="field-input" [(ngModel)]="form.address" [disabled]="!editMode" placeholder="Home address"/>
         </div>
@@ -93,21 +101,17 @@
         </div>
         <div class="field-group">
           <label class="field-label">Expected Due Date</label>
-          <input class="field-input" type="date" [(ngModel)]="form.dueDate" [disabled]="!editMode"/>
+          <mc-datepicker label="Expected Due Date" [(ngModel)]="form.dueDate" [disabled]="!editMode"></mc-datepicker>
         </div>
         <div class="field-group">
           <label class="field-label">First-Time Mom?</label>
-          <select class="field-select" [(ngModel)]="form.firstTimeMom" [disabled]="!editMode">
-            <option value="yes">Yes, first pregnancy</option>
-            <option value="no">No, I have children</option>
-          </select>
+          <mc-dropdown label="First-Time Mom?" [options]="firstTimeMomOptions"
+                       [(ngModel)]="form.firstTimeMom" [disabled]="!editMode"></mc-dropdown>
         </div>
         <div class="field-group">
           <label class="field-label">Blood Type <span class="field-optional">(optional)</span></label>
-          <select class="field-select" [(ngModel)]="form.bloodType" [disabled]="!editMode">
-            <option value="">Select blood type</option>
-            <option *ngFor="let bt of bloodTypes" [value]="bt">{{ bt }}</option>
-          </select>
+          <mc-dropdown label="Blood Type" placeholder="Select blood type" clearLabel="Not set"
+                       [options]="bloodTypeOptions" [(ngModel)]="form.bloodType" [disabled]="!editMode"></mc-dropdown>
         </div>
       </div>
 
@@ -132,7 +136,7 @@
       <p class="save-error-text" *ngIf="saveError">{{ saveError }}</p>
 
       <div class="btn-wrap" *ngIf="editMode">
-        <button class="btn-primary" (click)="saveProfile()" [disabled]="isSaving">
+        <button class="btn-primary" (click)="saveProfile()" [disabled]="isSaving || !isLoaded">
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
             <path d="M3 8h10M9 4l4 4-4 4" stroke="white" stroke-width="1.8" stroke-linecap="round"/>
           </svg>
@@ -140,8 +144,6 @@
         </button>
       </div>
 
-      <!-- Save success toast -->
-      <div class="toast" *ngIf="showToast">✓ Profile saved successfully</div>
 
     </div>
   </div>

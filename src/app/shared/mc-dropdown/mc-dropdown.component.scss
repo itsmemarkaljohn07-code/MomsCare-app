@@ -1,0 +1,144 @@
+/* mc-dropdown: the closed field matches the pages' text inputs; the open
+   sheet lives in document.body, so it has its own colours (light / dark). */
+
+:host {
+  display: block;
+  width: 100%;
+}
+
+/* ── Closed field ── */
+.mc-field {
+  width: 100%;
+  min-height: 46px;
+  display: flex; align-items: center; gap: 10px;
+  padding: 0 14px;
+  border-radius: 12px;
+  border: 1.5px solid rgba(181, 127, 212, 0.18);
+  background: var(--field-bg, #f5eef9);
+  color: var(--dark, #2d1a40);
+  font-family: 'Nunito', 'Poppins', sans-serif;
+  font-size: 0.88rem; font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+  outline: none;
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+  transition: border-color 0.2s, box-shadow 0.2s;
+
+  &:focus-visible,
+  &.mc-field--open {
+    border-color: var(--purple, #b57fd4);
+    box-shadow: 0 0 0 3px rgba(181, 127, 212, 0.22);
+  }
+  &:disabled { opacity: 0.6; cursor: default; }
+}
+.mc-field-text {
+  flex: 1; min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.mc-field--empty .mc-field-text { color: var(--muted-light, #b39ccb); font-weight: 500; }
+.mc-chevron {
+  flex-shrink: 0;
+  color: #9e7ab5;
+  transition: transform 0.2s ease;
+}
+.mc-field--open .mc-chevron { transform: rotate(180deg); }
+
+/* ── Open sheet (in document.body) ── */
+.mc-layer {
+  --mc-sheet-bg: #ffffff;
+  --mc-text: #2d1a40;
+  --mc-muted: #8a6aaa;
+  --mc-handle: rgba(155, 111, 196, 0.35);
+  --mc-row-pressed: rgba(181, 127, 212, 0.14);
+  --mc-selected-bg: rgba(217, 96, 154, 0.10);
+  --mc-selected-text: #c2457d;
+  --mc-focus: rgba(181, 127, 212, 0.45);
+
+  position: fixed; inset: 0;
+  z-index: 100000; /* above Ionic overlays, toasts and the bottom nav */
+  display: flex; align-items: flex-end; justify-content: center;
+}
+.mc-layer--dark {
+  --mc-sheet-bg: #24163a;
+  --mc-text: #ede0fa;
+  --mc-muted: #b597d4;
+  --mc-handle: rgba(200, 159, 224, 0.4);
+  --mc-row-pressed: rgba(200, 159, 224, 0.16);
+  --mc-selected-bg: rgba(224, 126, 184, 0.16);
+  --mc-selected-text: #f3a9cf;
+  --mc-focus: rgba(200, 159, 224, 0.55);
+}
+
+.mc-backdrop {
+  position: absolute; inset: 0;
+  background: rgba(20, 8, 30, 0.45);
+  animation: mc-fade 0.2s ease both;
+}
+
+.mc-sheet {
+  position: relative;
+  width: 100%;
+  max-width: 440px;
+  max-height: 60vh;
+  display: flex; flex-direction: column;
+  background: var(--mc-sheet-bg);
+  color: var(--mc-text);
+  border-radius: 22px 22px 0 0;
+  box-shadow: 0 -12px 32px rgba(20, 8, 30, 0.22);
+  padding: 8px 0 calc(10px + env(safe-area-inset-bottom, 0px));
+  font-family: 'Nunito', 'Poppins', sans-serif;
+  animation: mc-rise 0.24s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.mc-handle {
+  width: 40px; height: 4px; border-radius: 2px;
+  margin: 4px auto 10px;
+  background: var(--mc-handle);
+  flex-shrink: 0;
+}
+
+.mc-title {
+  margin: 0 20px 6px;
+  font-size: 0.72rem; font-weight: 800;
+  text-transform: uppercase; letter-spacing: 0.5px;
+  color: var(--mc-muted);
+  flex-shrink: 0;
+}
+
+.mc-list {
+  list-style: none; margin: 0; padding: 0 8px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.mc-option {
+  min-height: 52px;
+  display: flex; align-items: center; gap: 12px;
+  padding: 0 14px;
+  border-radius: 14px;
+  font-size: 0.95rem; font-weight: 600;
+  cursor: pointer;
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: background-color 0.12s;
+
+  &:active { background: var(--mc-row-pressed); }
+  &:focus-visible { box-shadow: inset 0 0 0 2px var(--mc-focus); }
+}
+.mc-option-label { flex: 1; min-width: 0; }
+.mc-option--clear .mc-option-label { color: var(--mc-muted); font-style: italic; }
+.mc-option--selected {
+  background: var(--mc-selected-bg);
+  color: var(--mc-selected-text);
+  font-weight: 800;
+}
+.mc-check { flex-shrink: 0; color: var(--mc-selected-text); }
+
+@keyframes mc-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes mc-rise { from { transform: translateY(100%); } to { transform: translateY(0); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .mc-backdrop, .mc-sheet { animation: none; }
+  .mc-field, .mc-chevron, .mc-option { transition: none; }
+}

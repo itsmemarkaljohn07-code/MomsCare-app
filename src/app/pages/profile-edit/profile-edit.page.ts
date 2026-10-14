@@ -2,12 +2,18 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { Router } from '@angular/router';
 import { Location } from '@angular/common';
-import { IonicModule, ViewWillEnter } from '@ionic/angular';
+import { IonicModule, ViewWillEnter, ViewWillLeave } from '@ionic/angular';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ThemeService } from '../../services/theme';
 import { AuthService, AvatarSelection, UserProfile } from '../../services/auth.service';
-import { toDateInputValue, fromDateInputValue } from '../../shared/date-utils';
+import { SaveFeedbackService } from '../../services/save-feedback.service';
+import { ProfileStoreService } from '../../services/profile-store.service';
+import { McDropdownComponent, McDropdownOption } from '../../shared/mc-dropdown/mc-dropdown.component';
+import { McDatepickerComponent } from '../../shared/mc-datepicker/mc-datepicker.component';
+import { toDateInputValue, fromDateInputValue, parseStoredDate } from '../../shared/date-utils';
+import { pregnancyStatus } from '../../shared/pregnancy-status';
+import { ProfileEditForm, profileEditChanges } from '../../shared/profile-changes';
 import { Subscription } from 'rxjs';
 
 @Component({
@@ -15,19 +21,23 @@ import { Subscription } from 'rxjs';
   templateUrl: './profile-edit.page.html',
   styleUrls: ['./profile-edit.page.scss'],
   standalone: true,
-  imports: [IonicModule, CommonModule, FormsModule],
+  imports: [IonicModule, CommonModule, FormsModule, McDropdownComponent, McDatepickerComponent],
 })
-export class ProfileEditPage implements OnInit, OnDestroy, ViewWillEnter {
+export class ProfileEditPage implements OnInit, OnDestroy, ViewWillEnter, ViewWillLeave {
 
   darkMode = false;
   private themeSub!: Subscription;
   animReady = false;
   editMode  = false;
-  showToast = false;
   isSaving  = false;
   saveError = '';
 
   bloodTypes = ['A+','A-','B+','B-','AB+','AB-','O+','O-'];
+  readonly bloodTypeOptions: McDropdownOption[] = this.bloodTypes.map(bt => ({ value: bt, label: bt }));
+  readonly firstTimeMomOptions: McDropdownOption[] = [
+    { value: 'yes', label: 'Yes, first pregnancy' },
+    { value: 'no', label: 'No, I have children' },
+  ];
 
   // Blank, not another hardcoded person -- every field here is filled
   // in from the real profile in ionViewWillEnter below. pregnancyWeek
@@ -39,17 +49,25 @@ export class ProfileEditPage implements OnInit, OnDestroy, ViewWillEnter {
   form = {
     firstName: '', lastName: '',
     email: '', phone: '',
-    dob: '', address: '',
+    address: '',
     dueDate: '',
-    firstTimeMom: 'yes', bloodType: '',
+    firstTimeMom: '', bloodType: '',
     doctorName: '', clinic: '',
     emergencyContact: '',
   };
 
-  // The due date as it was when the page loaded (yyyy-MM-dd). If the user
-  // doesn't change it, it is left out of the save entirely, so the value
-  // stored at registration is never rewritten or shifted.
-  private loadedDueDate = '';
+  /** 'ready' once the saved profile filled the form; only then can it be
+   *  edited and saved. 'failed' after PROFILE_LOAD_TIMEOUT_MS, with Retry;
+   *  'missing' if the server says there is no profile. */
+  loadState: 'loading' | 'ready' | 'failed' | 'missing' = 'loading';
+  get isLoaded(): boolean { return this.loadState === 'ready'; }
+  /** Bumped on every load and when the page is left. */
+  private visit = 0;
+
+  // The form as it was loaded on this visit. Save sends only the fields
+  // that differ from it, so an untouched field (e.g. the due date stored
+  // at registration) is never rewritten, shifted or blanked.
+  private loadedForm: ProfileEditForm = { ...this.form };
 
   selectedAvatar: AvatarSelection | { emoji: string; bgColor: string } = { emoji: '🐻', bgColor: '#e07eb8' };
 
@@ -57,15 +75,8 @@ export class ProfileEditPage implements OnInit, OnDestroy, ViewWillEnter {
    *  insights.page.ts, profile.page.ts) -- one shared calculation,
    *  computed from dueDate rather than stored as its own number. */
   get pregnancyWeek(): number {
-    const dueIso = fromDateInputValue(this.form.dueDate);
-    if (!dueIso) return 0;
-    const TOTAL_DAYS = 280;
-    const msPerDay = 24 * 60 * 60 * 1000;
-    const dueTime = new Date(dueIso).getTime();
-    if (isNaN(dueTime)) return 0;
-    const daysUntilDue = Math.round((dueTime - Date.now()) / msPerDay);
-    const daysElapsed = Math.max(0, Math.min(TOTAL_DAYS, TOTAL_DAYS - daysUntilDue));
-    return Math.min(40, Math.floor(daysElapsed / 7));
+    // The shared formula, so this preview matches Home exactly.
+    return pregnancyStatus(parseStoredDate(fromDateInputValue(this.form.dueDate))).week;
   }
 
   constructor(
@@ -73,6 +84,8 @@ export class ProfileEditPage implements OnInit, OnDestroy, ViewWillEnter {
     private location: Location,
     private theme: ThemeService,
     private authService: AuthService,
+    private feedback: SaveFeedbackService,
+    private profileStore: ProfileStoreService,
   ) {}
 
   ngOnInit(): void {
@@ -84,43 +97,76 @@ export class ProfileEditPage implements OnInit, OnDestroy, ViewWillEnter {
    *  Avatar and back, so OnInit alone would not re-fire -- this re-pulls
    *  the real profile (including a just-changed avatar) every time the
    *  page becomes active, same reasoning as profile.page.ts. */
-  async ionViewWillEnter(): Promise<void> {
+  ionViewWillEnter(): void {
+    void this.loadProfile();
+  }
+
+  /** A load still running when the page is left is ignored. */
+  ionViewWillLeave(): void {
+    this.visit++;
+  }
+
+  retryLoad(): void {
+    this.profileStore.retry();
+    void this.loadProfile();
+  }
+
+  /** Fills the form from the saved profile once per visit, so a live update
+   *  never overwrites what is being edited. Waits for the profile to really
+   *  load (ProfileStoreService.whenLoaded): until then Edit and Save are
+   *  disabled, so blanks can never be saved over real data. */
+  private async loadProfile(): Promise<void> {
+    const visit = ++this.visit;
+    this.loadState = 'loading';
+    let profile: UserProfile | null;
     try {
-      const profile = await this.authService.getProfile();
-      if (!profile) return;
-
-      // firstName/lastName fall back to splitting the existing
-      // fullName for an account that has never saved them separately
-      // before -- still "information provided during registration,"
-      // just split for the two-box editing UI here.
-      let firstName = profile.firstName ?? '';
-      let lastName  = profile.lastName  ?? '';
-      if (!firstName && !lastName && profile.fullName) {
-        const parts = profile.fullName.trim().split(/\s+/);
-        firstName = parts[0] ?? '';
-        lastName  = parts.slice(1).join(' ');
-      }
-
-      this.form = {
-        firstName, lastName,
-        email: profile.email ?? '',
-        phone: profile.mobile ?? '',
-        dob: toDateInputValue(profile.dob),
-        address: profile.address ?? '',
-        dueDate: toDateInputValue(profile.dueDate),
-        firstTimeMom: profile.firstTimeMom === false ? 'no' : 'yes',
-        bloodType: profile.bloodType ?? '',
-        // Assigned by clinic staff in the admin dashboard, so shown
-        // here read-only rather than as something the patient types.
-        doctorName: (profile.assignedDoctorNames ?? []).join(', '),
-        clinic: profile.clinicName ?? '',
-        emergencyContact: profile.emergencyContact ?? '',
-      };
-      this.loadedDueDate = this.form.dueDate;
-      if (profile.avatar) this.selectedAvatar = profile.avatar;
-    } catch (err) {
-      console.error('Failed to load profile:', err);
+      profile = await this.profileStore.whenLoaded();
+    } catch (err: any) {
+      if (visit !== this.visit) return;
+      console.error('Failed to load profile:', err?.reason ?? err);
+      this.loadState = 'failed';
+      this.editMode = false;
+      return;
     }
+    if (visit !== this.visit) return;
+    if (!profile) {
+      this.loadState = 'missing';
+      this.editMode = false;
+      return;
+    }
+    this.applyProfile(profile);
+    this.loadState = 'ready';
+  }
+
+  private applyProfile(profile: UserProfile): void {
+    // firstName/lastName fall back to splitting the existing
+    // fullName for an account that has never saved them separately
+    // before -- still "information provided during registration,"
+    // just split for the two-box editing UI here.
+    let firstName = profile.firstName ?? '';
+    let lastName  = profile.lastName  ?? '';
+    if (!firstName && !lastName && profile.fullName) {
+      const parts = profile.fullName.trim().split(/\s+/);
+      firstName = parts[0] ?? '';
+      lastName  = parts.slice(1).join(' ');
+    }
+
+    this.form = {
+      firstName, lastName,
+      email: profile.email ?? '',
+      phone: profile.mobile ?? '',
+      address: profile.address ?? '',
+      dueDate: toDateInputValue(profile.dueDate),
+      firstTimeMom: profile.firstTimeMom === false ? 'no' : 'yes',
+      bloodType: profile.bloodType ?? '',
+      // Assigned by clinic staff in the admin dashboard, so shown
+      // here read-only rather than as something the patient types.
+      doctorName: (profile.assignedDoctorNames ?? []).join(', '),
+      clinic: profile.clinicName ?? '',
+      emergencyContact: profile.emergencyContact ?? '',
+    };
+    this.loadedForm = { ...this.form };
+    if (profile.avatar) this.selectedAvatar = profile.avatar;
   }
 
   /** Saves to the signed-in user's own users/{uid} document via
@@ -134,34 +180,33 @@ export class ProfileEditPage implements OnInit, OnDestroy, ViewWillEnter {
    *  assignment belongs to clinic staff. On failure, stays in edit mode and shows an
    *  error rather than silently claiming success. */
   async saveProfile(): Promise<void> {
-    if (this.isSaving) return;
+    // Never save the placeholder form over the saved profile.
+    if (this.isSaving || !this.isLoaded) return;
     this.isSaving = true;
     this.saveError = '';
     try {
-      const fullName = `${this.form.firstName} ${this.form.lastName}`.trim();
-      const changes: Partial<UserProfile> = {
-        firstName: this.form.firstName,
-        lastName: this.form.lastName,
-        fullName,
-        mobile: this.form.phone,
-        dob: this.form.dob,
-        address: this.form.address,
-        firstTimeMom: this.form.firstTimeMom === 'yes',
-        bloodType: this.form.bloodType,
-        clinicName: this.form.clinic,
-        emergencyContact: this.form.emergencyContact,
-      };
-      if (this.form.dueDate !== this.loadedDueDate) {
-        changes.dueDate = fromDateInputValue(this.form.dueDate);
+      // Only the fields changed on this visit (profile-changes.ts), so
+      // nothing untouched is ever rewritten. updateDoc leaves every field
+      // it isn't given (e.g. dob) as it is.
+      const { changes, clearedRequired } = profileEditChanges(this.loadedForm, this.form);
+      if (clearedRequired.length) {
+        this.saveError = `${clearedRequired.join(', ')} can't be left empty.`;
+        return;
       }
-      await this.authService.updateProfile(changes);
-      this.loadedDueDate = this.form.dueDate;
-      this.editMode = false;
-      this.showToast = true;
-      setTimeout(() => (this.showToast = false), 2500);
-    } catch (err) {
-      console.error('Failed to save profile:', err);
-      this.saveError = "Couldn't save your changes. Please check your connection and try again.";
+      if (Object.keys(changes).length === 0) {
+        this.editMode = false;
+        void this.feedback.show('No changes to save.', 'info');
+        return;
+      }
+      // Shared feedback: success only once the write resolves, a reason on
+      // failure, and an "offline, will sync" note if it doesn't finish in time.
+      const result = await this.feedback.save(() => this.authService.updateProfile(changes));
+      if (result.outcome === 'failed') {
+        this.saveError = result.message;
+      } else {
+        this.loadedForm = { ...this.form };
+        this.editMode = false;
+      }
     } finally {
       this.isSaving = false;
     }

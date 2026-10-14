@@ -2,7 +2,7 @@
 import { Injectable } from '@angular/core';
 import emailjs from '@emailjs/browser';
 
-const EMAILJS_SERVICE_ID  = 'service_6y9mdix';
+const EMAILJS_SERVICE_ID  = 'service_siym5ai';
 const EMAILJS_TEMPLATE_ID = 'template_re07dou';
 const EMAILJS_PUBLIC_KEY  = 'JJ2acNuoI-gnZChfe';
 
@@ -36,7 +36,8 @@ export class OtpService {
 
     this.pending.set(key, { code, expiresAt });
 
-    console.log('[OtpService] Sending OTP to', key, '-> code:', code);
+    // Never log the address or the code.
+    console.log('[OtpService] Sending OTP email');
 
     try {
       const result = await emailjs.send(

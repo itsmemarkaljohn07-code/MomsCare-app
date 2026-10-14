@@ -7,6 +7,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ThemeService } from '../../services/theme';
 import { AuthService, AvatarSelection } from '../../services/auth.service';
+import { ProfileStoreService } from '../../services/profile-store.service';
 import { Subscription } from 'rxjs';
 
 export interface AvatarAnimal {
@@ -72,7 +73,7 @@ export class AvatarPage implements OnInit, OnDestroy {
   selectedAnimal: AvatarAnimal = this.animals[0];
   isSaving = false;
 
-  constructor(private router: Router, private location: Location, private theme: ThemeService, private authService: AuthService) {}
+  constructor(private router: Router, private location: Location, private theme: ThemeService, private authService: AuthService, private profileStore: ProfileStoreService) {}
 
   ngOnInit(): void {
     this.themeSub = this.theme.isDark$.subscribe(val => (this.darkMode = val));
@@ -88,7 +89,7 @@ export class AvatarPage implements OnInit, OnDestroy {
    *  saved, the existing component defaults above are left as-is. */
   private async loadSaved(): Promise<void> {
     try {
-      const profile = await this.authService.getProfile();
+      const profile = await this.profileStore.whenLoaded();
       if (profile?.fullName) {
         this.currentUser.firstName = profile.fullName.split(' ')[0] || 'there';
       }
@@ -99,7 +100,8 @@ export class AvatarPage implements OnInit, OnDestroy {
         if (found) this.selectedAnimal = found;
       }
     } catch (err) {
-      console.error('Failed to load avatar from profile:', err);
+      // Not loaded: the defaults stay; saving only writes the avatar chosen.
+      console.error('Failed to load avatar from profile:', (err as any)?.reason ?? err);
     }
   }
 

@@ -1,0 +1,175 @@
+/* mc-datepicker: the closed field matches the pages' text inputs; the open
+   sheet lives in document.body, so it has its own colours (light / dark).
+   Same look as mc-dropdown. */
+
+:host {
+  display: block;
+  width: 100%;
+}
+
+/* ── Closed field ── */
+.mc-field {
+  width: 100%;
+  min-height: 46px;
+  display: flex; align-items: center; gap: 10px;
+  padding: 0 14px;
+  border-radius: 12px;
+  border: 1.5px solid rgba(181, 127, 212, 0.18);
+  background: var(--field-bg, #f5eef9);
+  color: var(--dark, #2d1a40);
+  font-family: 'Nunito', 'Poppins', sans-serif;
+  font-size: 0.88rem; font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+  outline: none;
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+  transition: border-color 0.2s, box-shadow 0.2s;
+
+  &:focus-visible,
+  &.mc-field--open {
+    border-color: var(--purple, #b57fd4);
+    box-shadow: 0 0 0 3px rgba(181, 127, 212, 0.22);
+  }
+  &:disabled { opacity: 0.6; cursor: default; }
+}
+.mc-field-text {
+  flex: 1; min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.mc-field--empty .mc-field-text { color: var(--muted-light, #b39ccb); font-weight: 500; }
+.mc-cal-icon { flex-shrink: 0; color: #9e7ab5; }
+
+/* ── Open sheet (in document.body) ── */
+.mc-layer {
+  --mc-sheet-bg: #ffffff;
+  --mc-text: #2d1a40;
+  --mc-muted: #8a6aaa;
+  --mc-handle: rgba(155, 111, 196, 0.35);
+  --mc-pressed: rgba(181, 127, 212, 0.14);
+  --mc-accent: #c2457d;
+  --mc-accent-grad: linear-gradient(135deg, #e07eb8, #b57fd4);
+  --mc-focus: rgba(181, 127, 212, 0.55);
+
+  position: fixed; inset: 0;
+  z-index: 100000; /* above Ionic overlays, toasts and the bottom nav */
+  display: flex; align-items: flex-end; justify-content: center;
+}
+.mc-layer--dark {
+  --mc-sheet-bg: #24163a;
+  --mc-text: #ede0fa;
+  --mc-muted: #b597d4;
+  --mc-handle: rgba(200, 159, 224, 0.4);
+  --mc-pressed: rgba(200, 159, 224, 0.16);
+  --mc-accent: #f3a9cf;
+  --mc-focus: rgba(200, 159, 224, 0.65);
+}
+
+.mc-backdrop {
+  position: absolute; inset: 0;
+  background: rgba(20, 8, 30, 0.45);
+  animation: mc-fade 0.2s ease both;
+}
+
+.mc-sheet {
+  position: relative;
+  width: 100%;
+  max-width: 440px;
+  max-height: 90vh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background: var(--mc-sheet-bg);
+  color: var(--mc-text);
+  border-radius: 22px 22px 0 0;
+  box-shadow: 0 -12px 32px rgba(20, 8, 30, 0.22);
+  padding: 8px 14px calc(14px + env(safe-area-inset-bottom, 0px));
+  box-sizing: border-box;
+  font-family: 'Nunito', 'Poppins', sans-serif;
+  animation: mc-rise 0.24s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.mc-handle {
+  width: 40px; height: 4px; border-radius: 2px;
+  margin: 4px auto 10px;
+  background: var(--mc-handle);
+}
+
+.mc-title {
+  margin: 0 6px 4px;
+  font-size: 0.72rem; font-weight: 800;
+  text-transform: uppercase; letter-spacing: 0.5px;
+  color: var(--mc-muted);
+}
+
+/* Shared button reset for everything in the sheet. */
+.mc-nav-btn, .mc-heading, .mc-day, .mc-month {
+  border: none; background: transparent; color: inherit;
+  font-family: inherit; cursor: pointer; outline: none;
+  -webkit-tap-highlight-color: transparent;
+  &:active { background: var(--mc-pressed); }
+  &:focus-visible { box-shadow: inset 0 0 0 2px var(--mc-focus); }
+}
+
+/* Month / year header */
+.mc-nav {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 4px;
+}
+.mc-nav-btn {
+  width: 44px; height: 44px; border-radius: 14px;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--mc-muted);
+}
+.mc-heading {
+  height: 44px; padding: 0 14px; border-radius: 14px;
+  display: flex; align-items: center; gap: 6px;
+  font-size: 1rem; font-weight: 800;
+}
+.mc-heading-chevron {
+  color: var(--mc-muted);
+  transition: transform 0.2s ease;
+  &--up { transform: rotate(180deg); }
+}
+
+/* Calendar grid: 7 columns of 44px cells. */
+.mc-grid { display: flex; flex-direction: column; align-items: center; }
+.mc-row { display: grid; grid-template-columns: repeat(7, 44px); gap: 2px; }
+.mc-weekday {
+  height: 32px; display: flex; align-items: center; justify-content: center;
+  font-size: 0.72rem; font-weight: 800; color: var(--mc-muted);
+}
+.mc-day {
+  width: 44px; height: 44px; border-radius: 50%;
+  font-size: 0.9rem; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+}
+.mc-day--outside { opacity: 0.4; }
+.mc-day--today { box-shadow: inset 0 0 0 1.5px var(--mc-accent); color: var(--mc-accent); }
+.mc-day--selected {
+  background: var(--mc-accent-grad); color: #fff; opacity: 1;
+  box-shadow: 0 4px 12px rgba(224, 126, 184, 0.35);
+  &:active { background: var(--mc-accent-grad); }
+}
+.mc-day--disabled { opacity: 0.25; cursor: default; pointer-events: none; }
+
+/* Month picker */
+.mc-months {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
+  padding: 8px 4px 4px;
+}
+.mc-month {
+  height: 52px; border-radius: 14px;
+  font-size: 0.92rem; font-weight: 700;
+}
+.mc-month--selected {
+  background: var(--mc-accent-grad); color: #fff;
+  &:active { background: var(--mc-accent-grad); }
+}
+
+@keyframes mc-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes mc-rise { from { transform: translateY(100%); } to { transform: translateY(0); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .mc-backdrop, .mc-sheet { animation: none; }
+  .mc-field, .mc-heading-chevron { transition: none; }
+}

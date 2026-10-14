@@ -1,0 +1,42 @@
+<button #trigger type="button" class="mc-field"
+        [class.mc-field--open]="open"
+        [class.mc-field--empty]="!selectedLabel"
+        [disabled]="disabled"
+        aria-haspopup="listbox"
+        [attr.aria-expanded]="open"
+        [attr.aria-controls]="open ? id + '-list' : null"
+        [attr.aria-label]="label ? label + ': ' + (selectedLabel || placeholder) : null"
+        (click)="toggle()"
+        (keydown)="onTriggerKeydown($event)">
+  <span class="mc-field-text">{{ selectedLabel || placeholder }}</span>
+  <svg class="mc-chevron" width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+    <path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>
+</button>
+
+<!-- Moved into document.body while open (see attachSheet). -->
+<div #sheet class="mc-layer" *ngIf="open" [class.mc-layer--dark]="dark">
+  <div class="mc-backdrop" (click)="close(true)" aria-hidden="true"></div>
+  <div class="mc-sheet" role="dialog" aria-modal="true" [attr.aria-labelledby]="id + '-title'">
+    <div class="mc-handle" aria-hidden="true"></div>
+    <p class="mc-title" [id]="id + '-title'">{{ label }}</p>
+    <ul class="mc-list" role="listbox" [id]="id + '-list'" [attr.aria-labelledby]="id + '-title'"
+        [attr.aria-activedescendant]="optionId(activeIndex)"
+        (keydown)="onListKeydown($event)">
+      <li *ngFor="let row of rows; let i = index"
+          class="mc-option"
+          role="option"
+          [id]="optionId(i)"
+          tabindex="-1"
+          [class.mc-option--selected]="row.value === value"
+          [class.mc-option--clear]="clearLabel && i === 0"
+          [attr.aria-selected]="row.value === value"
+          (click)="choose(row)">
+        <span class="mc-option-label">{{ row.label }}</span>
+        <svg *ngIf="row.value === value" class="mc-check" width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
+          <path d="M4 9.5l3.2 3.2L14 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </li>
+    </ul>
+  </div>
+</div>

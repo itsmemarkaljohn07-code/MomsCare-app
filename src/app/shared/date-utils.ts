@@ -34,3 +34,13 @@ export function fromDateInputValue(value: string): string {
   if (!m) return '';
   return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])).toISOString();
 }
+
+/** Stored value (ISO timestamp or plain yyyy-MM-dd) -> a Date. A plain
+ *  yyyy-MM-dd is read as LOCAL midnight (new Date('yyyy-MM-dd') would read it
+ *  as UTC and show the previous day in UTC+8). Empty or invalid gives null. */
+export function parseStoredDate(stored?: string | null): Date | null {
+  if (!stored) return null;
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(stored);
+  const d = m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : new Date(stored);
+  return isNaN(d.getTime()) ? null : d;
+}

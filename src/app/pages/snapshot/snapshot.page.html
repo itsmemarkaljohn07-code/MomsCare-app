@@ -219,7 +219,11 @@
 
         <!-- Upload status -->
         <p class="upload-status" *ngIf="isUploadingPhoto">Uploading photo...</p>
-        <p class="upload-status upload-status--error" *ngIf="uploadError">{{ uploadError }}</p>
+        <p class="upload-status upload-status--error" *ngIf="uploadError" role="alert">{{ uploadError }}</p>
+        <button class="upload-retry-btn" type="button" *ngIf="uploadError && canRetryUpload" (click)="retryUpload()">
+          Try again
+        </button>
+        <p class="upload-status" *ngIf="uploadNote && !uploadError" role="status">{{ uploadNote }}</p>
       </div>
 
       <!-- Empty state -->

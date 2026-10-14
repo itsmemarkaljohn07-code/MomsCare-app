@@ -4,14 +4,19 @@ import { Router, ActivatedRoute } from '@angular/router';
 import { CommonModule, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { IonicModule } from '@ionic/angular';
-import { Firestore, doc, getDoc, setDoc, Timestamp } from '@angular/fire/firestore';
+import { Firestore, doc, setDoc, Timestamp } from '@angular/fire/firestore';
+import { readSettledDoc, reconnectNow } from '../../shared/firestore-read';
 import { ThemeService } from '../../services/theme';
-import { AuthService } from '../../services/auth.service';
+import { AuthService, UserProfile } from '../../services/auth.service';
+import { ProfileStoreService } from '../../services/profile-store.service';
+import { parseStoredDate } from '../../shared/date-utils';
+import { pregnancyStatus } from '../../shared/pregnancy-status';
 import { NotificationsService, AppNotification } from '../../services/notifications.service';
 import { AppointmentsService, AppointmentRecord } from '../../services/appointments.service';
 import { HealthService, HealthData } from '../../services/health.service';
 import { ChecklistRemindersService, VITAMIN_CHECKLIST_ITEM_ID } from '../../services/checklist-reminders.service';
-import { localDateKey } from '../../services/checklist-reminder-plan';
+import { dueChecklistBellSlots, localDateKey } from '../../services/checklist-reminder-plan';
+import type { PluginListenerHandle } from '@capacitor/core';
 import { FETUS_IMAGES, FetusImage, fetusImageFor } from '../../shared/fetus-images';
 import { FALLBACK_EDGES, StageEdges, edgeStyle, sampleEdges } from '../../shared/stage-edges';
 import { Subscription } from 'rxjs';
@@ -35,6 +40,8 @@ interface FetusLayer {
 
 /** Crossfade between illustrations; keep in sync with home.page.scss. */
 const FETUS_CROSSFADE_MS = 200;
+/** How long Home waits for today's checklist before offering Retry. */
+const CHECKLIST_LOAD_TIMEOUT_MS = 10000;
 
 @Component({
   selector: 'app-home',
@@ -53,6 +60,7 @@ export class HomePage implements OnInit, OnDestroy, DoCheck {
   isLoadingUser = true;
   private themeSub!: Subscription;
   private userSub!: Subscription;
+  private profileSub?: Subscription;
   private notifSub!: Subscription;
   private apptSub!: Subscription;
   private healthSub!: Subscription;
@@ -101,18 +109,24 @@ export class HomePage implements OnInit, OnDestroy, DoCheck {
     this.scrollSelectedWeekIntoView();
   }
 
+  /** Recomputes week and days from the due date (shared formula, so every
+   *  page agrees). Runs when the profile changes and every minute. If the
+   *  patient was looking at the current week, the viewer follows the new
+   *  current week; if she was browsing another week, that stays selected
+   *  and the strip is re-centred on it. */
   private recomputePregnancyFromDueDate(): void {
-    const TOTAL_PREGNANCY_DAYS = 280;
-    const msPerDay = 24 * 60 * 60 * 1000;
-    const now = new Date();
-    const daysUntilDue = Math.round((this.currentUser.dueDate.getTime() - now.getTime()) / msPerDay);
-    const daysElapsed = Math.max(0, Math.min(TOTAL_PREGNANCY_DAYS, TOTAL_PREGNANCY_DAYS - daysUntilDue));
-    this.pregnancyWeek = Math.min(40, Math.floor(daysElapsed / 7));
-    this.pregnancyDays = daysElapsed % 7;
+    const wasViewingCurrent = this.viewingWeekInitialized && this.viewingWeek === this.pregnancyWeek;
+    const previousWeek = this.pregnancyWeek;
+    const status = pregnancyStatus(this.currentUser.dueDate);
+    this.pregnancyWeek = status.week;
+    this.pregnancyDays = status.days;
 
     if (!this.viewingWeekInitialized) {
       this.viewingWeek = this.pregnancyWeek;
       this.viewingWeekInitialized = true;
+      this.scrollSelectedWeekIntoView();
+    } else if (this.pregnancyWeek !== previousWeek) {
+      if (wasViewingCurrent) this.viewingWeek = this.pregnancyWeek;
       this.scrollSelectedWeekIntoView();
     }
   }
@@ -465,6 +479,16 @@ export class HomePage implements OnInit, OnDestroy, DoCheck {
     { id: 5, task: 'Rest for 30 minutes',      done: false, icon: '😴' },
   ];
 
+  /** Ticking and saving wait for 'ready': today's saved state has loaded,
+   *  or the server confirmed there is none. Until then the list above is
+   *  only a placeholder and must never be written over the saved one. */
+  checklistStatus: 'loading' | 'ready' | 'failed' = 'loading';
+  /** Bumped by every load, so an older load that finishes late is ignored. */
+  private checklistLoadId = 0;
+  /** App 'resume' listener for catchUpChecklistBell, removed on destroy. */
+  private resumeListener?: PluginListenerHandle;
+  private destroyed = false;
+
   get checklistDone():    number { return this.checklist.filter(c => c.done).length; }
   get checklistPercent(): number { return Math.round((this.checklistDone / this.checklist.length) * 100); }
 
@@ -479,30 +503,84 @@ export class HomePage implements OnInit, OnDestroy, DoCheck {
     return doc(this.firestore, `users/${this.currentUid}/checklist/current`);
   }
 
+  /** Waits for the connection (readSettledDoc) instead of failing at once
+   *  while Firestore counts itself offline after a cold start. If it still
+   *  can't be read, nothing is written and the reminders are left alone;
+   *  the card offers Retry. */
   private async loadChecklistFromFirestore(): Promise<void> {
     if (!this.currentUid) return;
+    const loadId = ++this.checklistLoadId;
+    const uid = this.currentUid;
+    this.checklistStatus = 'loading';
     const today = this.getTodayDateString();
+    let data: any = null;
     try {
-      const snap = await runInInjectionContext(this.envInjector, () => getDoc(this.checklistDocRef()));
-      const data = snap.exists() ? (snap.data() as any) : null;
+      const snap = await runInInjectionContext(this.envInjector, () =>
+        readSettledDoc(this.checklistDocRef(), CHECKLIST_LOAD_TIMEOUT_MS));
+      data = snap.exists() ? snap.data() : null;
+    } catch (err: any) {
+      if (loadId !== this.checklistLoadId) return;
+      console.error('Failed to load checklist:', err?.code ?? err);
+      this.checklistStatus = 'failed';
+      return;
+    }
+    // Signed out, switched account, or a newer load started meanwhile.
+    if (loadId !== this.checklistLoadId || uid !== this.currentUid) return;
 
-      if (data && data.date === today && Array.isArray(data.items)) {
-        this.checklist.forEach(item => {
-          const match = data.items.find((s: any) => s.id === item.id);
-          if (match) item.done = match.done;
-        });
-      } else {
-        this.checklist.forEach(item => (item.done = false));
-        await this.saveChecklistState();
-      }
-    } catch (err) {
-      console.error('Failed to load checklist:', err);
+    if (data && data.date === today && Array.isArray(data.items)) {
+      this.checklist.forEach(item => {
+        const match = data.items.find((s: any) => s.id === item.id);
+        item.done = !!match?.done;
+      });
+      this.checklistStatus = 'ready';
+    } else {
+      // Confirmed: no checklist yet, or it is from an earlier day.
+      this.checklist.forEach(item => (item.done = false));
+      this.checklistStatus = 'ready';
+      await this.saveChecklistState();
     }
     this.updateChecklistReminders();
+    void this.catchUpChecklistBell();
+  }
+
+  /** The phone's checklist reminders run no app code when they fire, so
+   *  they never reach the bell. When Home loads (and when the app returns
+   *  to the foreground), today's slots that have passed are added to the
+   *  bell, once each (dueChecklistBellSlots + createIfMissing). Only from
+   *  the loaded checklist and the saved switch; nothing on a failed read.
+   *  Phone only: in a browser sendInAppChecklistReminder() covers it. */
+  private async catchUpChecklistBell(): Promise<void> {
+    if (this.checklistStatus !== 'ready' || !this.currentUid) return;
+    const uid = this.currentUid;
+    try {
+      const { Capacitor } = await import('@capacitor/core');
+      if (!Capacitor.isNativePlatform()) return;
+      const profile = await this.profileStore.whenLoaded();
+      // Signed out, switched account or reloading meanwhile: skip.
+      if (uid !== this.currentUid || this.checklistStatus !== 'ready') return;
+      const vitamin = this.checklist.find(c => c.id === VITAMIN_CHECKLIST_ITEM_ID);
+      const slots = dueChecklistBellSlots(
+        new Date(),
+        { anyUnchecked: this.checklistDone < this.checklist.length, vitaminUnchecked: !vitamin?.done },
+        profile?.notificationPrefs?.checklistReminders !== false,
+      );
+      for (const slot of slots) {
+        await this.notificationsService.createIfMissing(uid, slot.id,
+          { icon: '✅', title: slot.title, message: slot.body, route: '/home' }, slot.at);
+      }
+    } catch (err: any) {
+      console.error('Checklist bell catch-up failed:', err?.code ?? err?.reason ?? err);
+    }
+  }
+
+  retryChecklist(): void {
+    // Reconnect now rather than after Firestore's growing wait between attempts.
+    void runInInjectionContext(this.envInjector, () => reconnectNow(this.firestore));
+    void this.loadChecklistFromFirestore();
   }
 
   private async saveChecklistState(): Promise<void> {
-    if (!this.currentUid) return;
+    if (!this.currentUid || this.checklistStatus !== 'ready') return;
     try {
       await runInInjectionContext(this.envInjector, () =>
         setDoc(this.checklistDocRef(), {
@@ -517,6 +595,7 @@ export class HomePage implements OnInit, OnDestroy, DoCheck {
   }
 
   async toggleChecklist(item: any): Promise<void> {
+    if (this.checklistStatus !== 'ready') return;
     item.done = !item.done;
     await this.saveChecklistState();
     this.updateChecklistReminders();
@@ -527,12 +606,15 @@ export class HomePage implements OnInit, OnDestroy, DoCheck {
    *  notification permission here; only saving Pregnancy Settings asks.
    *  In a browser: the existing once-a-day in-app notification. */
   private async updateChecklistReminders(): Promise<void> {
+    // Only from the real checklist and saved switch; otherwise leave the
+    // reminders already scheduled as they are.
+    if (this.checklistStatus !== 'ready') return;
     const anyUnchecked = this.checklistDone < this.checklist.length;
     try {
       const { Capacitor } = await import('@capacitor/core');
       if (Capacitor.isNativePlatform()) {
         if (!this.currentUid) return;
-        const profile = await this.authService.getProfile();
+        const profile = await this.profileStore.whenLoaded();
         const vitamin = this.checklist.find(c => c.id === VITAMIN_CHECKLIST_ITEM_ID);
         await this.checklistReminders.sync(
           { anyUnchecked, vitaminUnchecked: !vitamin?.done },
@@ -574,9 +656,14 @@ export class HomePage implements OnInit, OnDestroy, DoCheck {
     const msUntilMidnight = midnight.getTime() - now.getTime();
 
     this.midnightTimeout = setTimeout(() => {
-      this.checklist.forEach(item => (item.done = false));
-      this.saveChecklistState();
-      this.updateChecklistReminders();
+      if (this.checklistStatus === 'ready') {
+        this.checklist.forEach(item => (item.done = false));
+        this.saveChecklistState();
+        this.updateChecklistReminders();
+      } else {
+        // Never loaded: load now; a checklist from yesterday resets there.
+        void this.loadChecklistFromFirestore();
+      }
       this.scheduleMidnightReset();
     }, msUntilMidnight);
   }
@@ -615,6 +702,7 @@ export class HomePage implements OnInit, OnDestroy, DoCheck {
     private route: ActivatedRoute,
     private theme: ThemeService,
     private authService: AuthService,
+    private profileStore: ProfileStoreService,
     private notificationsService: NotificationsService,
     private appointmentsService: AppointmentsService,
     private healthService: HealthService,
@@ -622,25 +710,20 @@ export class HomePage implements OnInit, OnDestroy, DoCheck {
     private checklistReminders: ChecklistRemindersService,
   ) {}
 
-  private async loadUserProfile(): Promise<void> {
-    this.isLoadingUser = true;
-    try {
-      const profile = await this.authService.getProfile();
-      if (profile) {
-        this.currentUser = {
-          fullName:     profile.fullName || '',
-          email:        profile.email    || '',
-          dueDate:      profile.dueDate ? new Date(profile.dueDate) : new Date(),
-          firstTimeMom: profile.firstTimeMom ?? null,
-        };
-        this.recomputePregnancyFromDueDate();
-        this.updateCountdown();
-      }
-    } catch (err) {
-      console.error('Failed to load user profile:', err);
-    } finally {
-      this.isLoadingUser = false;
-    }
+  /** Applies the live profile (ProfileStoreService): runs on first load and
+   *  again whenever users/{uid} changes, e.g. after the due date is edited
+   *  in Pregnancy Settings while this page stays alive in the background. */
+  private applyProfile(profile: UserProfile | null): void {
+    this.isLoadingUser = false;
+    if (!profile) return;
+    this.currentUser = {
+      fullName:     profile.fullName || '',
+      email:        profile.email    || '',
+      dueDate:      parseStoredDate(profile.dueDate) ?? new Date(),
+      firstTimeMom: profile.firstTimeMom ?? null,
+    };
+    this.recomputePregnancyFromDueDate();
+    this.updateCountdown();
   }
 
   ngOnInit(): void {
@@ -649,13 +732,28 @@ export class HomePage implements OnInit, OnDestroy, DoCheck {
     this.userSub = this.authService.user$.subscribe(fbUser => {
       this.currentUid = fbUser?.uid ?? null;
       if (fbUser) {
-        this.loadUserProfile();
         this.loadChecklistFromFirestore();
+      } else {
+        // Signed out: drop any load still running for the previous account.
+        this.checklistLoadId++;
+        this.checklistStatus = 'loading';
       }
     });
 
+    this.profileSub = this.profileStore.profile$.subscribe(profile => this.applyProfile(profile));
+
     this.notifSub = this.notificationsService.notifications$()
       .subscribe((list: AppNotification[]) => (this.notifications = list));
+
+    // Back in the foreground: add any checklist reminder slots that passed
+    // meanwhile to the bell (the gates are inside catchUpChecklistBell).
+    void import('@capacitor/app')
+      .then(({ App }) => App.addListener('resume', () => void this.catchUpChecklistBell()))
+      .then(handle => {
+        if (this.destroyed) void handle.remove();
+        else this.resumeListener = handle;
+      })
+      .catch(err => console.error('Resume listener failed:', err));
 
     this.apptSub = this.appointmentsService.getAppointments$()
       .subscribe((records: AppointmentRecord[]) => (this.allAppointments = records));
@@ -690,8 +788,11 @@ export class HomePage implements OnInit, OnDestroy, DoCheck {
   }
 
   ngOnDestroy(): void {
+    this.destroyed = true;
+    void this.resumeListener?.remove();
     this.themeSub?.unsubscribe();
     this.userSub?.unsubscribe();
+    this.profileSub?.unsubscribe();
     this.notifSub?.unsubscribe();
     this.apptSub?.unsubscribe();
     this.healthSub?.unsubscribe();

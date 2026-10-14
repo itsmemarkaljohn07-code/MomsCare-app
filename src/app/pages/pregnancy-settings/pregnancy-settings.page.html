@@ -18,84 +18,88 @@
 
     <div class="content-body" [class.visible]="animReady">
 
+      <!-- Until the saved profile has loaded, the form is locked and Save is
+           disabled, so the placeholders can never be saved over real data. -->
+      <div class="load-notice" *ngIf="!isLoaded" aria-live="polite"
+           [class.load-notice--error]="loadState !== 'loading'">
+        <ng-container *ngIf="loadState === 'loading'">Loading your profile...</ng-container>
+        <ng-container *ngIf="loadState === 'failed'">
+          <span>We couldn't load your profile. Check your connection and try again.</span>
+          <button type="button" class="load-retry-btn" (click)="retryLoad()">Retry</button>
+        </ng-container>
+        <ng-container *ngIf="loadState === 'missing'">
+          We couldn't find your profile. Please sign out and sign in again.
+        </ng-container>
+      </div>
+
       <!-- Current status card -->
       <div class="status-card">
         <div class="status-row">
           <div class="status-item">
-            <span class="status-val">{{ pregnancyWeek }}</span>
+            <span class="status-val">{{ isLoaded ? pregnancyWeek : '–' }}</span>
             <span class="status-lbl">Current Week</span>
           </div>
           <div class="status-divider"></div>
           <div class="status-item">
-            <span class="status-val">{{ 40 - pregnancyWeek }}</span>
+            <span class="status-val">{{ isLoaded ? 40 - pregnancyWeek : '–' }}</span>
             <span class="status-lbl">Weeks Left</span>
           </div>
           <div class="status-divider"></div>
           <div class="status-item">
-            <span class="status-val">{{ trimester }}</span>
+            <span class="status-val">{{ isLoaded ? trimester : '–' }}</span>
             <span class="status-lbl">Trimester</span>
           </div>
         </div>
         <div class="progress-bar-wrap">
-          <div class="progress-bar-fill" [style.width.%]="pregnancyProgress"></div>
+          <div class="progress-bar-fill" [style.width.%]="isLoaded ? pregnancyProgress : 0"></div>
         </div>
-        <p class="progress-label">{{ pregnancyProgress }}% of pregnancy complete</p>
+        <p class="progress-label">{{ isLoaded ? pregnancyProgress + '% of pregnancy complete' : loadState === 'loading' ? 'Loading your profile...' : '–' }}</p>
       </div>
 
       <!-- Pregnancy dates -->
       <p class="section-label">Pregnancy Dates</p>
-      <div class="card">
+      <div class="card" [class.is-locked]="!isLoaded" [attr.aria-busy]="loadState === 'loading'">
         <div class="field-group">
           <label class="field-label">Current Pregnancy Week</label>
           <!-- Nudges Expected Due Date below by a week instead of
                storing its own number -- see adjustWeek() for why. -->
           <div class="week-stepper">
-            <button class="stepper-btn" (click)="adjustWeek(-1)">−</button>
-            <span class="stepper-val">Week {{ pregnancyWeek }}</span>
-            <button class="stepper-btn plus" (click)="adjustWeek(1)">+</button>
+            <button class="stepper-btn" (click)="adjustWeek(-1)" [disabled]="!isLoaded">−</button>
+            <span class="stepper-val">Week {{ isLoaded ? pregnancyWeek : '–' }}</span>
+            <button class="stepper-btn plus" (click)="adjustWeek(1)" [disabled]="!isLoaded">+</button>
           </div>
         </div>
         <div class="field-group">
           <label class="field-label">Expected Due Date</label>
-          <input class="field-input" type="date" [(ngModel)]="settings.dueDate"/>
+          <mc-datepicker label="Expected Due Date" [(ngModel)]="settings.dueDate" [disabled]="!isLoaded"></mc-datepicker>
         </div>
         <div class="field-group">
           <label class="field-label">Last Menstrual Period (LMP)</label>
-          <input class="field-input" type="date" [(ngModel)]="settings.lmpDate"/>
+          <mc-datepicker label="Last Menstrual Period (LMP)" [(ngModel)]="settings.lmpDate" [disabled]="!isLoaded"></mc-datepicker>
         </div>
         <div class="field-group">
           <label class="field-label">Calculation Method</label>
-          <select class="field-select" [(ngModel)]="settings.calcMethod">
-            <option value="lmp">Last Menstrual Period (LMP)</option>
-            <option value="ultrasound">Ultrasound Dating</option>
-            <option value="ivf">IVF / Transfer Date</option>
-          </select>
+          <mc-dropdown label="Calculation Method" [options]="calcMethodOptions" [(ngModel)]="settings.calcMethod" [disabled]="!isLoaded"></mc-dropdown>
         </div>
         <div class="field-group">
           <label class="field-label">Weight Unit</label>
-          <select class="field-select" [(ngModel)]="settings.weightUnit">
-            <option value="kg">Kilograms (kg)</option>
-            <option value="lbs">Pounds (lbs)</option>
-          </select>
+          <mc-dropdown label="Weight Unit" [options]="weightUnitOptions" [(ngModel)]="settings.weightUnit" [disabled]="!isLoaded"></mc-dropdown>
         </div>
         <div class="field-group">
           <label class="field-label">High-Risk Pregnancy</label>
-          <select class="field-select" [(ngModel)]="settings.highRisk">
-            <option value="no">No</option>
-            <option value="yes">Yes — monitoring closely</option>
-          </select>
+          <mc-dropdown label="High-Risk Pregnancy" [options]="highRiskOptions" [(ngModel)]="settings.highRisk" [disabled]="!isLoaded"></mc-dropdown>
         </div>
       </div>
 
       <!-- Notifications -->
       <p class="section-label">Notifications</p>
       <div class="card">
-        <div class="toggle-row" *ngFor="let n of notifToggles">
+        <div class="toggle-row" *ngFor="let n of notifToggles" [class.is-locked]="!isLoaded">
           <div class="toggle-info">
             <p class="toggle-title">{{ n.label }}</p>
             <p class="toggle-sub">{{ n.desc }}</p>
           </div>
-          <button class="mini-toggle" (click)="n.on = !n.on">
+          <button class="mini-toggle" (click)="n.on = !n.on" [disabled]="!isLoaded">
             <div class="mini-toggle-track" [class.on]="n.on">
               <div class="mini-toggle-thumb"></div>
             </div>
@@ -105,12 +109,12 @@
              the time the "Kick Count Alerts" toggle above actually
              fires at, so it belongs right next to it rather than in a
              separate, disconnected section. -->
-        <div class="toggle-row toggle-row--subfield">
+        <div class="toggle-row toggle-row--subfield" [class.is-locked]="!isLoaded">
           <div class="toggle-info">
             <p class="toggle-title">Kick Count Reminder Time</p>
             <p class="toggle-sub">When your daily kick-count reminder fires</p>
           </div>
-          <input class="field-input field-input--inline" type="time" [(ngModel)]="settings.kickReminderTime"/>
+          <input class="field-input field-input--inline" type="time" [(ngModel)]="settings.kickReminderTime" [disabled]="!isLoaded"/>
         </div>
         <div class="toggle-row toggle-row--subfield">
           <div class="toggle-info">
@@ -136,11 +140,10 @@
       <p class="save-error-text" *ngIf="saveError">{{ saveError }}</p>
 
       <div class="btn-wrap">
-        <button class="btn-primary" (click)="saveSettings()" [disabled]="isSaving">
-          {{ isSaving ? 'Saving...' : 'Save Settings' }}
+        <button class="btn-primary" (click)="saveSettings()" [disabled]="isSaving || !isLoaded">
+          {{ loadState === 'loading' ? 'Loading your profile...' : isSaving ? 'Saving...' : 'Save Settings' }}
         </button>
       </div>
-      <div class="toast" *ngIf="showToast">✓ Settings saved</div>
 
     </div>
   </div>

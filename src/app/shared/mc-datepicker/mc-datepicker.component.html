@@ -1,0 +1,81 @@
+<button #trigger type="button" class="mc-field"
+        [class.mc-field--open]="open"
+        [class.mc-field--empty]="!display"
+        [disabled]="disabled"
+        aria-haspopup="dialog"
+        [attr.aria-expanded]="open"
+        [attr.aria-label]="(label ? label + ': ' : '') + (display || 'not set') + ', choose date'"
+        (click)="toggle()"
+        (keydown)="onTriggerKeydown($event)">
+  <span class="mc-field-text">{{ display || placeholder }}</span>
+  <svg class="mc-cal-icon" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+    <rect x="2" y="3" width="12" height="11" rx="2.5" stroke="currentColor" stroke-width="1.4"/>
+    <path d="M2 6.5h12M5.5 1.5v3M10.5 1.5v3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+  </svg>
+</button>
+
+<!-- Moved into document.body while open (see attachSheet). -->
+<div #sheet class="mc-layer" *ngIf="open" [class.mc-layer--dark]="dark" (keydown)="onSheetKeydown($event)">
+  <div class="mc-backdrop" (click)="close(true)" aria-hidden="true"></div>
+  <div class="mc-sheet" role="dialog" aria-modal="true" [attr.aria-labelledby]="id + '-title'">
+    <div class="mc-handle" aria-hidden="true"></div>
+    <p class="mc-title" [id]="id + '-title'">{{ label }}</p>
+
+    <div class="mc-nav">
+      <button type="button" class="mc-nav-btn" (click)="step(-1)"
+              [attr.aria-label]="view === 'days' ? 'Previous month' : 'Previous year'">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+          <path d="M10 3.5L5.5 8l4.5 4.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
+      <button type="button" class="mc-heading" (click)="toggleView()" aria-live="polite"
+              [attr.aria-label]="headingLabel">
+        {{ view === 'days' ? monthNames[viewMonth] + ' ' + viewYear : viewYear }}
+        <svg class="mc-heading-chevron" [class.mc-heading-chevron--up]="view === 'months'"
+             width="10" height="10" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+          <path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
+      <button type="button" class="mc-nav-btn" (click)="step(1)"
+              [attr.aria-label]="view === 'days' ? 'Next month' : 'Next year'">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+          <path d="M6 3.5L10.5 8 6 12.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
+    </div>
+
+    <div class="mc-grid" *ngIf="view === 'days'" role="grid"
+         [attr.aria-label]="monthNames[viewMonth] + ' ' + viewYear"
+         (keydown)="onGridKeydown($event)">
+      <div class="mc-row" role="row">
+        <span *ngFor="let w of weekdays" class="mc-weekday" role="columnheader" [attr.aria-label]="w.long">{{ w.short }}</span>
+      </div>
+      <div class="mc-row" role="row" *ngFor="let week of weeks">
+        <button *ngFor="let day of week"
+                type="button"
+                class="mc-day"
+                role="gridcell"
+                [id]="cellId(day.value)"
+                [class.mc-day--outside]="day.outside"
+                [class.mc-day--today]="day.value === today"
+                [class.mc-day--selected]="day.value === value"
+                [class.mc-day--disabled]="day.disabled"
+                [attr.aria-selected]="day.value === value"
+                [attr.aria-disabled]="day.disabled ? 'true' : null"
+                [attr.aria-current]="day.value === today ? 'date' : null"
+                [attr.aria-label]="day.label"
+                [tabindex]="day.value === activeValue ? 0 : -1"
+                (click)="pick(day)">{{ day.day }}</button>
+      </div>
+    </div>
+
+    <div class="mc-months" *ngIf="view === 'months'">
+      <button *ngFor="let name of monthNames; let i = index"
+              type="button"
+              class="mc-month"
+              [class.mc-month--selected]="isSelectedMonth(i)"
+              [attr.aria-label]="name + ' ' + viewYear"
+              (click)="chooseMonth(i)">{{ name.slice(0, 3) }}</button>
+    </div>
+  </div>
+</div>

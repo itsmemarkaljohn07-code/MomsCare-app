@@ -93,6 +93,43 @@ export function buildChecklistReminderPlan(
   return reminders;
 }
 
+export interface ChecklistBellSlot {
+  /** checklist-YYYY-MM-DD-HH: one bell entry per slot, never duplicated. */
+  id: string;
+  at: Date;
+  title: string;
+  body: string;
+}
+
+/**
+ * The phone reminders run no app code when they fire, so they never reach
+ * the in-app bell. This lists today's reminder slots that have already
+ * passed, for the bell to catch up on when the app opens: the same times
+ * (local), title and text as the phone reminders. Nothing when reminders
+ * are off or every item is done, and never a slot from an earlier day.
+ */
+export function dueChecklistBellSlots(
+  now: Date,
+  state: ChecklistState,
+  enabled: boolean,
+): ChecklistBellSlot[] {
+  if (!enabled || !state.anyUnchecked) return [];
+  const body = state.vitaminUnchecked ? CHECKLIST_REMINDER_VITAMIN_BODY : CHECKLIST_REMINDER_GENERAL_BODY;
+  const slots: ChecklistBellSlot[] = [];
+  for (let hour = CHECKLIST_REMINDER_WINDOW_START_HOUR; hour <= CHECKLIST_REMINDER_WINDOW_END_HOUR;
+    hour += CHECKLIST_REMINDER_INTERVAL_HOURS) {
+    const at = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hour, 0, 0, 0);
+    if (at.getTime() > now.getTime()) break;
+    slots.push({
+      id: `checklist-${localDateKey(at)}-${String(hour).padStart(2, '0')}`,
+      at,
+      title: CHECKLIST_REMINDER_TITLE,
+      body,
+    });
+  }
+  return slots;
+}
+
 /** The phone's local calendar date as YYYY-MM-DD. The checklist resets at
  *  local midnight, so "today" must be the local date, not the UTC one. */
 export function localDateKey(date: Date = new Date()): string {

@@ -6,6 +6,9 @@ import { FormsModule } from '@angular/forms';
 import { IonicModule } from '@ionic/angular';
 import { ThemeService } from '../../services/theme';
 import { AuthService } from '../../services/auth.service';
+import { ProfileStoreService } from '../../services/profile-store.service';
+import { parseStoredDate } from '../../shared/date-utils';
+import { pregnancyStatus } from '../../shared/pregnancy-status';
 import { InsightsService } from '../../services/insights.service';
 import { Subscription } from 'rxjs';
 
@@ -75,22 +78,14 @@ export class InsightsPage implements OnInit, OnDestroy {
   darkMode      = false;
   private themeSub!: Subscription;
   private articlesSub!: Subscription;
-  // The patient's due date, fetched once in ngOnInit. pregnancyWeek
-  // below is computed FROM this on every read, using the exact same
-  // 280-day formula as snapshot.page.ts's pregnancyWeek getter and the
-  // admin dashboard's computePregnancyWeek — one shared calculation,
-  // not a second one that could drift out of sync.
+  private profileSub?: Subscription;
+  // The patient's due date, from the live profile (ProfileStoreService),
+  // so an edited due date shows here at once. pregnancyWeek uses the
+  // shared formula (shared/pregnancy-status.ts) that every page uses.
   private currentDueDate: string | null = null;
 
   get pregnancyWeek(): number {
-    if (!this.currentDueDate) return 0;
-    const TOTAL_DAYS = 280;
-    const msPerDay = 24 * 60 * 60 * 1000;
-    const dueTime = new Date(this.currentDueDate).getTime();
-    if (isNaN(dueTime)) return 0;
-    const daysUntilDue = Math.round((dueTime - Date.now()) / msPerDay);
-    const daysElapsed = Math.max(0, Math.min(TOTAL_DAYS, TOTAL_DAYS - daysUntilDue));
-    return Math.min(40, Math.floor(daysElapsed / 7));
+    return pregnancyStatus(parseStoredDate(this.currentDueDate)).week;
   }
 
   // ── Bottom nav active state ──────────────────────────────────────────────
@@ -320,6 +315,7 @@ export class InsightsPage implements OnInit, OnDestroy {
     private router: Router,
     private theme: ThemeService,
     private authService: AuthService,
+    private profileStore: ProfileStoreService,
     private insightsService: InsightsService,
   ) {}
 
@@ -330,7 +326,7 @@ export class InsightsPage implements OnInit, OnDestroy {
       this.articles = data;
     });
 
-    this.authService.getProfile().then(profile => {
+    this.profileSub = this.profileStore.profile$.subscribe(profile => {
       this.currentDueDate = profile?.dueDate ?? null;
     });
 
@@ -341,6 +337,7 @@ export class InsightsPage implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     this.themeSub?.unsubscribe();
     this.articlesSub?.unsubscribe();
+    this.profileSub?.unsubscribe();
     clearInterval(this.carouselTimer);
   }
 

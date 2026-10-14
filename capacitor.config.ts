@@ -1,7 +1,7 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'io.ionic.starter',
+  appId: 'com.yourteam.momcare',
   appName: 'MomCare',
   webDir: 'www',
   // Native and web-console logs only in debug builds, never in a release

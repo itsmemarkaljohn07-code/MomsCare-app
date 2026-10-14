@@ -125,12 +125,15 @@ export interface ChecklistBellSlot {
  * the in-app bell. This lists today's reminder slots that have already
  * passed, for the bell to catch up on when the app opens: the same times
  * (local), title and text as the phone reminders. Nothing when reminders
- * are off or every item is done, and never a slot from an earlier day.
+ * are off or every item is done, never a slot from an earlier day, and
+ * none from before `notBefore` (when the account was created), since no
+ * reminder could have been sent then.
  */
 export function dueChecklistBellSlots(
   now: Date,
   state: ChecklistState,
   enabled: boolean,
+  notBefore?: Date | null,
 ): ChecklistBellSlot[] {
   if (!enabled || !state.anyUnchecked) return [];
   const body = checklistReminderBody(state);
@@ -139,6 +142,7 @@ export function dueChecklistBellSlots(
     hour += CHECKLIST_REMINDER_INTERVAL_HOURS) {
     const at = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hour, 0, 0, 0);
     if (at.getTime() > now.getTime()) break;
+    if (notBefore && !isNaN(notBefore.getTime()) && at.getTime() < notBefore.getTime()) continue;
     slots.push({
       id: `checklist-${localDateKey(at)}-${String(hour).padStart(2, '0')}`,
       at,

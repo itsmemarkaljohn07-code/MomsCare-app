@@ -598,6 +598,9 @@ export class HomePage implements OnInit, OnDestroy, DoCheck {
           nextUnchecked: this.checklist.find(c => !c.done)?.id,
         },
         profile?.notificationPrefs?.checklistReminders !== false,
+        // Nothing from before the account existed (a new account signing
+        // up at night got every earlier slot of the day).
+        parseStoredDate(profile?.createdAt),
       );
       for (const slot of slots) {
         await this.notificationsService.createIfMissing(uid, slot.id,

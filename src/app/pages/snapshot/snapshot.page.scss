@@ -370,55 +370,117 @@ ion-content[data-theme="dark"] {
 
 /* ══════════════════════════════════════════
    PHOTO VIEWER MODAL
+   Uses the page's theme variables (light and dark) -- it used to be a
+   fixed black sheet with white text in both themes.
 ══════════════════════════════════════════ */
 .modal-overlay {
   position: fixed; inset: 0;
-  background: rgba(0,0,0,0.4); backdrop-filter: blur(4px);
+  background: rgba(45, 26, 64, 0.45); backdrop-filter: blur(6px);
   z-index: 100; display: flex; align-items: flex-end;
   animation: fadeIn 0.22s ease;
+  overscroll-behavior: contain;
 }
 @keyframes fadeIn { from{ opacity:0; } to{ opacity:1; } }
 
 .photo-viewer {
   width: 100%; max-width: 440px; margin: 0 auto;
-  background: #000; border-radius: 20px 20px 0 0;
+  background: var(--card-bg); color: var(--dark);
+  border: 1px solid var(--card-border); border-bottom: none;
+  border-radius: 24px 24px 0 0;
+  box-shadow: 0 -8px 32px rgba(45, 26, 64, 0.18);
   position: relative;
-  max-height: 90vh;
+  max-height: 92vh;
   overflow-y: auto;
   overflow-x: hidden;
+  overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
+  animation: viewerUp 0.28s cubic-bezier(0.22, 1, 0.36, 1);
 }
+@keyframes viewerUp { from { transform: translateY(24px); opacity: 0; } to { transform: none; opacity: 1; } }
+
+/* The photo sits whole and undistorted on a soft tinted stage. */
+.viewer-stage {
+  position: relative;
+  margin: 12px 12px 0;
+  height: 52vh; min-height: 220px; max-height: 520px;
+  border-radius: 18px;
+  background: rgba(181, 127, 212, 0.08);
+  display: flex; align-items: center; justify-content: center;
+  overflow: hidden;
+}
+.viewer-img {
+  display: block;
+  max-width: 100%; max-height: 100%;
+  width: auto; height: auto;
+  object-fit: contain;
+  opacity: 0; transition: opacity 0.2s ease;
+  &.is-loaded { opacity: 1; }
+}
+.viewer-loading {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+}
+.viewer-spinner {
+  width: 28px; height: 28px; border-radius: 50%;
+  border: 3px solid rgba(181, 127, 212, 0.25); border-top-color: var(--purple);
+  animation: viewerSpin 0.8s linear infinite;
+}
+@keyframes viewerSpin { to { transform: rotate(360deg); } }
+.viewer-error {
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  padding: 24px; text-align: center; color: var(--muted);
+  font-size: 0.8rem; font-weight: 700; line-height: 1.45;
+  font-family: 'Nunito','Poppins',sans-serif;
+  svg { color: var(--purple); }
+}
+
+.viewer-close {
+  position: absolute; top: 10px; right: 10px; z-index: 5;
+  width: 40px; height: 40px; border-radius: 50%;
+  background: var(--card-bg); color: var(--dark);
+  border: 1px solid var(--card-border);
+  box-shadow: 0 2px 10px rgba(45, 26, 64, 0.15);
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  &:active { transform: scale(0.94); }
+  &:focus-visible { outline: 2px solid var(--purple); outline-offset: 2px; }
+}
+
 @media (min-width: 700px) {
   /* Tablet/desktop: a centered lightbox rather than a phone-style
      bottom sheet -- a 440px sheet pinned to the bottom of a wide
      screen would look small and stranded. */
   .modal-overlay { align-items: center; padding: 24px; }
   .photo-viewer {
-    max-width: 720px; max-height: 85vh; border-radius: 20px;
+    max-width: 760px; max-height: 85vh; border-radius: 24px;
+    border-bottom: 1px solid var(--card-border);
     display: flex; flex-direction: row; align-items: stretch;
+    overflow: hidden;
   }
-  .viewer-img { width: 55%; max-height: 85vh; flex-shrink: 0; }
+  .viewer-stage { width: 55%; height: auto; max-height: none; margin: 12px; flex-shrink: 0; }
   .viewer-info { width: 45%; overflow-y: auto; }
 }
-.viewer-close {
-  position: absolute; top: 12px; right: 12px; z-index: 5;
-  width: 34px; height: 34px; border-radius: 50%;
-  background: rgba(0,0,0,0.5); border: none; cursor: pointer;
-  display: flex; align-items: center; justify-content: center;
+@media (max-height: 480px) and (max-width: 699px) {
+  /* Phone in landscape: keep the whole photo on screen. */
+  .viewer-stage { height: 70vh; min-height: 0; }
 }
-.viewer-img { width: 100%; max-height: 60vh; object-fit: contain; display: block; }
-.viewer-info { padding: 16px; }
-.viewer-caption { font-size: 0.9rem; font-weight: 700; color: white; font-family: 'Nunito','Poppins',sans-serif; margin: 0 0 4px; }
-.viewer-meta { font-size: 0.72rem; color: rgba(255,255,255,0.6); font-family: 'Nunito','Poppins',sans-serif; margin: 0 0 12px; }
+@media (prefers-reduced-motion: reduce) {
+  .modal-overlay, .photo-viewer, .viewer-spinner { animation: none; }
+  .viewer-img { transition: none; }
+}
+
+.viewer-info { padding: 16px 16px 20px; }
+.viewer-caption { font-size: 0.95rem; font-weight: 800; color: var(--dark); font-family: 'Nunito','Poppins',sans-serif; margin: 0 0 4px; overflow-wrap: break-word; }
+.viewer-meta { font-size: 0.74rem; font-weight: 600; color: var(--muted); font-family: 'Nunito','Poppins',sans-serif; margin: 0 0 14px; }
 
 .comment-thread { margin-bottom: 16px; }
 .comment-thread-title {
-  font-size: 0.72rem; font-weight: 800; color: rgba(255,255,255,0.7);
+  font-size: 0.72rem; font-weight: 800; color: var(--muted);
   text-transform: uppercase; letter-spacing: 0.5px;
   font-family: 'Nunito','Poppins',sans-serif; margin: 0 0 10px;
 }
 .comment-empty {
-  font-size: 0.76rem; color: rgba(255,255,255,0.5);
+  font-size: 0.76rem; color: var(--muted);
   font-family: 'Nunito','Poppins',sans-serif;
 }
 .comment-block { margin-bottom: 14px; }
@@ -437,19 +499,21 @@ ion-content[data-theme="dark"] {
 }
 .comment-content {
   max-width: 82%; min-width: 0;
-  background: rgba(255,255,255,0.08);
+  background: rgba(181, 127, 212, 0.08);
+  border: 1px solid var(--card-border);
   border-radius: 14px; padding: 10px 12px;
   overflow-wrap: break-word; word-break: break-word;
 }
 .comment-bubble--user .comment-content {
-  background: rgba(224,126,184,0.25);
+  background: rgba(224, 126, 184, 0.14);
+  border-color: rgba(224, 126, 184, 0.22);
 }
 /* Name sits on its own line, clearly larger/bolder than everything
    below it -- the metadata row (Care Team, specialty, timestamp) is
    deliberately smaller and quieter so the name reads first. */
 .comment-author {
   display: block;
-  font-size: 0.82rem; font-weight: 800; color: white;
+  font-size: 0.82rem; font-weight: 800; color: var(--dark);
   font-family: 'Nunito','Poppins',sans-serif; margin-bottom: 2px;
 }
 .comment-meta {
@@ -457,21 +521,21 @@ ion-content[data-theme="dark"] {
   margin-bottom: 5px;
 }
 .comment-role-badge {
-  font-size: 0.6rem; font-weight: 700; color: #e07eb8;
+  font-size: 0.6rem; font-weight: 700; color: var(--pink);
   font-family: 'Nunito','Poppins',sans-serif;
 }
 .comment-specialty, .comment-time {
-  font-size: 0.6rem; color: rgba(255,255,255,0.5);
+  font-size: 0.6rem; color: var(--muted);
   font-family: 'Nunito','Poppins',sans-serif;
 }
 .comment-message {
-  font-size: 0.84rem; color: rgba(255,255,255,0.92);
+  font-size: 0.84rem; color: var(--dark);
   font-family: 'Nunito','Poppins',sans-serif; margin: 0; line-height: 1.55;
   overflow-wrap: break-word; word-break: break-word;
 }
 .comment-reply-btn {
   background: none; border: none; padding: 0; margin-top: 4px;
-  font-size: 0.66rem; font-weight: 700; color: #e07eb8;
+  font-size: 0.66rem; font-weight: 700; color: var(--pink);
   font-family: 'Nunito','Poppins',sans-serif; cursor: pointer;
 }
 .comment-replies { margin-left: 32px; }
@@ -480,52 +544,52 @@ ion-content[data-theme="dark"] {
   position: sticky;
   bottom: 0;
   z-index: 5;
-  margin: 12px -16px -16px;
+  margin: 12px -16px -20px;
   padding: 10px 16px calc(10px + env(safe-area-inset-bottom, 0px));
-  background: rgba(10, 10, 10, 0.97);
+  background: var(--card-bg);
   backdrop-filter: blur(10px);
-  border-top: 1px solid rgba(255,255,255,0.12);
+  border-top: 1px solid var(--card-border);
 }
 .reply-bar-context {
   display: flex; align-items: center; justify-content: space-between;
-  font-size: 0.68rem; color: rgba(255,255,255,0.6);
+  font-size: 0.68rem; color: var(--muted);
   font-family: 'Nunito','Poppins',sans-serif;
   margin-bottom: 6px;
-  strong { color: white; font-weight: 700; }
+  strong { color: var(--dark); font-weight: 700; }
 }
 .reply-cancel-btn {
-  background: none; border: none; color: rgba(255,255,255,0.5);
+  background: none; border: none; color: var(--muted);
   font-size: 0.8rem; line-height: 1; cursor: pointer; padding: 2px 4px;
 }
 .reply-input-row {
   display: flex; gap: 6px;
 }
 .reply-input {
-  flex: 1; height: 36px; border-radius: 10px;
-  background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.18);
-  padding: 0 10px; font-size: 0.78rem; color: white;
+  flex: 1; height: 38px; border-radius: 12px;
+  background: rgba(181, 127, 212, 0.08); border: 1px solid var(--card-border);
+  padding: 0 12px; font-size: 0.8rem; color: var(--dark);
   font-family: 'Nunito','Poppins',sans-serif; outline: none;
-  &::placeholder { color: rgba(255,255,255,0.4); }
-  &:focus { border-color: #e07eb8; }
+  &::placeholder { color: var(--muted); opacity: 0.8; }
+  &:focus { border-color: var(--pink); }
 }
 .reply-send-btn {
-  height: 36px; padding: 0 14px; border-radius: 10px; border: none;
+  height: 38px; padding: 0 16px; border-radius: 12px; border: none;
   background: linear-gradient(135deg, #e07eb8, #b57fd4); color: white;
-  font-size: 0.74rem; font-weight: 800;
+  font-size: 0.76rem; font-weight: 800;
   font-family: 'Nunito','Poppins',sans-serif; cursor: pointer;
   &:disabled { opacity: 0.5; cursor: not-allowed; }
 }
 
 /* Health-at-time-of-upload block inside the enlarged photo viewer */
 .viewer-health {
-  background: rgba(255,255,255,0.06);
-  border: 1px solid rgba(255,255,255,0.1);
+  background: rgba(181, 127, 212, 0.06);
+  border: 1px solid var(--card-border);
   border-radius: 14px;
   padding: 12px;
   margin-bottom: 14px;
 }
 .viewer-health-title {
-  font-size: 0.62rem; font-weight: 800; color: rgba(255,255,255,0.65);
+  font-size: 0.62rem; font-weight: 800; color: var(--muted);
   text-transform: uppercase; letter-spacing: 0.5px;
   font-family: 'Nunito','Poppins',sans-serif; margin: 0 0 10px;
 }
@@ -537,22 +601,22 @@ ion-content[data-theme="dark"] {
 }
 .vh-icon {
   width: 30px; height: 30px; flex-shrink: 0; border-radius: 50%;
-  background: rgba(255,255,255,0.92);
+  background: rgba(181, 127, 212, 0.12);
   display: flex; align-items: center; justify-content: center;
 }
 .vh-text { display: flex; flex-direction: column; min-width: 0; }
 .vh-label {
-  font-size: 0.56rem; font-weight: 700; color: rgba(255,255,255,0.55);
+  font-size: 0.56rem; font-weight: 700; color: var(--muted);
   font-family: 'Nunito','Poppins',sans-serif;
 }
 .vh-val {
-  font-size: 0.82rem; font-weight: 800; color: white;
+  font-size: 0.82rem; font-weight: 800; color: var(--dark);
   font-family: 'Nunito','Poppins',sans-serif;
 }
 
 .viewer-delete {
-  width: 100%; height: 40px; border-radius: 10px;
-  background: rgba(224,85,128,0.15); color: #e05580; border: 1px solid rgba(224,85,128,0.3);
+  width: 100%; height: 42px; border-radius: 12px;
+  background: rgba(224,85,128,0.10); color: #e05580; border: 1px solid rgba(224,85,128,0.28);
   font-size: 0.78rem; font-weight: 700; font-family: 'Nunito','Poppins',sans-serif; cursor: pointer;
 }
 

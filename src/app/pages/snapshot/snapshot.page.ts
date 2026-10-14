@@ -1,5 +1,6 @@
 // snapshot.page.ts
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Component, HostListener, NgZone, OnInit, OnDestroy } from '@angular/core';
+import { Platform } from '@ionic/angular/standalone';
 import { ActivatedRoute, Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -105,6 +106,9 @@ export class SnapshotPage implements OnInit, OnDestroy {
   photos: SnapshotPhoto[] = [];
 
   viewingPhoto: SnapshotPhoto | null = null;
+  /** The open photo: loading, shown, or couldn't be loaded. */
+  viewerImageState: 'loading' | 'loaded' | 'error' = 'loading';
+  private viewerBackSub?: Subscription;
 
   flippedIds = new Set<string>();
 
@@ -317,7 +321,13 @@ export class SnapshotPage implements OnInit, OnDestroy {
 
   openPhoto(photo: SnapshotPhoto): void {
     this.viewingPhoto = photo;
+    this.viewerImageState = photo.imageUrl ? 'loading' : 'error';
     this.cancelReply();
+    // Android Back closes the viewer instead of leaving the page (above
+    // Ionic's own handlers; run in the zone so the viewer really closes).
+    this.viewerBackSub?.unsubscribe();
+    this.viewerBackSub = this.platform.backButton.subscribeWithPriority(150, () =>
+      this.zone.run(() => this.closePhoto()));
 
     this.commentsSub?.unsubscribe();
     if (this.currentUid) {
@@ -337,7 +347,15 @@ export class SnapshotPage implements OnInit, OnDestroy {
     if (photo) this.openPhoto(photo);
   }
 
+  /** Escape closes the viewer too (keyboard / desktop). */
+  @HostListener('document:keydown.escape')
+  onEscape(): void {
+    if (this.viewingPhoto) this.closePhoto();
+  }
+
   closePhoto(): void {
+    this.viewerBackSub?.unsubscribe();
+    this.viewerBackSub = undefined;
     this.viewingPhoto = null;
     this.commentsSub?.unsubscribe();
     this.photoComments = [];
@@ -482,6 +500,8 @@ export class SnapshotPage implements OnInit, OnDestroy {
     private healthService: HealthService,
     private photoService: PhotoService,
     private commentService: CommentService,
+    private platform: Platform,
+    private zone: NgZone,
   ) {}
 
   ngOnInit(): void {
@@ -550,6 +570,7 @@ export class SnapshotPage implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.viewerBackSub?.unsubscribe();
     this.themeSub?.unsubscribe();
     this.userSub?.unsubscribe();
     this.healthSub?.unsubscribe();

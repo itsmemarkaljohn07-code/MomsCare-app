@@ -6,13 +6,31 @@
        PHOTO VIEWER MODAL
   ══════════════════════════════════════════ -->
   <div class="modal-overlay" *ngIf="viewingPhoto" (click)="closePhoto()">
-    <div class="photo-viewer" (click)="$event.stopPropagation()">
-      <button class="viewer-close" (click)="closePhoto()" aria-label="Close">
-        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-          <path d="M5 5l10 10M15 5L5 15" stroke="white" stroke-width="2" stroke-linecap="round"/>
-        </svg>
-      </button>
-      <img [src]="viewingPhoto.imageUrl" class="viewer-img" alt="Snapshot photo"/>
+    <div class="photo-viewer" (click)="$event.stopPropagation()"
+         role="dialog" aria-modal="true" aria-label="Snapshot photo">
+      <!-- The whole photo, scaled to fit, on a soft stage; a spinner while
+           it loads and a message if it can't be shown. -->
+      <div class="viewer-stage">
+        <button class="viewer-close" (click)="closePhoto()" aria-label="Close photo">
+          <svg width="18" height="18" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+            <path d="M5 5l10 10M15 5L5 15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+        </button>
+        <img *ngIf="viewingPhoto.imageUrl && viewerImageState !== 'error'"
+             [src]="viewingPhoto.imageUrl" class="viewer-img" alt="Snapshot photo"
+             [class.is-loaded]="viewerImageState === 'loaded'"
+             (load)="viewerImageState = 'loaded'" (error)="viewerImageState = 'error'"/>
+        <div class="viewer-loading" *ngIf="viewerImageState === 'loading'" aria-live="polite">
+          <span class="viewer-spinner" aria-label="Loading photo"></span>
+        </div>
+        <div class="viewer-error" *ngIf="viewerImageState === 'error'" role="status">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+               stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <rect x="3.5" y="5" width="17" height="14" rx="2.5"/><path d="M3.5 15l4.5-4.5 4 4 2.5-2.5 6 6M15 9.5h.01"/>
+          </svg>
+          This photo can't be shown right now. Check your connection and open it again.
+        </div>
+      </div>
             <div class="viewer-info">
         <p class="viewer-caption">{{ viewingPhoto.caption }}</p>
         <p class="viewer-meta">Week {{ viewingPhoto.week }} · {{ typeLabels[viewingPhoto.type] }}</p>

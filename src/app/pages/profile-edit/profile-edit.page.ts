@@ -98,7 +98,22 @@ export class ProfileEditPage implements OnInit, OnDestroy, ViewWillEnter, ViewWi
    *  the real profile (including a just-changed avatar) every time the
    *  page becomes active, same reasoning as profile.page.ts. */
   ionViewWillEnter(): void {
+    // Back from Avatar in the middle of editing: keep what was typed and
+    // only show the avatar just chosen. Otherwise load the saved profile.
+    if (this.editMode && this.isLoaded) {
+      void this.refreshAvatar();
+      return;
+    }
     void this.loadProfile();
+  }
+
+  private async refreshAvatar(): Promise<void> {
+    try {
+      const profile = await this.profileStore.whenLoaded();
+      if (profile?.avatar) this.selectedAvatar = profile.avatar;
+    } catch (err: any) {
+      console.error('Failed to refresh the avatar:', err?.reason ?? err);
+    }
   }
 
   /** A load still running when the page is left is ignored. */

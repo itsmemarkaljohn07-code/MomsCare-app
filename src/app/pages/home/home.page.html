@@ -81,9 +81,10 @@
         </svg>
       </p>
       <div class="greeting-pills">
-        <span class="pill pill-week">Week {{ pregnancyWeek }}</span>
-        <span class="pill pill-trim">{{ actualTrimester }}</span>
-        <span class="pill pill-days">{{ daysRemaining }}d to go</span>
+        <!-- "–" until the profile has loaded, not placeholder numbers. -->
+        <span class="pill pill-week">Week {{ isLoadingUser ? '–' : pregnancyWeek }}</span>
+        <span class="pill pill-trim">{{ isLoadingUser ? '–' : actualTrimester }}</span>
+        <span class="pill pill-days">{{ isLoadingUser ? '–' : daysRemaining + 'd to go' }}</span>
       </div>
     </div>
 

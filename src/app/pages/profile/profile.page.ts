@@ -26,9 +26,10 @@ export class ProfilePage implements OnInit, OnDestroy {
 
   // Real name and due date, loaded from the signed-in user's own
   // live profile (applyProfile below). 'User' is only a fallback for
-  // the brief moment before that resolves, or if a name genuinely
-  // isn't on file yet -- never a hardcoded person's name.
+  // a name that genuinely isn't on file yet -- never a hardcoded
+  // person's name. Until the profile has loaded, the header shows "–".
   userName = 'User';
+  profileLoaded = false;
   private dueDate: Date | null = null;
 
   /** The shared formula (shared/pregnancy-status.ts), the same one every
@@ -108,6 +109,7 @@ export class ProfilePage implements OnInit, OnDestroy {
    *  so a just-saved avatar, name or due date shows up immediately, even
    *  though Ionic keeps this page alive between visits. */
   private applyProfile(profile: UserProfile | null): void {
+    this.profileLoaded = true;
     this.userName = profile?.fullName || 'User';
     this.dueDate = parseStoredDate(profile?.dueDate);
     if (profile?.avatar) {

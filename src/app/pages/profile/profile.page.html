@@ -20,12 +20,13 @@
         </div>
       </div>
 
-      <h2 class="profile-name">{{ userName }}</h2>
-      <p class="profile-meta">Week {{ pregnancyWeek }} · {{ trimester }}</p>
+      <!-- "–" until the profile has loaded, not placeholder values. -->
+      <h2 class="profile-name">{{ profileLoaded ? userName : '–' }}</h2>
+      <p class="profile-meta">Week {{ profileLoaded ? pregnancyWeek : '–' }} · {{ profileLoaded ? trimester : '–' }}</p>
 
       <div class="profile-badges">
-        <span class="profile-badge">{{ babySize.emoji }} {{ babySize.fruit }}</span>
-        <span class="profile-badge">{{ pregnancyProgress }}% complete</span>
+        <span class="profile-badge">{{ profileLoaded ? babySize.emoji + ' ' + babySize.fruit : '–' }}</span>
+        <span class="profile-badge">{{ profileLoaded ? pregnancyProgress + '% complete' : '–' }}</span>
       </div>
 
       <div class="profile-progress-wrap">

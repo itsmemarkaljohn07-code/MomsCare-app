@@ -5,6 +5,8 @@ import { IonicModule } from '@ionic/angular';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ThemeService } from '../../services/theme';
+import { formatLocalDate } from '../../shared/date-utils';
+import { McDatepickerComponent } from '../../shared/mc-datepicker/mc-datepicker.component';
 import { Subscription } from 'rxjs';
 
 export interface MedicalRecord {
@@ -17,7 +19,7 @@ export interface MedicalRecord {
   templateUrl: './records.page.html',
   styleUrls: ['./records.page.scss'],
   standalone: true,
-  imports: [IonicModule, CommonModule, FormsModule],
+  imports: [IonicModule, CommonModule, FormsModule, McDatepickerComponent],
   providers: [DatePipe],
 })
 export class RecordsPage implements OnInit, OnDestroy {
@@ -50,7 +52,7 @@ export class RecordsPage implements OnInit, OnDestroy {
     { id: '3', name: 'Prenatal Vitamins Prescription', type: 'prescription', date: '2026-04-20', notes: 'Ferrous sulfate 300mg + Folic acid 5mg', fileName: '' },
   ];
 
-  draft = { name: '', type: 'lab', date: new Date().toISOString().split('T')[0], notes: '', fileName: '' };
+  draft = { name: '', type: 'lab', date: formatLocalDate(new Date()), notes: '', fileName: '' };
 
   get filteredRecords(): MedicalRecord[] {
     return this.activeFilter === 'all' ? this.records : this.records.filter(r => r.type === this.activeFilter);
@@ -64,7 +66,7 @@ export class RecordsPage implements OnInit, OnDestroy {
     return this.docTypes.find(d => d.value === t)?.label.replace(/^.{2}/,'').trim() || t;
   }
 
-  openUpload(): void { this.draft = { name:'', type:'lab', date: new Date().toISOString().split('T')[0], notes:'', fileName:'' }; this.showUpload = true; }
+  openUpload(): void { this.draft = { name:'', type:'lab', date: formatLocalDate(new Date()), notes:'', fileName:'' }; this.showUpload = true; }
   closeUpload(): void { this.showUpload = false; }
 
   pickFile(): void {

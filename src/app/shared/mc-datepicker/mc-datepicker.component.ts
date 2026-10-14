@@ -44,6 +44,9 @@ export class McDatepickerComponent implements ControlValueAccessor, OnDestroy {
   /** Earliest / latest pickable date (yyyy-MM-dd); unset means no limit. */
   @Input() min = '';
   @Input() max = '';
+  /** Show a "Clear" button that empties the value (only where a field may
+   *  be left empty, e.g. LMP). */
+  @Input() clearable = false;
 
   @ViewChild('trigger') private trigger?: ElementRef<HTMLButtonElement>;
   @ViewChild('sheet') private sheetRef?: ElementRef<HTMLElement>;
@@ -142,6 +145,16 @@ export class McDatepickerComponent implements ControlValueAccessor, OnDestroy {
     if (day.disabled) return;
     if (day.value !== this.value) {
       this.value = day.value;
+      this.onChange(this.value);
+    }
+    this.close(true);
+  }
+
+  /** Empties the value (clearable fields only) and closes. */
+  clear(): void {
+    if (!this.clearable) return;
+    if (this.value !== '') {
+      this.value = '';
       this.onChange(this.value);
     }
     this.close(true);

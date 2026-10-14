@@ -77,5 +77,10 @@
               [attr.aria-label]="name + ' ' + viewYear"
               (click)="chooseMonth(i)">{{ name.slice(0, 3) }}</button>
     </div>
+
+    <div class="mc-footer" *ngIf="clearable && value">
+      <button type="button" class="mc-clear" (click)="clear()"
+              [attr.aria-label]="'Clear ' + (label || 'date')">Clear</button>
+    </div>
   </div>
 </div>

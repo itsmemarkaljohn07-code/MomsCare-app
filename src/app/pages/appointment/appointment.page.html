@@ -211,7 +211,8 @@
                   {{ appt.day }}, {{ appt.date }} · {{ appt.time }}
                 </span>
                 <span class="card-tag tag-cancelled" *ngIf="appt.status === 'cancelled'">Cancelled</span>
-                <span class="card-tag tag-past" *ngIf="appt.status !== 'cancelled'">Completed</span>
+                <span class="card-tag tag-missed" *ngIf="appt.status === 'missed'">Missed</span>
+                <span class="card-tag tag-past" *ngIf="appt.status !== 'cancelled' && appt.status !== 'missed'">Completed</span>
               </div>
             </div>
 

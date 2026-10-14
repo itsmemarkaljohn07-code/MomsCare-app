@@ -20,7 +20,7 @@ export interface AppointmentRecord {
   accentColor: 'green' | 'pink' | 'purple' | 'blue' | 'orange';
   advice?: string[];
   files?: string[];
-  status: 'upcoming' | 'completed' | 'cancelled';
+  status: 'upcoming' | 'completed' | 'cancelled' | 'missed';
   createdAt?: any;
   /** A patient's cancellation request. The app writes only 'requested' and
    *  'withdrawn'; the dashboard server writes 'approved'/'declined' and the

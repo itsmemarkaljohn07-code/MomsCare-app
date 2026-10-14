@@ -467,6 +467,7 @@ ion-content[data-theme="dark"] {
   &.tag-rejected { background: rgba(224, 85, 128, 0.14); color: #e05580; }
   &.tag-cancel-requested { background: rgba(245, 166, 35, 0.16); color: #b7791f; }
   &.tag-cancelled { background: rgba(224, 85, 128, 0.10); color: #c2456d; }
+  &.tag-missed    { background: rgba(244, 149, 106, 0.12); color: #d4714a; }
 }
 
 /* ── Chevron ── */

@@ -8,6 +8,7 @@ import { AuthService, UserProfile } from '../../services/auth.service';
 import { ProfileStoreService } from '../../services/profile-store.service';
 import { parseStoredDate } from '../../shared/date-utils';
 import { pregnancyStatus } from '../../shared/pregnancy-status';
+import { isMissedAppointment } from '../../shared/appointment-status';
 import {
   AppointmentsService,
   AppointmentRecord,
@@ -116,6 +117,7 @@ export class AppointmentsPage implements OnInit, OnDestroy {
   // cancelled on a guess.
   private remindersEnabled: boolean | null = null;
   private latestRecords: AppointmentRecord[] = [];
+  private missedTimer: any;
 
   private applyReminders(): void {
     if (this.remindersEnabled === null) return;
@@ -149,19 +151,24 @@ export class AppointmentsPage implements OnInit, OnDestroy {
   }
 
   private applyRecords(records: AppointmentRecord[]): void {
-    const todayIso = new Date().toISOString().slice(0, 10);
-    this.upcomingAppointments = records
-      .filter(r => r.status === 'upcoming' && r.date >= todayIso)
-      .map(r => this.toDisplay(r));
-    this.pastAppointments = records
-      .filter(r => r.status !== 'upcoming' || r.date < todayIso)
-      .map(r => this.toDisplay(r))
-      .reverse();
-
+    this.latestRecords = records;
+    this.splitRecords();
     // Recompute reminders whenever the appointment list changes — from
     // this device, the admin dashboard, or anywhere else.
-    this.latestRecords = records;
     this.applyReminders();
+  }
+
+  /** Upcoming until 30 minutes after the start time; after that a still-
+   *  upcoming appointment shows in Past as Missed (isMissedAppointment). */
+  private splitRecords(): void {
+    const now = new Date();
+    this.upcomingAppointments = this.latestRecords
+      .filter(r => r.status === 'upcoming' && !isMissedAppointment(r, now))
+      .map(r => this.toDisplay(r));
+    this.pastAppointments = this.latestRecords
+      .filter(r => r.status !== 'upcoming' || isMissedAppointment(r, now))
+      .map(r => ({ ...this.toDisplay(r), status: isMissedAppointment(r, now) ? 'missed' as const : r.status }))
+      .reverse();
   }
 
   toggleCard(index: number): void {
@@ -290,9 +297,14 @@ export class AppointmentsPage implements OnInit, OnDestroy {
     requestAnimationFrame(() => {
       setTimeout(() => (this.animReady = true), 80);
     });
+
+    // Moves an appointment to Past once its 30 minutes are up, without
+    // reopening the page (display only; reminders aren't rescheduled).
+    this.missedTimer = setInterval(() => this.splitRecords(), 60000);
   }
 
   ngOnDestroy(): void {
+    clearInterval(this.missedTimer);
     this.themeSub?.unsubscribe();
     this.apptSub?.unsubscribe();
     this.userSub?.unsubscribe();

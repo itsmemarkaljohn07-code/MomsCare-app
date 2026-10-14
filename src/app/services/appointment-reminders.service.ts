@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import { NotificationsService } from './notifications.service';
 import { AppointmentRecord } from './appointments.service';
 import { ReminderSchedulerService } from './reminder-scheduler.service';
+import { parseApptDateTime } from '../shared/appointment-status';
 
 // Distinct numeric range from the checklist reminders (991100-991199), so the
 // two reminder systems never collide on the same native notification ID.
@@ -15,20 +16,6 @@ function hashToOffset(id: string): number {
   return hash % 100000;
 }
 
-/** Same 12-hour time parsing already proven in the admin dashboard's
- *  appointment form — turns "9:30 AM" + "2026-09-15" into a real Date. */
-function parseApptDateTime(date: string, time: string): Date | null {
-  const match = time.match(/(\d+):(\d+)\s*(AM|PM)/i);
-  if (!match) return null;
-  const [, hStr, mStr, suffix] = match;
-  let hour = parseInt(hStr, 10);
-  const minute = parseInt(mStr, 10);
-  if (suffix.toUpperCase() === 'PM' && hour !== 12) hour += 12;
-  if (suffix.toUpperCase() === 'AM' && hour === 12) hour = 0;
-  const d = new Date(date + 'T00:00:00');
-  d.setHours(hour, minute, 0, 0);
-  return d;
-}
 
 @Injectable({ providedIn: 'root' })
 export class AppointmentRemindersService {

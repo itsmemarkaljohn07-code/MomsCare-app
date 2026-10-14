@@ -11,6 +11,7 @@ import { AuthService, UserProfile } from '../../services/auth.service';
 import { ProfileStoreService } from '../../services/profile-store.service';
 import { parseStoredDate } from '../../shared/date-utils';
 import { pregnancyStatus } from '../../shared/pregnancy-status';
+import { isMissedAppointment } from '../../shared/appointment-status';
 import { NotificationsService, AppNotification } from '../../services/notifications.service';
 import { AppointmentsService, AppointmentRecord } from '../../services/appointments.service';
 import { HealthService, HealthData } from '../../services/health.service';
@@ -423,9 +424,10 @@ export class HomePage implements OnInit, OnDestroy, DoCheck {
   }
 
   get upcomingAppointments() {
-    const todayIso = new Date().toISOString().slice(0, 10);
+    // Same rule as the Appointments page: gone 30 minutes after the start.
+    const now = new Date();
     return this.allAppointments
-      .filter(r => r.status === 'upcoming' && r.date >= todayIso)
+      .filter(r => r.status === 'upcoming' && !isMissedAppointment(r, now))
       .slice(0, 2)
       .map(r => this.toApptDisplay(r));
   }

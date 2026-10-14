@@ -381,6 +381,24 @@ export class HomePage implements OnInit, OnDestroy, DoCheck {
 
   get unreadCount(): number { return this.notifications.filter(n => !n.read).length; }
 
+  /** Which minimal icon a bell entry shows. Dashboard entries carry a
+   *  type; the app's own (checklist, appointment reminders) are known by
+   *  their stored emoji or title. The stored data is not changed. */
+  notifIcon(n: AppNotification): 'checklist' | 'calendar' | 'calendar-check' | 'calendar-x' | 'clock' | 'message' | 'bell' {
+    switch (n.type) {
+      case 'appointment_missed':   return 'clock';
+      case 'doctor_comment':       return 'message';
+      case 'appointment_created':  return 'calendar';
+      case 'appointment_approved': return 'calendar-check';
+      case 'appointment_declined': return 'calendar-x';
+      // Approved = the appointment is cancelled; declined = it still stands.
+      case 'cancellation_update':  return n.icon === '✅' ? 'calendar-x' : 'calendar-check';
+    }
+    if (n.icon === '📅') return 'calendar';
+    if (n.icon === '✅' || /checklist|reminder for mommy/i.test(n.title ?? '')) return 'checklist';
+    return 'bell';
+  }
+
   toggleNotifPanel(): void {
     this.showNotifPanel = !this.showNotifPanel;
   }

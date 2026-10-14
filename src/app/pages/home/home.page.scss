@@ -939,7 +939,12 @@ ion-content[data-theme="dark"] {
   &:hover { background: rgba(155,111,196,0.05); }
   &.notif-unread { background: rgba(217,96,154,0.05); }
 }
-.notif-item-icon { font-size: 1.4rem; flex-shrink: 0; margin-top: 2px; }
+.notif-item-icon {
+  width: 36px; height: 36px; flex-shrink: 0; margin-top: 2px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 12px;
+  background: rgba(181, 127, 212, 0.12); color: var(--purple);
+}
 .notif-item-body { flex: 1; }
 .notif-item-title {
   font-size: 0.82rem; font-weight: 800; color: var(--dark);

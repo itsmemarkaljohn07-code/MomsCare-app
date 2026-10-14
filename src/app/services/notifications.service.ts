@@ -17,6 +17,8 @@ export interface AppNotification {
   read: boolean;
   route?: string;
   createdAt?: any;
+  /** Set on entries from the clinic dashboard (e.g. 'appointment_missed'). */
+  type?: string;
 }
 
 @Injectable({ providedIn: 'root' })

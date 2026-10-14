@@ -2,7 +2,7 @@ import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
   appId: 'io.ionic.starter',
-  appName: 'DailyMom-app',
+  appName: 'MomCare',
   webDir: 'www',
   // Native and web-console logs only in debug builds, never in a release
   // build (it can leak information on the device). This is Capacitor's

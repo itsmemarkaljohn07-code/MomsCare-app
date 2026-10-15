@@ -47,7 +47,7 @@
               </span>
               <div class="vh-text">
                 <span class="vh-label">Weight</span>
-                <span class="vh-val">{{ viewingPhoto.healthSnapshot.weight }}kg</span>
+                <span class="vh-val">{{ showWeight(viewingPhoto.healthSnapshot.weight) }}{{ weightUnit }}</span>
               </div>
             </div>
             <div class="viewer-health-stat">
@@ -283,7 +283,7 @@
                         <rect x="3" y="4" width="12" height="11" rx="2.2" stroke="currentColor" stroke-width="1.5"/>
                         <rect x="6.5" y="6.7" width="5" height="2.4" rx="0.6" stroke="currentColor" stroke-width="1.2"/>
                       </svg>
-                      <span>{{ photo.healthSnapshot.weight }}kg</span>
+                      <span>{{ showWeight(photo.healthSnapshot.weight) }}{{ weightUnit }}</span>
                     </div>
                       <div class="back-stat">
                       <svg width="14" height="14" viewBox="0 0 18 18" fill="none">
@@ -376,7 +376,7 @@
             </div>
             <span class="hcard-label">Weight</span>
           </div>
-          <p class="hcard-val">{{ health.weight }}<span class="hcard-val-unit">kg</span></p>
+          <p class="hcard-val">{{ showWeight(health.weight) }}<span class="hcard-val-unit">{{ weightUnit }}</span></p>
           <div class="hcard-bar-wrap">
             <div class="hcard-bar-track">
               <div class="hcard-bar-fill"
@@ -445,7 +445,7 @@
               <div class="history-line"></div>
             </div>
             <div class="history-values">
-              <span class="history-chip">⚖️ {{ log.weight }}kg</span>
+              <span class="history-chip">⚖️ {{ showWeight(log.weight) }}{{ weightUnit }}</span>
               <span class="history-chip">❤️ {{ log.bpSys }}/{{ log.bpDia }}</span>
               <span class="history-chip">👣 {{ log.kicks }}</span>
               <span class="history-chip">{{ moodNames[log.mood] }}</span>
@@ -499,8 +499,8 @@
           <input class="health-input" type="number" step="0.1"
                  [(ngModel)]="healthDraft.weight"
                  (focus)="activeField='weight'" (blur)="activeField=''"
-                 placeholder="e.g. 62.4" />
-          <span class="input-unit">kg</span>
+                 [placeholder]="weightUnit === 'lbs' ? 'e.g. 137.6' : 'e.g. 62.4'" />
+          <span class="input-unit">{{ weightUnit }}</span>
         </div>
       </div>
 

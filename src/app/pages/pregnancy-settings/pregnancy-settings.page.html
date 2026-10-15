@@ -58,28 +58,39 @@
 
       <!-- Pregnancy dates -->
       <p class="section-label">Pregnancy Dates</p>
+      <!-- The dates and calculation method are locked until Edit Settings, like
+           Edit Profile; the other settings below stay editable. -->
+      <div class="edit-toggle-row">
+        <button class="edit-toggle-btn" (click)="toggleEdit()" [disabled]="!isLoaded">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+            <path d="M9.5 1.5l3 3-7.5 7.5H2v-3l7.5-7.5z" stroke="currentColor"
+                  stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          {{ editMode ? 'Cancel Editing' : 'Edit Settings' }}
+        </button>
+      </div>
       <div class="card" [class.is-locked]="!isLoaded" [attr.aria-busy]="loadState === 'loading'">
         <div class="field-group">
           <label class="field-label">Current Pregnancy Week</label>
           <!-- Nudges Expected Due Date below by a week instead of
                storing its own number -- see adjustWeek() for why. -->
           <div class="week-stepper">
-            <button class="stepper-btn" (click)="adjustWeek(-1)" [disabled]="!isLoaded">−</button>
+            <button class="stepper-btn" (click)="adjustWeek(-1)" [disabled]="!isLoaded || !editMode">−</button>
             <span class="stepper-val">Week {{ isLoaded ? pregnancyWeek : '–' }}</span>
-            <button class="stepper-btn plus" (click)="adjustWeek(1)" [disabled]="!isLoaded">+</button>
+            <button class="stepper-btn plus" (click)="adjustWeek(1)" [disabled]="!isLoaded || !editMode">+</button>
           </div>
         </div>
         <div class="field-group">
           <label class="field-label">Expected Due Date</label>
-          <mc-datepicker label="Expected Due Date" [(ngModel)]="settings.dueDate" [disabled]="!isLoaded"></mc-datepicker>
+          <mc-datepicker label="Expected Due Date" [(ngModel)]="settings.dueDate" [disabled]="!isLoaded || !editMode"></mc-datepicker>
         </div>
         <div class="field-group">
           <label class="field-label">Last Menstrual Period (LMP)</label>
-          <mc-datepicker label="Last Menstrual Period (LMP)" [(ngModel)]="settings.lmpDate" [disabled]="!isLoaded" [clearable]="true"></mc-datepicker>
+          <mc-datepicker label="Last Menstrual Period (LMP)" [(ngModel)]="settings.lmpDate" [disabled]="!isLoaded || !editMode" [clearable]="true"></mc-datepicker>
         </div>
         <div class="field-group">
           <label class="field-label">Calculation Method</label>
-          <mc-dropdown label="Calculation Method" [options]="calcMethodOptions" [(ngModel)]="settings.calcMethod" [disabled]="!isLoaded"></mc-dropdown>
+          <mc-dropdown label="Calculation Method" [options]="calcMethodOptions" [(ngModel)]="settings.calcMethod" [disabled]="!isLoaded || !editMode"></mc-dropdown>
         </div>
         <div class="field-group">
           <label class="field-label">Weight Unit</label>

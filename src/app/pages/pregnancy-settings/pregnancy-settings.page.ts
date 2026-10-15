@@ -106,6 +106,10 @@ export class PregnancySettingsPage implements OnInit, OnDestroy, ViewWillEnter, 
   // that differ from it, so an untouched field (e.g. a date stored at
   // registration) is never rewritten, shifted or reset.
   private loaded: PregnancySettingsForm = { ...this.settings, notificationPrefs: {} };
+  /** The week stepper, due date, LMP and calculation method are locked
+   *  until Edit Settings (like Edit Profile). Weight unit, high-risk, kick
+   *  time and the notification switches are always editable. */
+  editMode = false;
 
   notifToggles = [
     // Descriptions state when each one really fires. Weekly and vitamin
@@ -174,7 +178,21 @@ export class PregnancySettingsPage implements OnInit, OnDestroy, ViewWillEnter, 
    *  back, so OnInit alone wouldn't re-fire -- same reasoning as
    *  profile.page.ts and profile-edit.page.ts. */
   ionViewWillEnter(): void {
+    // Every visit starts locked (see editMode).
+    this.editMode = false;
     void this.loadProfile();
+  }
+
+  /** Edit Settings unlocks the dates and calculation method; Cancel Editing
+   *  locks them again and puts back the last loaded/saved values. */
+  toggleEdit(): void {
+    if (!this.isLoaded) return;
+    if (this.editMode) {
+      this.settings.dueDate = this.loaded.dueDate;
+      this.settings.lmpDate = this.loaded.lmpDate;
+      this.settings.calcMethod = this.loaded.calcMethod;
+    }
+    this.editMode = !this.editMode;
   }
 
   /** A load still running when the page is left is ignored. */
@@ -266,6 +284,8 @@ export class PregnancySettingsPage implements OnInit, OnDestroy, ViewWillEnter, 
         }
         this.loaded = current;
       }
+      // Saved: the dates lock again.
+      this.editMode = false;
       // Reminders live on this phone, so they follow the saved switches
       // even while the write is still waiting to reach the server.
       await this.updateReminders(notificationPrefs);

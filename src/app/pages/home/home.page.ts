@@ -11,6 +11,7 @@ import { AuthService, UserProfile } from '../../services/auth.service';
 import { ProfileStoreService } from '../../services/profile-store.service';
 import { parseStoredDate } from '../../shared/date-utils';
 import { pregnancyStatus } from '../../shared/pregnancy-status';
+import { WeightUnit, kgToUnit, weightUnitOf } from '../../shared/weight-units';
 import { isMissedAppointment } from '../../shared/appointment-status';
 import { NotificationsService, AppNotification } from '../../services/notifications.service';
 import { AppointmentsService, AppointmentRecord } from '../../services/appointments.service';
@@ -473,6 +474,9 @@ export class HomePage implements OnInit, OnDestroy, DoCheck {
   // this card navigates there.
   // ════════════════════════════════════════════════════════
   health: HealthData = { weight: 0, bpSys: 0, bpDia: 0, kicks: 0, mood: 2 };
+  /** Weight Unit from the live profile (Pregnancy Settings); health data stays in kg. */
+  weightUnit: WeightUnit = 'kg';
+  showWeight(kg: number): number { return kgToUnit(kg, this.weightUnit); }
 
   get bpDisplay(): string {
     return this.health.bpSys && this.health.bpDia
@@ -753,6 +757,7 @@ export class HomePage implements OnInit, OnDestroy, DoCheck {
    *  in Pregnancy Settings while this page stays alive in the background. */
   private applyProfile(profile: UserProfile | null): void {
     this.isLoadingUser = false;
+    this.weightUnit = weightUnitOf(profile?.weightUnit);
     if (!profile) return;
     this.currentUser = {
       fullName:     profile.fullName || '',

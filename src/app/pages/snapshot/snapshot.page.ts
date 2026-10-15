@@ -10,6 +10,7 @@ import { AuthService } from '../../services/auth.service';
 import { ProfileStoreService } from '../../services/profile-store.service';
 import { parseStoredDate } from '../../shared/date-utils';
 import { pregnancyStatus } from '../../shared/pregnancy-status';
+import { WeightUnit, kgToUnit, unitToKg, weightUnitOf } from '../../shared/weight-units';
 import { HealthService, HealthData } from '../../services/health.service';
 import { PhotoService, SnapshotPhotoRecord, HealthSnapshotAtUpload, PickerProblem } from '../../services/photo.service';
 import { CommentService, SnapshotComment } from '../../services/comment.service';
@@ -424,6 +425,10 @@ export class SnapshotPage implements OnInit, OnDestroy {
   healthHistory: HealthLog[] = [];
 
   healthDraft = { weight: 0, bpSys: 120, bpDia: 80, kicks: 0, mood: 2 };
+  /** Weight Unit from the live profile (Pregnancy Settings); stored values stay kg. */
+  weightUnit: WeightUnit = 'kg';
+  /** The weight the form opened with, in that unit. */
+  private draftWeightShown = 0;
   showHealthForm = false;
   activeField = '';
 
@@ -447,9 +452,16 @@ export class SnapshotPage implements OnInit, OnDestroy {
     return Array(Math.max(10, this.health.kicks)).fill(0);
   }
 
+  /** A stored (kg) weight in the patient's unit, e.g. "137.6". */
+  showWeight(kg: number): number {
+    return kgToUnit(kg, this.weightUnit);
+  }
+
   openHealthForm(): void {
+    // The weight is typed in the patient's unit; it's stored in kg.
+    this.draftWeightShown = kgToUnit(this.health.weight, this.weightUnit);
     this.healthDraft = {
-      weight: this.health.weight,
+      weight: this.draftWeightShown,
       bpSys:  this.health.bpSys,
       bpDia:  this.health.bpDia,
       kicks:  this.health.kicks,
@@ -473,8 +485,13 @@ export class SnapshotPage implements OnInit, OnDestroy {
 
   async saveHealth(): Promise<void> {
     if (!this.currentUid) { this.closeHealthForm(); return; }
+    // An unchanged weight keeps the stored kg exactly (converting the
+    // rounded display back would drift it, e.g. 62.4 -> 137.6 lbs -> 62.41).
+    const weight = Number(this.healthDraft.weight) === this.draftWeightShown
+      ? this.health.weight
+      : unitToKg(this.healthDraft.weight, this.weightUnit);
     const payload: HealthData = {
-      weight: this.healthDraft.weight,
+      weight,
       bpSys:  this.healthDraft.bpSys,
       bpDia:  this.healthDraft.bpDia,
       kicks:  this.healthDraft.kicks,
@@ -533,6 +550,7 @@ export class SnapshotPage implements OnInit, OnDestroy {
     this.profileSub = this.profileStore.profile$.subscribe(profile => {
       if (profile?.fullName) this.currentUserName = profile.fullName;
       this.currentDueDate = profile?.dueDate ?? null;
+      this.weightUnit = weightUnitOf(profile?.weightUnit);
     });
 
     // Read on every visit (Ionic keeps this page alive), so a push tapped

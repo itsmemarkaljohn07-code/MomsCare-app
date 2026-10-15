@@ -607,3 +607,20 @@ ion-content { --background: var(--bg); }
 }
 .card.is-locked, .toggle-row.is-locked { opacity: 0.55; }
 .btn-primary:disabled { opacity: 0.55; cursor: default; box-shadow: none; transform: none; }
+
+/* Edit Settings / Cancel Editing: same look as Profile Edit's Edit Profile. */
+.edit-toggle-row {
+  width: calc(100% - 32px); max-width: 440px; display: flex; justify-content: flex-end; margin: -2px 0 8px;
+}
+.edit-toggle-btn {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 0.78rem; font-weight: 800; color: var(--purple);
+  font-family: 'Nunito','Poppins',sans-serif;
+  background: rgba(181,127,212,0.10); border: 1px solid rgba(181,127,212,0.20);
+  border-radius: 99px; padding: 6px 14px; cursor: pointer;
+  transition: background 0.18s;
+  &:hover { background: rgba(181,127,212,0.16); }
+  &:disabled { opacity: 0.6; cursor: default; pointer-events: none; }
+}
+/* The locked week stepper fades like the other locked fields. */
+.stepper-btn:disabled { opacity: 0.6; cursor: default; pointer-events: none; }

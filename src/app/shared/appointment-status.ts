@@ -2,11 +2,12 @@
 //
 // When an appointment counts as Missed in the patient app. The stored
 // status stays as the clinic set it; the app only shows "Missed" for an
-// appointment still marked upcoming whose start time passed more than
-// MISSED_GRACE_MINUTES ago (the clinic marks attended ones Completed).
+// appointment still marked upcoming whose start time passed at least
+// MISSED_AFTER_MS ago (the clinic marks attended ones Completed). Same
+// 3 hours as the clinic dashboard, which stores the missed status.
 
 /** How long after the start time an appointment still counts as upcoming. */
-export const MISSED_GRACE_MINUTES = 30;
+export const MISSED_AFTER_MS = 3 * 60 * 60 * 1000; // 3 hours
 
 /** Same 12-hour time parsing already proven in the admin dashboard's
  *  appointment form — turns "9:30 AM" + "2026-09-15" into a real Date. */
@@ -24,14 +25,14 @@ export function parseApptDateTime(date: string, time: string): Date | null {
 }
 
 /** True when the appointment is Missed: stored as missed, or still
- *  upcoming more than MISSED_GRACE_MINUTES after it started. Without a
+ *  upcoming at least MISSED_AFTER_MS after it started. Without a
  *  readable time, it is missed once its day has passed. */
 export function isMissedAppointment(appt: { status: string; date: string; time?: string | null }, now: Date): boolean {
   if (appt.status === 'missed') return true;
   if (appt.status !== 'upcoming') return false;
   const start = parseApptDateTime(appt.date, appt.time ?? '');
   if (start && !isNaN(start.getTime())) {
-    return now.getTime() > start.getTime() + MISSED_GRACE_MINUTES * 60 * 1000;
+    return now.getTime() >= start.getTime() + MISSED_AFTER_MS;
   }
   const dayEnd = new Date(appt.date + 'T00:00:00');
   if (isNaN(dayEnd.getTime())) return false;

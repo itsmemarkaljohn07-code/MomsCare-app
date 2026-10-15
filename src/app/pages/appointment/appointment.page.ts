@@ -158,7 +158,7 @@ export class AppointmentsPage implements OnInit, OnDestroy {
     this.applyReminders();
   }
 
-  /** Upcoming until 30 minutes after the start time; after that a still-
+  /** Upcoming until 3 hours after the start time; after that a still-
    *  upcoming appointment shows in Past as Missed (isMissedAppointment). */
   private splitRecords(): void {
     const now = new Date();
@@ -298,7 +298,7 @@ export class AppointmentsPage implements OnInit, OnDestroy {
       setTimeout(() => (this.animReady = true), 80);
     });
 
-    // Moves an appointment to Past once its 30 minutes are up, without
+    // Moves an appointment to Past once its 3 hours are up, without
     // reopening the page (display only; reminders aren't rescheduled).
     this.missedTimer = setInterval(() => this.splitRecords(), 60000);
   }

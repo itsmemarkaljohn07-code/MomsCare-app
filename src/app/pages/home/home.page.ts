@@ -481,7 +481,7 @@ export class HomePage implements OnInit, OnDestroy, DoCheck {
   }
 
   get upcomingAppointments() {
-    // Same rule as the Appointments page: gone 30 minutes after the start.
+    // Same rule as the Appointments page: gone 3 hours after the start.
     const now = new Date();
     return this.allAppointments
       .filter(r => r.status === 'upcoming' && !isMissedAppointment(r, now))

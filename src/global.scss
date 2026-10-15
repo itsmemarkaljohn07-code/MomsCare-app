@@ -131,6 +131,27 @@ body.dark ion-toast.momcare-toast--success {
   &::part(button) { color: #59f3a6; }
 }
 ion-toast.momcare-toast--error   { --background: linear-gradient(135deg, #e05580, #c4456b); }
-ion-toast.momcare-toast--info    { --background: #6b4f8a; }
+/* Info ("No changes to save.", queued saves): same design as success,
+   in the app's violet. */
+ion-toast.momcare-toast--info {
+  --background: #f7f0fc;
+  --color: #6b3fa0;
+  --button-color: #6b3fa0;
+  --border-color: #e2cff3;
+  --border-style: solid;
+  --border-width: 1px;
+  --box-shadow: 0 8px 24px rgba(107, 63, 160, 0.16);
+
+  &::part(icon) { font-size: 22px; color: #9b6fc4; }
+  &::part(button) { color: #6b3fa0; }
+}
 body.dark ion-toast.momcare-toast { --box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5); }
-body.dark ion-toast.momcare-toast--info { --background: #4a3566; }
+body.dark ion-toast.momcare-toast--info {
+  --background: #1f1230;
+  --color: #d9bff2;
+  --button-color: #d9bff2;
+  --border-color: #3d2560;
+
+  &::part(icon) { color: #c39be6; }
+  &::part(button) { color: #d9bff2; }
+}

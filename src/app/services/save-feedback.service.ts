@@ -1,7 +1,7 @@
 // save-feedback.service.ts
 import { Injectable } from '@angular/core';
 import { Animation, ToastController, createAnimation } from '@ionic/angular/standalone';
-import { checkmarkCircle } from 'ionicons/icons';
+import { checkmarkCircle, informationCircle } from 'ionicons/icons';
 
 /** Toasts slide down a little while fading in, and drift up while fading
  *  out, instead of the default plain fade. Position 'top' only (all of
@@ -106,8 +106,9 @@ export class SaveFeedbackService {
         duration: kind === 'error' ? Math.max(durationMs, 6000) : durationMs,
         position: 'top',
         cssClass: ['momcare-toast', `momcare-toast--${kind}`],
-        // Green with a check icon, like the dashboard's confirmations.
-        icon: kind === 'success' ? checkmarkCircle : undefined,
+        // Green with a check icon, like the dashboard's confirmations;
+        // info is the same design in violet with an "i" icon.
+        icon: kind === 'success' ? checkmarkCircle : kind === 'info' ? informationCircle : undefined,
         buttons: [{ text: 'OK', role: 'cancel' }],
         enterAnimation: toastEnterAnimation,
         leaveAnimation: toastLeaveAnimation,

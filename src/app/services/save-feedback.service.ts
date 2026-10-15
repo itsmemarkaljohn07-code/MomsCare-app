@@ -1,6 +1,39 @@
 // save-feedback.service.ts
 import { Injectable } from '@angular/core';
-import { ToastController } from '@ionic/angular/standalone';
+import { Animation, ToastController, createAnimation } from '@ionic/angular/standalone';
+import { checkmarkCircle } from 'ionicons/icons';
+
+/** Toasts slide down a little while fading in, and drift up while fading
+ *  out, instead of the default plain fade. Position 'top' only (all of
+ *  these toasts are shown at the top). */
+const TOAST_EASE_OUT = 'cubic-bezier(0.22, 1, 0.36, 1)';
+
+function toastWrapper(baseEl: HTMLElement): HTMLElement {
+  return (baseEl.shadowRoot ?? baseEl).querySelector('.toast-wrapper') as HTMLElement;
+}
+
+function toastEnterAnimation(baseEl: HTMLElement, opts?: { top?: string }): Animation {
+  const top = opts?.top ?? '0px';
+  const wrapper = toastWrapper(baseEl);
+  wrapper.style.setProperty('transform', `translateY(${top})`);
+  return createAnimation()
+    .addElement(wrapper)
+    .duration(420)
+    .easing(TOAST_EASE_OUT)
+    .fromTo('transform', `translateY(calc(${top} - 18px)) scale(0.97)`, `translateY(${top}) scale(1)`)
+    .fromTo('opacity', 0.01, 1);
+}
+
+function toastLeaveAnimation(baseEl: HTMLElement): Animation {
+  const wrapper = toastWrapper(baseEl);
+  const current = wrapper.style.getPropertyValue('transform') || 'translateY(0px)';
+  return createAnimation()
+    .addElement(wrapper)
+    .duration(260)
+    .easing('cubic-bezier(0.4, 0, 1, 1)')
+    .fromTo('transform', current, `${current} translateY(-12px) scale(0.97)`)
+    .fromTo('opacity', 0.99, 0);
+}
 
 export type FeedbackKind = 'success' | 'error' | 'info';
 
@@ -73,7 +106,11 @@ export class SaveFeedbackService {
         duration: kind === 'error' ? Math.max(durationMs, 6000) : durationMs,
         position: 'top',
         cssClass: ['momcare-toast', `momcare-toast--${kind}`],
+        // Green with a check icon, like the dashboard's confirmations.
+        icon: kind === 'success' ? checkmarkCircle : undefined,
         buttons: [{ text: 'OK', role: 'cancel' }],
+        enterAnimation: toastEnterAnimation,
+        leaveAnimation: toastLeaveAnimation,
       });
       this.current = toast;
       await toast.present();

@@ -161,17 +161,33 @@
       <div class="fetus-viewer" [style]="stageEdgeStyle">
         <div class="fetus-stage" [style.--ar]="activeFetusAr">
           <div class="fetus-backplate" aria-hidden="true"></div>
-          <img *ngFor="let layer of fetusLayers; trackBy: trackFetusLayer"
-               class="fetus-img"
-               [class.fetus-img--active]="isActiveFetusLayer(layer)"
-               [class.fetus-img--failed]="layer.failed"
-               [style.--ar]="layer.ar"
-               [src]="layer.src"
-               [alt]="isActiveFetusLayer(layer) ? 'Illustration of a baby at around week ' + fetusImageWeek + ' of pregnancy' : ''"
-               [attr.aria-hidden]="isActiveFetusLayer(layer) ? null : 'true'"
-               (load)="onFetusImageLoad(layer, $event)"
-               (error)="onFetusImageError(layer)"
-               decoding="async"/>
+          <ng-container *ngFor="let layer of fetusLayers; trackBy: trackFetusLayer">
+            <!-- The picture with its soft edge, dissolving into the stage. -->
+            <img class="fetus-img"
+                 [class.fetus-img--active]="isActiveFetusLayer(layer)"
+                 [class.fetus-img--failed]="layer.failed"
+                 [style.--ar]="layer.ar"
+                 [src]="layer.src"
+                 [alt]="isActiveFetusLayer(layer) ? 'Illustration of a baby at around week ' + fetusImageWeek + ' of pregnancy' : ''"
+                 [attr.aria-hidden]="isActiveFetusLayer(layer) ? null : 'true'"
+                 (load)="onFetusImageLoad(layer, $event)"
+                 (error)="onFetusImageError(layer)"
+                 decoding="async"/>
+            <!-- The same picture again, solid only inside a soft oval around
+                 the fetus (with room around it), so the soft edge above never
+                 fades the baby. Same file, so it is already loaded. -->
+            <img class="fetus-img fetus-img--core"
+                 [class.fetus-img--active]="isActiveFetusLayer(layer)"
+                 [class.fetus-img--failed]="layer.failed"
+                 [style.--ar]="layer.ar"
+                 [style.--oval-x]="layer.oval.x + '%'"
+                 [style.--oval-y]="layer.oval.y + '%'"
+                 [style.--oval-rx]="layer.oval.rx + '%'"
+                 [style.--oval-ry]="layer.oval.ry + '%'"
+                 [src]="layer.src"
+                 alt="" aria-hidden="true"
+                 decoding="async"/>
+          </ng-container>
         </div>
       </div>
 

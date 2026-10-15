@@ -1,4 +1,33 @@
 /* home.page.scss */
+@use 'sass:list';
+@use 'sass:math';
+
+/* Smoothstep (3t^2 - 2t^3) mask ramps, sampled at eighths: an even ramp
+   leaves a faint line where it meets the flat part. Positions may be calc()
+   expressions. smooth-in goes from transparent at $from to opaque at $to;
+   smooth-out the other way. */
+$smoothstep: (0, 0.043, 0.156, 0.316, 0.5, 0.684, 0.844, 0.957, 1);
+/* A position $t of the way from $from to $to, written as short as possible. */
+@function _ramp-pos($from, $to, $t) {
+  @if $t == 0 { @return $from; }
+  @if $t == 1 { @return $to; }
+  @if $from == 0% { @return calc(#{$to} * #{$t}); }
+  @return calc(#{$from} + (#{$to} - #{$from}) * #{$t});
+}
+@function smooth-in($from, $to) {
+  $stops: ();
+  @for $i from 0 through 8 {
+    $stops: list.append($stops, rgba(0,0,0,list.nth($smoothstep, $i + 1)) _ramp-pos($from, $to, math.div($i, 8)), comma);
+  }
+  @return $stops;
+}
+@function smooth-out($from, $to) {
+  $stops: ();
+  @for $i from 0 through 8 {
+    $stops: list.append($stops, rgba(0,0,0,list.nth($smoothstep, 9 - $i)) _ramp-pos($from, $to, math.div($i, 8)), comma);
+  }
+  @return $stops;
+}
 
 /* ══════════════════════════════════════════
    LIGHT THEME
@@ -292,8 +321,7 @@ ion-content[data-theme="dark"] {
 @property --stage-right  { syntax: '<color>'; inherits: true; initial-value: #3a0f1c; }
 
 .fetus-viewer {
-  --fetus-fade: 80px;      /* the soft fade above and below the stage */
-  --fetus-feather: 14%;    /* the image's own feathered edge (eased) */
+  --fetus-fade: 56px;      /* the soft fade above and below the stage */
   --fetus-fade-time: 200ms;
 
   position: relative;
@@ -305,8 +333,9 @@ ion-content[data-theme="dark"] {
     radial-gradient(60% 55% at 50% 50%, var(--stage-centre), transparent 75%),
     linear-gradient(to bottom,
       var(--stage-top) 0, var(--stage-edge) 45%, var(--stage-edge) 55%, var(--stage-bottom) 100%);
-  -webkit-mask-image: linear-gradient(to bottom, rgba(0,0,0,0) 0, rgba(0,0,0,0.043) calc(var(--fetus-fade) * 0.125), rgba(0,0,0,0.156) calc(var(--fetus-fade) * 0.25), rgba(0,0,0,0.316) calc(var(--fetus-fade) * 0.375), rgba(0,0,0,0.5) calc(var(--fetus-fade) * 0.5), rgba(0,0,0,0.684) calc(var(--fetus-fade) * 0.625), rgba(0,0,0,0.844) calc(var(--fetus-fade) * 0.75), rgba(0,0,0,0.957) calc(var(--fetus-fade) * 0.875), #000 var(--fetus-fade), #000 calc(100% - var(--fetus-fade)), rgba(0,0,0,0.957) calc(100% - var(--fetus-fade) * 0.875), rgba(0,0,0,0.844) calc(100% - var(--fetus-fade) * 0.75), rgba(0,0,0,0.684) calc(100% - var(--fetus-fade) * 0.625), rgba(0,0,0,0.5) calc(100% - var(--fetus-fade) * 0.5), rgba(0,0,0,0.316) calc(100% - var(--fetus-fade) * 0.375), rgba(0,0,0,0.156) calc(100% - var(--fetus-fade) * 0.25), rgba(0,0,0,0.043) calc(100% - var(--fetus-fade) * 0.125), rgba(0,0,0,0) 100%);
-  mask-image: linear-gradient(to bottom, rgba(0,0,0,0) 0, rgba(0,0,0,0.043) calc(var(--fetus-fade) * 0.125), rgba(0,0,0,0.156) calc(var(--fetus-fade) * 0.25), rgba(0,0,0,0.316) calc(var(--fetus-fade) * 0.375), rgba(0,0,0,0.5) calc(var(--fetus-fade) * 0.5), rgba(0,0,0,0.684) calc(var(--fetus-fade) * 0.625), rgba(0,0,0,0.844) calc(var(--fetus-fade) * 0.75), rgba(0,0,0,0.957) calc(var(--fetus-fade) * 0.875), #000 var(--fetus-fade), #000 calc(100% - var(--fetus-fade)), rgba(0,0,0,0.957) calc(100% - var(--fetus-fade) * 0.875), rgba(0,0,0,0.844) calc(100% - var(--fetus-fade) * 0.75), rgba(0,0,0,0.684) calc(100% - var(--fetus-fade) * 0.625), rgba(0,0,0,0.5) calc(100% - var(--fetus-fade) * 0.5), rgba(0,0,0,0.316) calc(100% - var(--fetus-fade) * 0.375), rgba(0,0,0,0.156) calc(100% - var(--fetus-fade) * 0.25), rgba(0,0,0,0.043) calc(100% - var(--fetus-fade) * 0.125), rgba(0,0,0,0) 100%);
+  --fetus-vmask: linear-gradient(to bottom, rgba(0,0,0,0) 0, rgba(0,0,0,0.043) calc(var(--fetus-fade) * 0.125), rgba(0,0,0,0.156) calc(var(--fetus-fade) * 0.25), rgba(0,0,0,0.316) calc(var(--fetus-fade) * 0.375), rgba(0,0,0,0.5) calc(var(--fetus-fade) * 0.5), rgba(0,0,0,0.684) calc(var(--fetus-fade) * 0.625), rgba(0,0,0,0.844) calc(var(--fetus-fade) * 0.75), rgba(0,0,0,0.957) calc(var(--fetus-fade) * 0.875), #000 var(--fetus-fade), #000 calc(100% - var(--fetus-fade)), rgba(0,0,0,0.957) calc(100% - var(--fetus-fade) * 0.875), rgba(0,0,0,0.844) calc(100% - var(--fetus-fade) * 0.75), rgba(0,0,0,0.684) calc(100% - var(--fetus-fade) * 0.625), rgba(0,0,0,0.5) calc(100% - var(--fetus-fade) * 0.5), rgba(0,0,0,0.316) calc(100% - var(--fetus-fade) * 0.375), rgba(0,0,0,0.156) calc(100% - var(--fetus-fade) * 0.25), rgba(0,0,0,0.043) calc(100% - var(--fetus-fade) * 0.125), rgba(0,0,0,0) 100%);
+  -webkit-mask-image: var(--fetus-vmask);
+  mask-image: var(--fetus-vmask);
   transition:
     --stage-edge var(--fetus-fade-time) ease, --stage-centre var(--fetus-fade-time) ease,
     --stage-top var(--fetus-fade-time) ease, --stage-bottom var(--fetus-fade-time) ease,
@@ -317,14 +346,11 @@ ion-content[data-theme="dark"] {
    the page instead of at the screen edge, so feather them too. */
 @media (min-width: 721px) {
   .fetus-viewer {
-    --fetus-side-fade: 15%;
-    -webkit-mask-image:
-      linear-gradient(to bottom, rgba(0,0,0,0) 0, rgba(0,0,0,0.043) calc(var(--fetus-fade) * 0.125), rgba(0,0,0,0.156) calc(var(--fetus-fade) * 0.25), rgba(0,0,0,0.316) calc(var(--fetus-fade) * 0.375), rgba(0,0,0,0.5) calc(var(--fetus-fade) * 0.5), rgba(0,0,0,0.684) calc(var(--fetus-fade) * 0.625), rgba(0,0,0,0.844) calc(var(--fetus-fade) * 0.75), rgba(0,0,0,0.957) calc(var(--fetus-fade) * 0.875), #000 var(--fetus-fade), #000 calc(100% - var(--fetus-fade)), rgba(0,0,0,0.957) calc(100% - var(--fetus-fade) * 0.875), rgba(0,0,0,0.844) calc(100% - var(--fetus-fade) * 0.75), rgba(0,0,0,0.684) calc(100% - var(--fetus-fade) * 0.625), rgba(0,0,0,0.5) calc(100% - var(--fetus-fade) * 0.5), rgba(0,0,0,0.316) calc(100% - var(--fetus-fade) * 0.375), rgba(0,0,0,0.156) calc(100% - var(--fetus-fade) * 0.25), rgba(0,0,0,0.043) calc(100% - var(--fetus-fade) * 0.125), rgba(0,0,0,0) 100%),
-      linear-gradient(to right, rgba(0,0,0,0) 0, rgba(0,0,0,0.043) calc(var(--fetus-side-fade) * 0.125), rgba(0,0,0,0.156) calc(var(--fetus-side-fade) * 0.25), rgba(0,0,0,0.316) calc(var(--fetus-side-fade) * 0.375), rgba(0,0,0,0.5) calc(var(--fetus-side-fade) * 0.5), rgba(0,0,0,0.684) calc(var(--fetus-side-fade) * 0.625), rgba(0,0,0,0.844) calc(var(--fetus-side-fade) * 0.75), rgba(0,0,0,0.957) calc(var(--fetus-side-fade) * 0.875), #000 var(--fetus-side-fade), #000 calc(100% - var(--fetus-side-fade)), rgba(0,0,0,0.957) calc(100% - var(--fetus-side-fade) * 0.875), rgba(0,0,0,0.844) calc(100% - var(--fetus-side-fade) * 0.75), rgba(0,0,0,0.684) calc(100% - var(--fetus-side-fade) * 0.625), rgba(0,0,0,0.5) calc(100% - var(--fetus-side-fade) * 0.5), rgba(0,0,0,0.316) calc(100% - var(--fetus-side-fade) * 0.375), rgba(0,0,0,0.156) calc(100% - var(--fetus-side-fade) * 0.25), rgba(0,0,0,0.043) calc(100% - var(--fetus-side-fade) * 0.125), rgba(0,0,0,0) 100%);
+    --fetus-side-fade: 10%;
+    --fetus-hmask: linear-gradient(to right, rgba(0,0,0,0) 0, rgba(0,0,0,0.043) calc(var(--fetus-side-fade) * 0.125), rgba(0,0,0,0.156) calc(var(--fetus-side-fade) * 0.25), rgba(0,0,0,0.316) calc(var(--fetus-side-fade) * 0.375), rgba(0,0,0,0.5) calc(var(--fetus-side-fade) * 0.5), rgba(0,0,0,0.684) calc(var(--fetus-side-fade) * 0.625), rgba(0,0,0,0.844) calc(var(--fetus-side-fade) * 0.75), rgba(0,0,0,0.957) calc(var(--fetus-side-fade) * 0.875), #000 var(--fetus-side-fade), #000 calc(100% - var(--fetus-side-fade)), rgba(0,0,0,0.957) calc(100% - var(--fetus-side-fade) * 0.875), rgba(0,0,0,0.844) calc(100% - var(--fetus-side-fade) * 0.75), rgba(0,0,0,0.684) calc(100% - var(--fetus-side-fade) * 0.625), rgba(0,0,0,0.5) calc(100% - var(--fetus-side-fade) * 0.5), rgba(0,0,0,0.316) calc(100% - var(--fetus-side-fade) * 0.375), rgba(0,0,0,0.156) calc(100% - var(--fetus-side-fade) * 0.25), rgba(0,0,0,0.043) calc(100% - var(--fetus-side-fade) * 0.125), rgba(0,0,0,0) 100%);
+    -webkit-mask-image: var(--fetus-vmask), var(--fetus-hmask);
     -webkit-mask-composite: source-in;
-    mask-image:
-      linear-gradient(to bottom, rgba(0,0,0,0) 0, rgba(0,0,0,0.043) calc(var(--fetus-fade) * 0.125), rgba(0,0,0,0.156) calc(var(--fetus-fade) * 0.25), rgba(0,0,0,0.316) calc(var(--fetus-fade) * 0.375), rgba(0,0,0,0.5) calc(var(--fetus-fade) * 0.5), rgba(0,0,0,0.684) calc(var(--fetus-fade) * 0.625), rgba(0,0,0,0.844) calc(var(--fetus-fade) * 0.75), rgba(0,0,0,0.957) calc(var(--fetus-fade) * 0.875), #000 var(--fetus-fade), #000 calc(100% - var(--fetus-fade)), rgba(0,0,0,0.957) calc(100% - var(--fetus-fade) * 0.875), rgba(0,0,0,0.844) calc(100% - var(--fetus-fade) * 0.75), rgba(0,0,0,0.684) calc(100% - var(--fetus-fade) * 0.625), rgba(0,0,0,0.5) calc(100% - var(--fetus-fade) * 0.5), rgba(0,0,0,0.316) calc(100% - var(--fetus-fade) * 0.375), rgba(0,0,0,0.156) calc(100% - var(--fetus-fade) * 0.25), rgba(0,0,0,0.043) calc(100% - var(--fetus-fade) * 0.125), rgba(0,0,0,0) 100%),
-      linear-gradient(to right, rgba(0,0,0,0) 0, rgba(0,0,0,0.043) calc(var(--fetus-side-fade) * 0.125), rgba(0,0,0,0.156) calc(var(--fetus-side-fade) * 0.25), rgba(0,0,0,0.316) calc(var(--fetus-side-fade) * 0.375), rgba(0,0,0,0.5) calc(var(--fetus-side-fade) * 0.5), rgba(0,0,0,0.684) calc(var(--fetus-side-fade) * 0.625), rgba(0,0,0,0.844) calc(var(--fetus-side-fade) * 0.75), rgba(0,0,0,0.957) calc(var(--fetus-side-fade) * 0.875), #000 var(--fetus-side-fade), #000 calc(100% - var(--fetus-side-fade)), rgba(0,0,0,0.957) calc(100% - var(--fetus-side-fade) * 0.875), rgba(0,0,0,0.844) calc(100% - var(--fetus-side-fade) * 0.75), rgba(0,0,0,0.684) calc(100% - var(--fetus-side-fade) * 0.625), rgba(0,0,0,0.5) calc(100% - var(--fetus-side-fade) * 0.5), rgba(0,0,0,0.316) calc(100% - var(--fetus-side-fade) * 0.375), rgba(0,0,0,0.156) calc(100% - var(--fetus-side-fade) * 0.25), rgba(0,0,0,0.043) calc(100% - var(--fetus-side-fade) * 0.125), rgba(0,0,0,0) 100%);
+    mask-image: var(--fetus-vmask), var(--fetus-hmask);
     mask-composite: intersect;
   }
 }
@@ -359,10 +385,16 @@ ion-content[data-theme="dark"] {
 
 /* Each image is sized to its own aspect ratio (--ar, set when it loads)
    and centred, so its feathered edges sit on the picture's real edges.
-   The feather combines eased straight edges with an ellipse, so the
-   corners dissolve too and no rectangle shape is left. */
+   Two copies of each picture are drawn:
+     - .fetus-img: a soft eased edge plus an ellipse, so the picture
+       dissolves into the stage with no rectangle left;
+     - .fetus-img--core on top: the same picture, solid only inside a soft
+       oval around the fetus (with room around it, see fetusOvalFor), so the
+       edge fade never reaches the baby. Its own oval fade is smooth, so no
+       shape shows, and a slim edge fade keeps the picture's border hidden. */
 .fetus-img {
   --ar: 1.3333;
+  --fetus-feather: 11%;
   position: absolute;
   top: 50%; left: 50%;
   width: min(100cqw, calc(100cqh * var(--ar)));
@@ -373,19 +405,21 @@ ion-content[data-theme="dark"] {
   opacity: 0;
   transition: opacity var(--fetus-fade-time) ease;
 
-  -webkit-mask-image:
-    linear-gradient(to right, rgba(0,0,0,0) 0, rgba(0,0,0,0.043) calc(var(--fetus-feather) * 0.125), rgba(0,0,0,0.156) calc(var(--fetus-feather) * 0.25), rgba(0,0,0,0.316) calc(var(--fetus-feather) * 0.375), rgba(0,0,0,0.5) calc(var(--fetus-feather) * 0.5), rgba(0,0,0,0.684) calc(var(--fetus-feather) * 0.625), rgba(0,0,0,0.844) calc(var(--fetus-feather) * 0.75), rgba(0,0,0,0.957) calc(var(--fetus-feather) * 0.875), #000 var(--fetus-feather), #000 calc(100% - var(--fetus-feather)), rgba(0,0,0,0.957) calc(100% - var(--fetus-feather) * 0.875), rgba(0,0,0,0.844) calc(100% - var(--fetus-feather) * 0.75), rgba(0,0,0,0.684) calc(100% - var(--fetus-feather) * 0.625), rgba(0,0,0,0.5) calc(100% - var(--fetus-feather) * 0.5), rgba(0,0,0,0.316) calc(100% - var(--fetus-feather) * 0.375), rgba(0,0,0,0.156) calc(100% - var(--fetus-feather) * 0.25), rgba(0,0,0,0.043) calc(100% - var(--fetus-feather) * 0.125), rgba(0,0,0,0) 100%),
-    linear-gradient(to bottom, rgba(0,0,0,0) 0, rgba(0,0,0,0.043) calc(var(--fetus-feather) * 0.125), rgba(0,0,0,0.156) calc(var(--fetus-feather) * 0.25), rgba(0,0,0,0.316) calc(var(--fetus-feather) * 0.375), rgba(0,0,0,0.5) calc(var(--fetus-feather) * 0.5), rgba(0,0,0,0.684) calc(var(--fetus-feather) * 0.625), rgba(0,0,0,0.844) calc(var(--fetus-feather) * 0.75), rgba(0,0,0,0.957) calc(var(--fetus-feather) * 0.875), #000 var(--fetus-feather), #000 calc(100% - var(--fetus-feather)), rgba(0,0,0,0.957) calc(100% - var(--fetus-feather) * 0.875), rgba(0,0,0,0.844) calc(100% - var(--fetus-feather) * 0.75), rgba(0,0,0,0.684) calc(100% - var(--fetus-feather) * 0.625), rgba(0,0,0,0.5) calc(100% - var(--fetus-feather) * 0.5), rgba(0,0,0,0.316) calc(100% - var(--fetus-feather) * 0.375), rgba(0,0,0,0.156) calc(100% - var(--fetus-feather) * 0.25), rgba(0,0,0,0.043) calc(100% - var(--fetus-feather) * 0.125), rgba(0,0,0,0) 100%),
-    radial-gradient(closest-side, #000 72%, rgba(0,0,0,0.6) 86%, rgba(0,0,0,0) 100%);
+  --fetus-edge-x: linear-gradient(to right, #{smooth-in(0%, var(--fetus-feather))}, #{smooth-out(calc(100% - var(--fetus-feather)), 100%)});
+  --fetus-edge-y: linear-gradient(to bottom, #{smooth-in(0%, var(--fetus-feather))}, #{smooth-out(calc(100% - var(--fetus-feather)), 100%)});
+  --fetus-shape: radial-gradient(closest-side, #000 78%, rgba(0,0,0,0.6) 89%, rgba(0,0,0,0) 100%);
+  -webkit-mask-image: var(--fetus-edge-x), var(--fetus-edge-y), var(--fetus-shape);
   -webkit-mask-composite: source-in, source-in;
-  mask-image:
-    linear-gradient(to right, rgba(0,0,0,0) 0, rgba(0,0,0,0.043) calc(var(--fetus-feather) * 0.125), rgba(0,0,0,0.156) calc(var(--fetus-feather) * 0.25), rgba(0,0,0,0.316) calc(var(--fetus-feather) * 0.375), rgba(0,0,0,0.5) calc(var(--fetus-feather) * 0.5), rgba(0,0,0,0.684) calc(var(--fetus-feather) * 0.625), rgba(0,0,0,0.844) calc(var(--fetus-feather) * 0.75), rgba(0,0,0,0.957) calc(var(--fetus-feather) * 0.875), #000 var(--fetus-feather), #000 calc(100% - var(--fetus-feather)), rgba(0,0,0,0.957) calc(100% - var(--fetus-feather) * 0.875), rgba(0,0,0,0.844) calc(100% - var(--fetus-feather) * 0.75), rgba(0,0,0,0.684) calc(100% - var(--fetus-feather) * 0.625), rgba(0,0,0,0.5) calc(100% - var(--fetus-feather) * 0.5), rgba(0,0,0,0.316) calc(100% - var(--fetus-feather) * 0.375), rgba(0,0,0,0.156) calc(100% - var(--fetus-feather) * 0.25), rgba(0,0,0,0.043) calc(100% - var(--fetus-feather) * 0.125), rgba(0,0,0,0) 100%),
-    linear-gradient(to bottom, rgba(0,0,0,0) 0, rgba(0,0,0,0.043) calc(var(--fetus-feather) * 0.125), rgba(0,0,0,0.156) calc(var(--fetus-feather) * 0.25), rgba(0,0,0,0.316) calc(var(--fetus-feather) * 0.375), rgba(0,0,0,0.5) calc(var(--fetus-feather) * 0.5), rgba(0,0,0,0.684) calc(var(--fetus-feather) * 0.625), rgba(0,0,0,0.844) calc(var(--fetus-feather) * 0.75), rgba(0,0,0,0.957) calc(var(--fetus-feather) * 0.875), #000 var(--fetus-feather), #000 calc(100% - var(--fetus-feather)), rgba(0,0,0,0.957) calc(100% - var(--fetus-feather) * 0.875), rgba(0,0,0,0.844) calc(100% - var(--fetus-feather) * 0.75), rgba(0,0,0,0.684) calc(100% - var(--fetus-feather) * 0.625), rgba(0,0,0,0.5) calc(100% - var(--fetus-feather) * 0.5), rgba(0,0,0,0.316) calc(100% - var(--fetus-feather) * 0.375), rgba(0,0,0,0.156) calc(100% - var(--fetus-feather) * 0.25), rgba(0,0,0,0.043) calc(100% - var(--fetus-feather) * 0.125), rgba(0,0,0,0) 100%),
-    radial-gradient(closest-side, #000 72%, rgba(0,0,0,0.6) 86%, rgba(0,0,0,0) 100%);
+  mask-image: var(--fetus-edge-x), var(--fetus-edge-y), var(--fetus-shape);
   mask-composite: intersect, intersect;
 
   &--active { opacity: 1; }
   &--failed { display: none; }
+}
+.fetus-img--core {
+  --fetus-feather: 5%;
+  --fetus-shape: radial-gradient(var(--oval-rx) var(--oval-ry) at var(--oval-x) var(--oval-y), #000 0, #{smooth-out(62%, 100%)});
+  pointer-events: none;
 }
 
 @media (prefers-reduced-motion: reduce) {

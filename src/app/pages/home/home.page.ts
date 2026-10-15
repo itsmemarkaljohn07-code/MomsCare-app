@@ -18,7 +18,7 @@ import { HealthService, HealthData } from '../../services/health.service';
 import { ChecklistRemindersService, VITAMIN_CHECKLIST_ITEM_ID } from '../../services/checklist-reminders.service';
 import { dueChecklistBellSlots, localDateKey } from '../../services/checklist-reminder-plan';
 import type { PluginListenerHandle } from '@capacitor/core';
-import { FETUS_IMAGES, FetusImage, fetusImageFor } from '../../shared/fetus-images';
+import { FETUS_IMAGES, FetusImage, FetusKeep, fetusImageFor } from '../../shared/fetus-images';
 import { FALLBACK_EDGES, StageEdges, edgeStyle, sampleEdges } from '../../shared/stage-edges';
 import { Subscription } from 'rxjs';
 
@@ -37,6 +37,24 @@ interface FetusLayer {
   failed: boolean;
   /** Width / height, once loaded: sizes the image to its own shape. */
   ar: number;
+  /** A soft oval around the fetus (percent of the image): never faded. */
+  oval: { x: number; y: number; rx: number; ry: number };
+}
+
+/** Room around the fetus: the oval's radii are this much larger than half
+ *  the fetus rectangle, so it is never tight. */
+const FETUS_OVAL_ROOM = 1.25;
+
+/** The soft oval kept solid around the fetus, from the manifest rectangle
+ *  (a centred default for anything unlisted). Percent of the image. */
+function fetusOvalFor(src: string): { x: number; y: number; rx: number; ry: number } {
+  const k: FetusKeep = FETUS_IMAGES.find(i => i.file === src)?.keep ?? { left: 15, top: 10, right: 85, bottom: 90 };
+  return {
+    x: (k.left + k.right) / 2,
+    y: (k.top + k.bottom) / 2,
+    rx: ((k.right - k.left) / 2) * FETUS_OVAL_ROOM,
+    ry: ((k.bottom - k.top) / 2) * FETUS_OVAL_ROOM,
+  };
 }
 
 /** Crossfade between illustrations; keep in sync with home.page.scss. */
@@ -286,7 +304,7 @@ export class HomePage implements OnInit, OnDestroy, DoCheck {
     this.fetusLayerSrc = src;
     // Keep only the layer currently visible (to fade out) plus the new one.
     const visible = this.fetusLayers.filter(l => l.loaded && !l.failed).slice(-1);
-    this.fetusLayers = [...visible, { id: ++this.fetusLayerSeq, src, loaded: false, failed: false, ar: 4 / 3 }];
+    this.fetusLayers = [...visible, { id: ++this.fetusLayerSeq, src, loaded: false, failed: false, ar: 4 / 3, oval: fetusOvalFor(src) }];
   }
 
   trackFetusLayer(_: number, layer: FetusLayer): number {

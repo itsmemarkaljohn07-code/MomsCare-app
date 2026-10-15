@@ -2,20 +2,25 @@
 // Pure scheduling rules for the Daily Checklist reminders: no Capacitor, no
 // Angular, so every rule can be checked on its own.
 //
-// LIMITS (Android): local notifications are scheduled ahead of time and no
-// app code runs when one fires, so a reminder can't look at the checklist
-// at that moment. That's why the text is generic, and why the plan covers a
-// fixed horizon: it is rebuilt whenever the app starts, the patient signs
-// in or a checklist item changes. If the app isn't opened for
-// CHECKLIST_REMINDER_HORIZON_DAYS days, the reminders simply run out.
-// On-time delivery also depends on the exact-alarm permission and the
-// phone's battery settings (some phones delay alarms in power saving).
+// Each checklist activity has its own reminder times (device local time),
+// and its reminders exist only while THAT item is unchecked today. Meals
+// and rest are split into sub-items (breakfast/lunch/dinner, morning and
+// afternoon rest), each with its own reminder; their parent rows have no
+// reminder and count as done only when all their sub-items are.
+//
+// LIMITS (Android) -- do not promise guaranteed delivery:
+//  - Reminders are local alarms scheduled ahead of time. No app code runs
+//    when one fires, so a reminder can't check the checklist at that
+//    moment; the plan is rebuilt whenever the app starts, the patient signs
+//    in or an item is ticked/unticked.
+//  - The plan covers CHECKLIST_REMINDER_HORIZON_DAYS days. If the app isn't
+//    opened in that time, the reminders run out.
+//  - Battery saving (and the exact-alarm permission) can delay alarms; while
+//    the phone is idle Android delivers at most one such alarm per ~9
+//    minutes, which is why reminders at the same time are 10 minutes apart.
+//  - "Force stop" in Android settings cancels all of the app's alarms until
+//    the app is opened again.
 
-/** Hours between reminders while items are unchecked. */
-export const CHECKLIST_REMINDER_INTERVAL_HOURS = 2;
-/** Reminders only inside this waking window (local time, inclusive). */
-export const CHECKLIST_REMINDER_WINDOW_START_HOUR = 9;
-export const CHECKLIST_REMINDER_WINDOW_END_HOUR = 21;
 /** Today plus the next two days. */
 export const CHECKLIST_REMINDER_HORIZON_DAYS = 3;
 
@@ -31,90 +36,124 @@ export const ALL_CHECKLIST_REMINDER_IDS: number[] = Array.from(
 export const LEGACY_CHECKLIST_REMINDER_ID = 991001;
 
 export const CHECKLIST_REMINDER_TITLE = 'A Little Reminder for Mommy 💗';
-export const CHECKLIST_REMINDER_VITAMIN_BODY = 'Take your prenatal vitamins every day, Mommy! 💊';
-export const CHECKLIST_REMINDER_GENERAL_BODY =
-  "You still have a few things left on today's checklist. One small step at a time! ✨";
 
-/** The reminder text for each Home checklist item (by item id, in checklist
- *  order), with the same emoji the checklist shows. A reminder names the
- *  first item still unchecked today. */
-export const CHECKLIST_ITEM_REMINDER_BODIES: Record<number, string> = {
-  1: CHECKLIST_REMINDER_VITAMIN_BODY,
-  2: "Don't forget to drink your 8 glasses of water today, Mommy! 💧",
-  3: 'Time for a light walk or some gentle stretching, Mommy! 🚶',
-  4: 'Have you had a veggie-rich meal today, Mommy? 🥗',
-  5: 'Remember to rest for 30 minutes today, Mommy! 😴',
+/** Home checklist items that are split into sub-items (parent id -> sub ids).
+ *  A parent counts as done only when all its sub-items are. */
+export const CHECKLIST_SUB_ITEMS: Readonly<Record<number, readonly number[]>> = {
+  4: [41, 42, 43], // veggie-rich meal: breakfast, lunch, dinner
+  5: [51, 52],     // rest: morning, afternoon
 };
 
-/** Today's reminder text: the first unchecked item's, or (if that isn't
- *  known) the vitamin or general text. */
-export function checklistReminderBody(state: ChecklistState): string {
-  const forItem = state.nextUnchecked !== undefined ? CHECKLIST_ITEM_REMINDER_BODIES[state.nextUnchecked] : undefined;
-  if (forItem) return forItem;
-  return state.vitaminUnchecked ? CHECKLIST_REMINDER_VITAMIN_BODY : CHECKLIST_REMINDER_GENERAL_BODY;
+const VITAMIN_BODY = "Hi, Mommy! 💙 Don't forget your prenatal vitamins today. Taking them as recommended helps support your pregnancy.";
+// Completion only: never implies the app knows how much she has drunk.
+const WATER_BODY = 'A little hydration reminder, Mommy! Remember to drink water regularly throughout the day.';
+
+export interface ChecklistReminderSlot {
+  hour: number;
+  minute: number;
+  body: string;
 }
+
+/** The items that have reminders (ids 1, 2, 3 and the sub-items), with
+ *  their times and texts. Same-time slots are 10 minutes apart (see LIMITS). */
+export const CHECKLIST_REMINDER_ITEMS: readonly { id: number; slots: readonly ChecklistReminderSlot[] }[] = [
+  { id: 1, slots: [ // prenatal vitamins
+    { hour: 9, minute: 0, body: VITAMIN_BODY },
+    { hour: 12, minute: 0, body: VITAMIN_BODY },
+    { hour: 20, minute: 0, body: VITAMIN_BODY },
+  ] },
+  { id: 2, slots: [ // water: every 2 h, and 20:10 (after the 20:00 vitamin reminder)
+    { hour: 9, minute: 30, body: WATER_BODY },
+    { hour: 11, minute: 30, body: WATER_BODY },
+    { hour: 13, minute: 30, body: WATER_BODY },
+    { hour: 15, minute: 30, body: WATER_BODY },
+    { hour: 17, minute: 30, body: WATER_BODY },
+    { hour: 20, minute: 10, body: WATER_BODY },
+  ] },
+  { id: 3, slots: [ // light walk or stretching
+    { hour: 7, minute: 0, body: "Good morning, Mommy! If it's comfortable and appropriate for you, take a little time for gentle movement today." },
+    { hour: 17, minute: 0, body: "Good afternoon, Mommy! If it's comfortable and appropriate for you, a little gentle movement or stretching can feel good." },
+  ] },
+  { id: 41, slots: [{ hour: 8, minute: 0, body: 'Good morning, Mommy! 🍳 Time for a nourishing breakfast. Adding some vegetables or fruit is a lovely start to the day.' }] },
+  { id: 42, slots: [{ hour: 11, minute: 0, body: "It's almost lunchtime, Mommy! 🥗 A balanced lunch with some vegetables helps keep you and your baby going." }] },
+  { id: 43, slots: [{ hour: 19, minute: 0, body: 'Dinner time, Mommy! 🥦 If you can, include some vegetables in a warm, balanced dinner tonight.' }] },
+  { id: 51, slots: [{ hour: 11, minute: 10, body: 'Mommy, remember to take a little time to rest. A short break can help you recharge.' }] },
+  { id: 52, slots: [{ hour: 17, minute: 10, body: "It's time to slow down for a while, Mommy. If you can, take a relaxing break." }] },
+];
+
+/** Every item id that has reminders. */
+export const CHECKLIST_REMINDER_ITEM_IDS: readonly number[] = CHECKLIST_REMINDER_ITEMS.map(i => i.id);
+
+/** Minutes after midnight of every checklist reminder slot (for keeping the
+ *  other reminders clear of them, see reminder-plan.ts). */
+export const CHECKLIST_REMINDER_SLOT_MINUTES: readonly number[] =
+  ([] as number[]).concat(...CHECKLIST_REMINDER_ITEMS.map(i => i.slots.map(s => s.hour * 60 + s.minute)));
 
 /** Skip a slot that is about to pass, so it isn't fired immediately. */
 const MIN_LEAD_MS = 60 * 1000;
 
 export interface ChecklistState {
-  /** At least one item is unchecked today. */
-  anyUnchecked: boolean;
-  /** The prenatal-vitamin item is unchecked today. */
-  vitaminUnchecked: boolean;
-  /** Id of the first unchecked item today, in checklist order. */
-  nextUnchecked?: number;
+  /** Ids of the reminder items (1, 2, 3, 41-43, 51, 52) still unchecked today. */
+  unchecked: readonly number[];
+}
+
+/** Every reminder item unchecked: a new day, or no checklist saved yet. */
+export const ALL_UNCHECKED: ChecklistState = { unchecked: CHECKLIST_REMINDER_ITEM_IDS };
+
+/**
+ * Which reminder items are unchecked in a saved checklist (its `items`).
+ * A sub-item is done if it is marked done, or if its parent is: older
+ * records only have parents 4 and 5, so a parent marked done there counts
+ * as all its sub-items done. Never rewrites the record.
+ */
+export function uncheckedReminderItems(items: readonly { id: number; done?: boolean }[] | null | undefined): number[] {
+  if (!items) return [...CHECKLIST_REMINDER_ITEM_IDS];
+  const done = (id: number) => items.some(i => i.id === id && i.done === true);
+  const parentOf = (id: number) =>
+    Number(Object.keys(CHECKLIST_SUB_ITEMS).find(p => CHECKLIST_SUB_ITEMS[Number(p)].includes(id)));
+  return CHECKLIST_REMINDER_ITEM_IDS.filter(id => {
+    const parent = parentOf(id);
+    return !(done(id) || (!isNaN(parent) && done(parent)));
+  });
 }
 
 export interface ChecklistReminder {
   id: number;
+  /** The checklist item it is for. */
+  itemId: number;
   at: Date;
   title: string;
   body: string;
 }
 
 /**
- * Every reminder to schedule from `now`: each interval inside the waking
- * window, for today's remaining slots (only while something is unchecked)
- * and for the next days. The checklist resets every day, so on those days
- * everything, the vitamin included, will be unchecked: they always get the
- * vitamin text. Today's text names today's first unchecked item.
+ * Every reminder to schedule from `now`: today's slots of the items still
+ * unchecked, then the next days' slots of every item (the checklist resets
+ * daily). Slots less than a minute away are skipped, so nothing fires at
+ * once. Sorted by time; ids are numbered from CHECKLIST_REMINDER_ID_BASE.
  */
-export function buildChecklistReminderPlan(
-  now: Date,
-  state: ChecklistState,
-  intervalMinutes = CHECKLIST_REMINDER_INTERVAL_HOURS * 60,
-): ChecklistReminder[] {
-  const reminders: ChecklistReminder[] = [];
-  const step = Math.max(1, Math.round(intervalMinutes));
-  const capacity = ALL_CHECKLIST_REMINDER_IDS.length;
-
+export function buildChecklistReminderPlan(now: Date, state: ChecklistState): ChecklistReminder[] {
+  const planned: Omit<ChecklistReminder, 'id'>[] = [];
   for (let day = 0; day < CHECKLIST_REMINDER_HORIZON_DAYS; day++) {
-    if (day === 0 && !state.anyUnchecked) continue;
-    const body = day === 0 ? checklistReminderBody(state) : CHECKLIST_REMINDER_VITAMIN_BODY;
-
-    const start = new Date(now.getFullYear(), now.getMonth(), now.getDate() + day,
-      CHECKLIST_REMINDER_WINDOW_START_HOUR, 0, 0, 0);
-    const end = new Date(now.getFullYear(), now.getMonth(), now.getDate() + day,
-      CHECKLIST_REMINDER_WINDOW_END_HOUR, 0, 0, 0);
-
-    for (let t = start.getTime(); t <= end.getTime(); t += step * 60 * 1000) {
-      if (t < now.getTime() + MIN_LEAD_MS) continue;
-      if (reminders.length >= capacity) return reminders;
-      reminders.push({
-        id: CHECKLIST_REMINDER_ID_BASE + reminders.length,
-        at: new Date(t),
-        title: CHECKLIST_REMINDER_TITLE,
-        body,
-      });
+    for (const item of CHECKLIST_REMINDER_ITEMS) {
+      if (day === 0 && !state.unchecked.includes(item.id)) continue;
+      for (const slot of item.slots) {
+        const at = new Date(now.getFullYear(), now.getMonth(), now.getDate() + day, slot.hour, slot.minute, 0, 0);
+        if (at.getTime() < now.getTime() + MIN_LEAD_MS) continue;
+        planned.push({ itemId: item.id, at, title: CHECKLIST_REMINDER_TITLE, body: slot.body });
+      }
     }
   }
-  return reminders;
+  planned.sort((a, b) => a.at.getTime() - b.at.getTime());
+  return planned
+    .slice(0, ALL_CHECKLIST_REMINDER_IDS.length)
+    .map((r, i) => ({ id: CHECKLIST_REMINDER_ID_BASE + i, ...r }));
 }
 
 export interface ChecklistBellSlot {
-  /** checklist-YYYY-MM-DD-HH: one bell entry per slot, never duplicated. */
+  /** checklist-YYYY-MM-DD-<item>-HH: one bell entry per slot, never duplicated. */
   id: string;
+  itemId: number;
   at: Date;
   title: string;
   body: string;
@@ -123,11 +162,10 @@ export interface ChecklistBellSlot {
 /**
  * The phone reminders run no app code when they fire, so they never reach
  * the in-app bell. This lists today's reminder slots that have already
- * passed, for the bell to catch up on when the app opens: the same times
- * (local), title and text as the phone reminders. Nothing when reminders
- * are off or every item is done, never a slot from an earlier day, and
- * none from before `notBefore` (when the account was created), since no
- * reminder could have been sent then.
+ * passed for items still unchecked, for the bell to catch up on when the
+ * app opens: the same times (local), title and text as the phone reminders.
+ * Nothing when reminders are off, never a slot from an earlier day, and
+ * none from before `notBefore` (when the account was created).
  */
 export function dueChecklistBellSlots(
   now: Date,
@@ -135,22 +173,24 @@ export function dueChecklistBellSlots(
   enabled: boolean,
   notBefore?: Date | null,
 ): ChecklistBellSlot[] {
-  if (!enabled || !state.anyUnchecked) return [];
-  const body = checklistReminderBody(state);
+  if (!enabled) return [];
   const slots: ChecklistBellSlot[] = [];
-  for (let hour = CHECKLIST_REMINDER_WINDOW_START_HOUR; hour <= CHECKLIST_REMINDER_WINDOW_END_HOUR;
-    hour += CHECKLIST_REMINDER_INTERVAL_HOURS) {
-    const at = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hour, 0, 0, 0);
-    if (at.getTime() > now.getTime()) break;
-    if (notBefore && !isNaN(notBefore.getTime()) && at.getTime() < notBefore.getTime()) continue;
-    slots.push({
-      id: `checklist-${localDateKey(at)}-${String(hour).padStart(2, '0')}`,
-      at,
-      title: CHECKLIST_REMINDER_TITLE,
-      body,
-    });
+  for (const item of CHECKLIST_REMINDER_ITEMS) {
+    if (!state.unchecked.includes(item.id)) continue;
+    for (const slot of item.slots) {
+      const at = new Date(now.getFullYear(), now.getMonth(), now.getDate(), slot.hour, slot.minute, 0, 0);
+      if (at.getTime() > now.getTime()) continue;
+      if (notBefore && !isNaN(notBefore.getTime()) && at.getTime() < notBefore.getTime()) continue;
+      slots.push({
+        id: `checklist-${localDateKey(at)}-${item.id}-${String(slot.hour).padStart(2, '0')}`,
+        itemId: item.id,
+        at,
+        title: CHECKLIST_REMINDER_TITLE,
+        body: slot.body,
+      });
+    }
   }
-  return slots;
+  return slots.sort((a, b) => a.at.getTime() - b.at.getTime());
 }
 
 /** The phone's local calendar date as YYYY-MM-DD. The checklist resets at

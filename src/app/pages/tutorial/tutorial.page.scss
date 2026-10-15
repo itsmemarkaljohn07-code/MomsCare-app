@@ -75,6 +75,9 @@ ion-content { --background: var(--bg); }
 .tut-carousel {
   flex: 1;
   overflow: hidden;
+  // clip, unlike hidden, can never be scrolled (e.g. by focus), so only
+  // the track's transform decides which card shows.
+  overflow: clip;
   margin: 12px -16px 0;
   touch-action: pan-y;
 }

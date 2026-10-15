@@ -206,8 +206,10 @@ export class TutorialPage implements OnInit, OnDestroy {
     this.index = index;
     this.retryMessage = '';
     // Move focus to the new card's title so screen readers and keyboard
-    // users follow along (after the view has updated).
-    setTimeout(() => this.cardTitles?.get(this.index)?.nativeElement.focus(), 0);
+    // users follow along (after the view has updated). preventScroll:
+    // without it the browser also scrolls the carousel to the title,
+    // which adds to the slide and shows the card after the right one.
+    setTimeout(() => this.cardTitles?.get(this.index)?.nativeElement.focus({ preventScroll: true }), 0);
   }
 
   /** Finished already (e.g. on another phone, before a reinstall): only

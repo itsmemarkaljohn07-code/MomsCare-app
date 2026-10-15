@@ -95,14 +95,11 @@ ion-content { --background: var(--bg); }
 }
 
 .tut-icon {
-  width: 104px; height: 104px; border-radius: 32px;
-  margin: 24px 0 24px;
+  margin: 24px 0 20px;
   display: flex; align-items: center; justify-content: center;
-  color: #fff;
-  background: linear-gradient(135deg, var(--pink), var(--purple));
-  box-shadow: 0 10px 28px rgba(181,127,212,0.30);
+  color: var(--purple);
 
-  svg { width: 52px; height: 52px; }
+  svg { width: 80px; height: 80px; }
 }
 
 .tut-title {
@@ -182,7 +179,7 @@ ion-content { --background: var(--bg); }
 
 /* ── Small screens ── */
 @media (max-width: 360px) {
-  .tut-icon { width: 88px; height: 88px; margin: 16px 0 18px; svg { width: 44px; height: 44px; } }
+  .tut-icon { margin: 16px 0 16px; svg { width: 68px; height: 68px; } }
   .tut-title { font-size: 22px; }
   .tut-text { font-size: 15px; }
 }

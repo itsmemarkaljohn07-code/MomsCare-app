@@ -5,11 +5,15 @@
 // notification IDs they use. There is no Angular and no Capacitor in this
 // file on purpose, so every rule can be tested on its own.
 
+import { CHECKLIST_REMINDER_SLOT_MINUTES } from './checklist-reminder-plan';
+
 export interface ReminderPrefs {
   weeklyUpdates?: boolean;
   vitaminReminder?: boolean;
   kickAlerts?: boolean;
   hydrationReminders?: boolean;
+  /** Daily Checklist reminders. Missing means on. */
+  checklistReminders?: boolean;
 }
 
 export interface PlannedReminder {
@@ -105,6 +109,9 @@ export function buildReminderPlan(
 ): PlannedReminder[] {
   const p = prefs ?? {};
   const plan: PlannedReminder[] = [];
+  // The Daily Checklist reminders include vitamins and water, and stop once
+  // ticked, so while they are on these two would only be duplicates.
+  const checklistOn = p.checklistReminders !== false;
 
   if (p.weeklyUpdates) {
     plan.push({
@@ -115,7 +122,7 @@ export function buildReminderPlan(
     });
   }
 
-  if (p.vitaminReminder) {
+  if (p.vitaminReminder && !checklistOn) {
     plan.push({
       id: REMINDER_IDS.vitamin,
       title: 'Vitamin reminder 💊',
@@ -124,7 +131,7 @@ export function buildReminderPlan(
     });
   }
 
-  if (p.hydrationReminders) {
+  if (p.hydrationReminders && !checklistOn) {
     const times = [[11, 0], [14, 0], [17, 0]];
     times.forEach(([hour, minute], i) => {
       plan.push({
@@ -147,5 +154,19 @@ export function buildReminderPlan(
     });
   }
 
-  return separate(plan);
+  return separate(checklistOn ? clearOfChecklist(plan) : plan);
+}
+
+/** Moves reminders (the kick time too) in 10-minute steps until none is
+ *  closer than MIN_GAP_MINUTES to a Daily Checklist reminder, so Android
+ *  doesn't drop one of two alarms at the same time (e.g. kick count at
+ *  20:00 -> 20:20, weekly update 08:00 -> 08:10). */
+function clearOfChecklist(plan: PlannedReminder[]): PlannedReminder[] {
+  return plan.map(r => {
+    let m = minutesOfDay(r);
+    for (let step = 0; step < 24 && CHECKLIST_REMINDER_SLOT_MINUTES.some(c => Math.abs(c - m) < MIN_GAP_MINUTES); step++) {
+      m = (m + MIN_GAP_MINUTES) % (24 * 60);
+    }
+    return { ...r, hour: Math.floor(m / 60), minute: m % 60 };
+  });
 }

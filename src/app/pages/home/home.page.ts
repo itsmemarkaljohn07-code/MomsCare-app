@@ -16,8 +16,8 @@ import { isMissedAppointment } from '../../shared/appointment-status';
 import { NotificationsService, AppNotification } from '../../services/notifications.service';
 import { AppointmentsService, AppointmentRecord } from '../../services/appointments.service';
 import { HealthService, HealthData } from '../../services/health.service';
-import { ChecklistRemindersService, VITAMIN_CHECKLIST_ITEM_ID } from '../../services/checklist-reminders.service';
-import { dueChecklistBellSlots, localDateKey } from '../../services/checklist-reminder-plan';
+import { ChecklistRemindersService } from '../../services/checklist-reminders.service';
+import { ChecklistState, dueChecklistBellSlots, localDateKey, uncheckedReminderItems } from '../../services/checklist-reminder-plan';
 import type { PluginListenerHandle } from '@capacitor/core';
 import { FETUS_IMAGES, FetusImage, FetusKeep, fetusImageFor } from '../../shared/fetus-images';
 import { FALLBACK_EDGES, StageEdges, edgeStyle, sampleEdges } from '../../shared/stage-edges';
@@ -56,6 +56,15 @@ function fetusOvalFor(src: string): { x: number; y: number; rx: number; ry: numb
     rx: ((k.right - k.left) / 2) * FETUS_OVAL_ROOM,
     ry: ((k.bottom - k.top) / 2) * FETUS_OVAL_ROOM,
   };
+}
+
+/** A Home checklist row; meals and rest have sub-items. */
+interface ChecklistRow {
+  id: number;
+  task: string;
+  done: boolean;
+  icon: string;
+  subs?: { id: number; task: string; done: boolean }[];
 }
 
 /** Crossfade between illustrations; keep in sync with home.page.scss. */
@@ -521,15 +530,24 @@ export class HomePage implements OnInit, OnDestroy, DoCheck {
 
   // ════════════════════════════════════════════════════════
   // DAILY CHECKLIST — stored per-user in Firestore
-  // (users/{uid}/checklist/current), auto-resets daily, and drives a
-  // reminders every 2 hours while items are unchecked (checklist-reminders).
+  // (users/{uid}/checklist/current), auto-resets daily, and drives each
+  // activity's own reminders while it is unchecked (checklist-reminders).
+  // Meals and rest are split into sub-items; a parent with sub-items is done
+  // only when all of them are, and isn't ticked itself.
   // ════════════════════════════════════════════════════════
-  checklist = [
+  checklist: ChecklistRow[] = [
     { id: 1, task: 'Take prenatal vitamins',   done: false, icon: '💊' },
     { id: 2, task: 'Drink 8 glasses of water', done: false, icon: '💧' },
     { id: 3, task: 'Light walk or stretching', done: false, icon: '🚶' },
-    { id: 4, task: 'Eat a veggie-rich meal',   done: false, icon: '🥗' },
-    { id: 5, task: 'Rest for 30 minutes',      done: false, icon: '😴' },
+    { id: 4, task: 'Eat a veggie-rich meal',   done: false, icon: '🥗', subs: [
+      { id: 41, task: 'Breakfast', done: false },
+      { id: 42, task: 'Lunch',     done: false },
+      { id: 43, task: 'Dinner',    done: false },
+    ] },
+    { id: 5, task: 'Rest for 30 minutes',      done: false, icon: '😴', subs: [
+      { id: 51, task: 'Morning rest',   done: false },
+      { id: 52, task: 'Afternoon rest', done: false },
+    ] },
   ];
 
   /** Ticking and saving wait for 'ready': today's saved state has loaded,
@@ -538,12 +556,53 @@ export class HomePage implements OnInit, OnDestroy, DoCheck {
   checklistStatus: 'loading' | 'ready' | 'failed' = 'loading';
   /** Bumped by every load, so an older load that finishes late is ignored. */
   private checklistLoadId = 0;
+  /** A tap while the last one is still saving is ignored (no double writes). */
+  private checklistSaving = false;
   /** App 'resume' listener for catchUpChecklistBell, removed on destroy. */
   private resumeListener?: PluginListenerHandle;
   private destroyed = false;
 
   get checklistDone():    number { return this.checklist.filter(c => c.done).length; }
   get checklistPercent(): number { return Math.round((this.checklistDone / this.checklist.length) * 100); }
+
+  /** Every row as saved: the items, their sub-items, parents computed. */
+  private checklistEntries(): { id: number; done: boolean }[] {
+    const entries: { id: number; done: boolean }[] = [];
+    for (const c of this.checklist) {
+      entries.push({ id: c.id, done: c.done });
+      for (const s of c.subs ?? []) entries.push({ id: s.id, done: s.done });
+    }
+    return entries;
+  }
+
+  /** A parent with sub-items is done only when all of them are. */
+  private updateChecklistParents(): void {
+    for (const c of this.checklist) if (c.subs) c.done = c.subs.every(s => s.done);
+  }
+
+  /** Today's saved items onto the list. An older record with only a meal or
+   *  rest parent marked done counts as all its sub-items done; the record
+   *  itself is not rewritten. */
+  private applySavedChecklist(items: any[]): void {
+    const saved = (id: number) => items.some((s: any) => s.id === id && s.done === true);
+    for (const c of this.checklist) {
+      if (c.subs) for (const s of c.subs) s.done = saved(s.id) || saved(c.id);
+      else c.done = saved(c.id);
+    }
+    this.updateChecklistParents();
+  }
+
+  private resetChecklist(): void {
+    for (const c of this.checklist) {
+      c.done = false;
+      for (const s of c.subs ?? []) s.done = false;
+    }
+  }
+
+  /** The reminder items still unchecked today (see checklist-reminder-plan). */
+  private checklistReminderState(): ChecklistState {
+    return { unchecked: uncheckedReminderItems(this.checklistEntries()) };
+  }
 
   private getTodayDateString(): string {
     // Local date: the checklist resets at local midnight (scheduleMidnightReset).
@@ -581,14 +640,11 @@ export class HomePage implements OnInit, OnDestroy, DoCheck {
     if (loadId !== this.checklistLoadId || uid !== this.currentUid) return;
 
     if (data && data.date === today && Array.isArray(data.items)) {
-      this.checklist.forEach(item => {
-        const match = data.items.find((s: any) => s.id === item.id);
-        item.done = !!match?.done;
-      });
+      this.applySavedChecklist(data.items);
       this.checklistStatus = 'ready';
     } else {
       // Confirmed: no checklist yet, or it is from an earlier day.
-      this.checklist.forEach(item => (item.done = false));
+      this.resetChecklist();
       this.checklistStatus = 'ready';
       await this.saveChecklistState();
     }
@@ -611,14 +667,9 @@ export class HomePage implements OnInit, OnDestroy, DoCheck {
       const profile = await this.profileStore.whenLoaded();
       // Signed out, switched account or reloading meanwhile: skip.
       if (uid !== this.currentUid || this.checklistStatus !== 'ready') return;
-      const vitamin = this.checklist.find(c => c.id === VITAMIN_CHECKLIST_ITEM_ID);
       const slots = dueChecklistBellSlots(
         new Date(),
-        {
-          anyUnchecked: this.checklistDone < this.checklist.length,
-          vitaminUnchecked: !vitamin?.done,
-          nextUnchecked: this.checklist.find(c => !c.done)?.id,
-        },
+        this.checklistReminderState(),
         profile?.notificationPrefs?.checklistReminders !== false,
         // Nothing from before the account existed (a new account signing
         // up at night got every earlier slot of the day).
@@ -645,7 +696,7 @@ export class HomePage implements OnInit, OnDestroy, DoCheck {
       await runInInjectionContext(this.envInjector, () =>
         setDoc(this.checklistDocRef(), {
           date: this.getTodayDateString(),
-          items: this.checklist.map(c => ({ id: c.id, done: c.done })),
+          items: this.checklistEntries(),
           updatedAt: Timestamp.now(),
         })
       );
@@ -654,10 +705,18 @@ export class HomePage implements OnInit, OnDestroy, DoCheck {
     }
   }
 
-  async toggleChecklist(item: any): Promise<void> {
-    if (this.checklistStatus !== 'ready') return;
+  /** Ticks a row or a sub-item. A parent with sub-items is ticked through
+   *  them, and each sub-item is independent of the others. */
+  async toggleChecklist(item: { done: boolean; subs?: unknown[] }): Promise<void> {
+    if (this.checklistStatus !== 'ready' || this.checklistSaving || item.subs) return;
     item.done = !item.done;
-    await this.saveChecklistState();
+    this.updateChecklistParents();
+    this.checklistSaving = true;
+    try {
+      await this.saveChecklistState();
+    } finally {
+      this.checklistSaving = false;
+    }
     this.updateChecklistReminders();
   }
 
@@ -669,15 +728,14 @@ export class HomePage implements OnInit, OnDestroy, DoCheck {
     // Only from the real checklist and saved switch; otherwise leave the
     // reminders already scheduled as they are.
     if (this.checklistStatus !== 'ready') return;
-    const anyUnchecked = this.checklistDone < this.checklist.length;
+    const state = this.checklistReminderState();
     try {
       const { Capacitor } = await import('@capacitor/core');
       if (Capacitor.isNativePlatform()) {
         if (!this.currentUid) return;
         const profile = await this.profileStore.whenLoaded();
-        const vitamin = this.checklist.find(c => c.id === VITAMIN_CHECKLIST_ITEM_ID);
         await this.checklistReminders.sync(
-          { anyUnchecked, vitaminUnchecked: !vitamin?.done, nextUnchecked: this.checklist.find(c => !c.done)?.id },
+          state,
           { enabled: profile?.notificationPrefs?.checklistReminders !== false, requestPermission: false },
         );
         return;
@@ -686,7 +744,7 @@ export class HomePage implements OnInit, OnDestroy, DoCheck {
       console.error('Failed to update checklist reminders:', err);
       return;
     }
-    if (anyUnchecked) await this.sendInAppChecklistReminder();
+    if (state.unchecked.length > 0) await this.sendInAppChecklistReminder();
   }
 
   /** Browser fallback: one in-app notification a day while items remain. */
@@ -717,7 +775,7 @@ export class HomePage implements OnInit, OnDestroy, DoCheck {
 
     this.midnightTimeout = setTimeout(() => {
       if (this.checklistStatus === 'ready') {
-        this.checklist.forEach(item => (item.done = false));
+        this.resetChecklist();
         this.saveChecklistState();
         this.updateChecklistReminders();
       } else {

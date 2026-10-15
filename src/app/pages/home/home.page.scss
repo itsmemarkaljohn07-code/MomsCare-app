@@ -791,6 +791,10 @@ ion-content[data-theme="dark"] {
   &.checked { background: linear-gradient(135deg, var(--pink), var(--purple)); border-color: transparent; }
 }
 .check-ico  { font-size: 1rem; flex-shrink: 0; }
+/* Sub-items (meals, rest): indented under their row, same look; the parent
+   row is done through them, so it isn't tappable itself. */
+.checklist-item--sub { margin-left: 30px; padding-top: 7px; padding-bottom: 7px; }
+.checklist-item--parent { cursor: default; &:active { transform: none; } }
 .check-task { font-size: 0.82rem; font-weight: 600; color: var(--dark); font-family: 'Nunito', 'Poppins', sans-serif; }
 
 /* Until today's saved checklist has loaded: items can't be ticked. */

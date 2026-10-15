@@ -7,10 +7,12 @@ import { REMINDER_CHANNEL_ID } from './reminder-plan';
 import type { LocalNotificationsPlugin } from '@capacitor/local-notifications';
 import {
   ALL_CHECKLIST_REMINDER_IDS,
+  ALL_UNCHECKED,
   ChecklistState,
   LEGACY_CHECKLIST_REMINDER_ID,
   buildChecklistReminderPlan,
   localDateKey,
+  uncheckedReminderItems,
 } from './checklist-reminder-plan';
 
 const STEP_TIMEOUT_MS = 8000;
@@ -20,8 +22,8 @@ const CHECKLIST_READ_TIMEOUT_MS = 15000;
 export const VITAMIN_CHECKLIST_ITEM_ID = 1;
 
 /**
- * Daily Checklist reminders: one-off exact notifications every few hours
- * inside the waking window while items are unchecked (rules and limits in
+ * Daily Checklist reminders: one-off exact notifications at each activity's
+ * own times, only while that item is unchecked (rules and Android limits in
  * checklist-reminder-plan.ts). Every sync first clears the whole ID range,
  * so repeated syncs never create duplicates, and one account's reminders
  * are always replaced (or cancelled at sign-out) before another account's
@@ -96,16 +98,10 @@ export class ChecklistRemindersService {
     const snap = await runInInjectionContext(this.envInjector, () =>
       readSettledDoc(doc(this.firestore, `users/${uid}/checklist/current`), CHECKLIST_READ_TIMEOUT_MS));
     const data = snap.exists() ? (snap.data() as any) : null;
-    if (!data || data.date !== localDateKey() || !Array.isArray(data.items)) {
-      return { anyUnchecked: true, vitaminUnchecked: true, nextUnchecked: VITAMIN_CHECKLIST_ITEM_ID };
-    }
-    const done = (id: number) => data.items.some((i: any) => i.id === id && i.done === true);
-    return {
-      anyUnchecked: data.items.length === 0 || data.items.some((i: any) => i.done !== true),
-      vitaminUnchecked: !done(VITAMIN_CHECKLIST_ITEM_ID),
-      // Saved in checklist order, so the first not-done item comes first.
-      nextUnchecked: data.items.find((i: any) => i.done !== true)?.id,
-    };
+    if (!data || data.date !== localDateKey() || !Array.isArray(data.items)) return ALL_UNCHECKED;
+    // Older records only have meal/rest parents; uncheckedReminderItems
+    // reads a parent marked done as all its sub-items done.
+    return { unchecked: uncheckedReminderItems(data.items) };
   }
 
   // -- internals --------------------------------------------------------

@@ -1,0 +1,190 @@
+/* tutorial.page.scss: same palette as the inner profile pages */
+
+:host {
+  --pink:         #e07eb8;
+  --purple:       #b57fd4;
+  --dark:         #3d2252;
+  --muted:        #9e7ab5;
+  --muted-light:  #c4aad8;
+  --bg:           #fdf0f7;
+  --card-bg:      rgba(255,255,255,0.92);
+  --card-border:  rgba(181,127,212,0.12);
+  --shadow:       0 4px 20px rgba(181,127,212,0.10);
+  --field-bg:     #f5eef9;
+  --error:        #e05580;
+}
+
+ion-content[data-theme="dark"] {
+  --bg:          #1a0f24;
+  --dark:        #f0e4fa;
+  --muted:       #a888c4;
+  --muted-light: #6a4e88;
+  --card-bg:     rgba(45, 25, 65, 0.90);
+  --card-border: rgba(155, 111, 196, 0.18);
+  --shadow:      0 4px 20px rgba(0, 0, 0, 0.30);
+  --field-bg:    rgba(255, 255, 255, 0.06);
+
+  .blob-top    { background: rgba(180, 80, 160, 0.16); }
+  .blob-bottom { background: rgba(80, 140, 180, 0.13); }
+  .tut-note    { background: rgba(224, 126, 184, 0.12); }
+  .tut-retry   { background: rgba(224, 85, 128, 0.14); }
+}
+
+ion-content { --background: var(--bg); }
+
+/* ── Blobs ── */
+.blob { position: fixed; border-radius: 50%; pointer-events: none; z-index: 0; }
+.blob-top {
+  width: 260px; height: 260px;
+  background: rgba(224,126,184,0.14); filter: blur(70px);
+  top: -80px; right: -60px;
+}
+.blob-bottom {
+  width: 220px; height: 220px;
+  background: rgba(181,127,212,0.10); filter: blur(65px);
+  bottom: 60px; left: -50px;
+}
+
+/* ── Layout ── */
+.tut-wrap {
+  position: relative; z-index: 1;
+  min-height: 100%;
+  display: flex; flex-direction: column;
+  padding: 48px 16px calc(24px + env(safe-area-inset-bottom));
+  max-width: 520px; margin: 0 auto;
+  box-sizing: border-box;
+}
+
+.tut-header {
+  display: flex; align-items: center; justify-content: space-between;
+  min-height: 44px;
+}
+.tut-step {
+  margin: 0; font-size: 14px; font-weight: 600; color: var(--muted);
+  letter-spacing: 0.02em;
+}
+.tut-close {
+  min-width: 44px; min-height: 44px; padding: 0 16px;
+  border-radius: 22px; border: 1.5px solid var(--card-border);
+  background: var(--card-bg); color: var(--dark);
+  font: inherit; font-size: 15px; font-weight: 600;
+  cursor: pointer;
+}
+
+/* ── Carousel ── */
+.tut-carousel {
+  flex: 1;
+  overflow: hidden;
+  margin: 12px -16px 0;
+  touch-action: pan-y;
+}
+.tut-track {
+  display: flex;
+  height: 100%;
+  transition: transform 0.35s ease;
+}
+.tut-card {
+  flex: 0 0 100%;
+  box-sizing: border-box;
+  padding: 0 16px;
+  display: flex; flex-direction: column; align-items: center;
+  text-align: center;
+}
+
+.tut-icon {
+  width: 104px; height: 104px; border-radius: 32px;
+  margin: 24px 0 24px;
+  display: flex; align-items: center; justify-content: center;
+  color: #fff;
+  background: linear-gradient(135deg, var(--pink), var(--purple));
+  box-shadow: 0 10px 28px rgba(181,127,212,0.30);
+
+  svg { width: 52px; height: 52px; }
+}
+
+.tut-title {
+  margin: 0 0 12px;
+  font-size: 24px; font-weight: 800; line-height: 1.25;
+  color: var(--dark);
+  outline: none;
+  &:focus-visible { outline: 2px solid var(--purple); outline-offset: 4px; border-radius: 6px; }
+}
+.tut-text {
+  margin: 0 0 10px;
+  font-size: 16px; line-height: 1.55;
+  color: var(--dark); opacity: 0.85;
+  max-width: 420px;
+}
+.tut-note {
+  margin: 14px 0 0;
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: rgba(224, 126, 184, 0.10);
+  border: 1px solid rgba(224, 126, 184, 0.30);
+  font-size: 15px; line-height: 1.5; font-weight: 600;
+  color: var(--dark);
+  max-width: 420px;
+  text-align: left;
+}
+
+/* ── Dots ── */
+.tut-dots {
+  display: flex; justify-content: center; gap: 8px;
+  margin: 20px 0 8px;
+}
+.tut-dot {
+  width: 8px; height: 8px; border-radius: 4px;
+  background: var(--muted-light);
+  transition: width 0.25s ease, background 0.25s ease;
+  &.active { width: 24px; background: linear-gradient(90deg, var(--pink), var(--purple)); }
+}
+
+/* ── Retry message ── */
+.tut-retry {
+  margin: 8px 0 0;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: rgba(224, 85, 128, 0.08);
+  color: var(--error);
+  font-size: 14px; line-height: 1.45; font-weight: 600;
+  text-align: center;
+}
+
+/* ── Actions ── */
+.tut-actions {
+  display: flex; gap: 12px;
+  margin-top: 16px;
+}
+.tut-btn {
+  flex: 1;
+  min-height: 52px;
+  border-radius: 26px;
+  font: inherit; font-size: 16px; font-weight: 700;
+  cursor: pointer;
+  &:focus-visible { outline: 3px solid var(--purple); outline-offset: 3px; }
+  &:disabled { cursor: default; }
+}
+.tut-btn--primary {
+  border: none; color: #fff;
+  background: linear-gradient(135deg, var(--pink), var(--purple));
+  box-shadow: 0 6px 18px rgba(181,127,212,0.30);
+  &:disabled { opacity: 0.7; }
+}
+.tut-btn--ghost {
+  border: 1.5px solid var(--card-border);
+  background: var(--card-bg); color: var(--dark);
+}
+/* Keeps Next in the same place on the first card. */
+.tut-btn--hidden { visibility: hidden; }
+
+/* ── Small screens ── */
+@media (max-width: 360px) {
+  .tut-icon { width: 88px; height: 88px; margin: 16px 0 18px; svg { width: 44px; height: 44px; } }
+  .tut-title { font-size: 22px; }
+  .tut-text { font-size: 15px; }
+}
+
+/* ── Reduced motion ── */
+@media (prefers-reduced-motion: reduce) {
+  .tut-track, .tut-dot { transition: none; }
+}

@@ -85,7 +85,7 @@ service cloud.firestore {
         'clinicName', 'setupComplete', 'createdAt', 'avatar',
         'dob', 'address', 'bloodType', 'emergencyContact',
         'calcMethod', 'weightUnit', 'kickReminderTime', 'highRisk',
-        'notificationPrefs'
+        'notificationPrefs', 'tutorialSeen'
       ];
     }
 

@@ -1,0 +1,86 @@
+<!-- tutorial.page.html -->
+<ion-content [fullscreen]="true" [scrollY]="true" [attr.data-theme]="darkMode ? 'dark' : 'light'">
+  <div class="tut-wrap">
+    <div class="blob blob-top"></div>
+    <div class="blob blob-bottom"></div>
+
+    <header class="tut-header">
+      <p class="tut-step" aria-live="polite">Step {{ index + 1 }} of {{ cards.length }}</p>
+      <button *ngIf="replay" type="button" class="tut-close" (click)="close()" aria-label="Close the guide">
+        Close
+      </button>
+    </header>
+
+    <section class="tut-carousel" aria-roledescription="carousel" aria-label="How to use MomCare"
+             (keydown)="onKeydown($event)" (touchstart)="onTouchStart($event)" (touchend)="onTouchEnd($event)">
+      <div class="tut-track" [style.transform]="'translateX(' + (-index * 100) + '%)'">
+        <article class="tut-card" *ngFor="let card of cards; let i = index"
+                 role="group" aria-roledescription="slide"
+                 [attr.aria-label]="(i + 1) + ' of ' + cards.length + ': ' + card.title"
+                 [attr.aria-hidden]="i !== index ? 'true' : null"
+                 [attr.inert]="i !== index ? '' : null">
+          <div class="tut-icon" [ngSwitch]="card.icon" aria-hidden="true">
+            <svg *ngSwitchCase="'welcome'" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M24 40s-14-8.5-14-19a8 8 0 0 1 14-5.3A8 8 0 0 1 38 21c0 10.5-14 19-14 19z"/>
+            </svg>
+            <svg *ngSwitchCase="'home'" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M8 22 24 9l16 13"/>
+              <path d="M12 19v19h24V19"/>
+              <path d="M19 30l4 4 7-8"/>
+            </svg>
+            <svg *ngSwitchCase="'snapshot'" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="7" y="14" width="34" height="24" rx="5"/>
+              <path d="M17 14l3-5h8l3 5"/>
+              <circle cx="24" cy="26" r="6"/>
+            </svg>
+            <svg *ngSwitchCase="'appointments'" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="8" y="11" width="32" height="29" rx="5"/>
+              <path d="M8 20h32M16 7v8M32 7v8"/>
+              <path d="M18 30l4 4 8-8"/>
+            </svg>
+            <svg *ngSwitchCase="'insights'" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M24 13c-4-3-10-4-16-3v26c6-1 12 0 16 3 4-3 10-4 16-3V10c-6-1-12 0-16 3z"/>
+              <path d="M24 13v26"/>
+            </svg>
+            <svg *ngSwitchCase="'profile'" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="24" cy="17" r="7"/>
+              <path d="M10 40c1.5-7.5 7-11 14-11s12.5 3.5 14 11"/>
+            </svg>
+          </div>
+
+          <h2 #cardTitle class="tut-title" tabindex="-1">{{ card.title }}</h2>
+          <p class="tut-text" *ngFor="let line of card.lines">{{ line }}</p>
+          <p class="tut-note" *ngIf="card.note" role="note">{{ card.note }}</p>
+        </article>
+      </div>
+    </section>
+
+    <div class="tut-dots" aria-hidden="true">
+      <span class="tut-dot" *ngFor="let card of cards; let i = index" [class.active]="i === index"></span>
+    </div>
+
+    <p class="tut-retry" *ngIf="retryMessage" role="alert">{{ retryMessage }}</p>
+
+    <nav class="tut-actions" aria-label="Guide navigation">
+      <button type="button" class="tut-btn tut-btn--ghost" (click)="back()"
+              [disabled]="index === 0" [class.tut-btn--hidden]="index === 0"
+              aria-label="Previous card">
+        Back
+      </button>
+
+      <button *ngIf="!isLast" type="button" class="tut-btn tut-btn--primary" (click)="next()"
+              aria-label="Next card">
+        Next
+      </button>
+
+      <button *ngIf="isLast && !replay" type="button" class="tut-btn tut-btn--primary"
+              (click)="getStarted()" [disabled]="saving" [attr.aria-busy]="saving">
+        {{ saving ? 'Saving...' : 'Get started' }}
+      </button>
+
+      <button *ngIf="isLast && replay" type="button" class="tut-btn tut-btn--primary" (click)="close()">
+        Close
+      </button>
+    </nav>
+  </div>
+</ion-content>

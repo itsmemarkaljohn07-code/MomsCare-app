@@ -10,6 +10,7 @@ import {
 import { AuthService } from '../../services/auth.service';
 import { OtpService } from '../../services/otp.service';
 import { ThemeService } from '../../services/theme';
+import { FirstRunTutorialService } from '../../services/first-run-tutorial.service';
 import { Auth, fetchSignInMethodsForEmail } from '@angular/fire/auth';
 import { runInInjectionContext, EnvironmentInjector, inject } from '@angular/core';
 import { Subscription } from 'rxjs';
@@ -149,6 +150,7 @@ export class SignupPage implements OnInit, OnDestroy, AfterViewInit {
     private otpService: OtpService,
     private theme: ThemeService,
     private auth: Auth,
+    private tutorial: FirstRunTutorialService,
   ) {}
 
   ngOnInit(): void {
@@ -378,7 +380,7 @@ export class SignupPage implements OnInit, OnDestroy, AfterViewInit {
         this.form.password,
         this.buildProfilePayload()
       );
-      this.router.navigate(['/home'], { replaceUrl: true });
+      this.startTutorial();
     } catch (err: any) {
       console.error('Registration error:', err);
 
@@ -408,7 +410,7 @@ export class SignupPage implements OnInit, OnDestroy, AfterViewInit {
     try {
       await this.authService.retryProfileSave(this.buildProfilePayload());
       this.accountCreatedPendingProfile = false;
-      this.router.navigate(['/home'], { replaceUrl: true });
+      this.startTutorial();
     } catch (err: any) {
       console.error('Profile retry error:', err);
       this.generalError = err?.message ||
@@ -416,6 +418,13 @@ export class SignupPage implements OnInit, OnDestroy, AfterViewInit {
     } finally {
       this.isLoading = false;
     }
+  }
+
+  /** Registered and the profile is saved: the first-run tutorial comes
+   *  before Home, also if the app is closed and reopened midway. */
+  private startTutorial(): void {
+    this.tutorial.markPending(this.authService.currentUid);
+    this.router.navigate(['/tutorial'], { replaceUrl: true });
   }
 
   onBack(): void {

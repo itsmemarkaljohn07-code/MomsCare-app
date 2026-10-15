@@ -1,5 +1,6 @@
 import { Routes } from '@angular/router';
 import { authGuard, redirectIfAuthenticated } from './guards/auth.guard';
+import { firstRunTutorialGuard } from './guards/first-run-tutorial.guard';
 
 export const routes: Routes = [
   {
@@ -38,9 +39,16 @@ export const routes: Routes = [
   },
   {
     path: 'home',
-    canActivate: [authGuard],
+    canActivate: [authGuard, firstRunTutorialGuard],
     loadComponent: () =>
       import('./pages/home/home.page').then(m => m.HomePage),
+  },
+  {
+    // First run after registering on this phone, or ?mode=replay from Profile.
+    path: 'tutorial',
+    canActivate: [authGuard],
+    loadComponent: () =>
+      import('./pages/tutorial/tutorial.page').then(m => m.TutorialPage),
   },
   {
     path: 'profile',

@@ -100,6 +100,9 @@ export interface UserProfile {
     /** Push notifications from the care team. Missing means on. */
     clinicUpdates?: boolean;
   };
+  /** True once the first-run tutorial was finished ("Get started").
+   *  Absent on accounts created before the tutorial existed. */
+  tutorialSeen?: boolean;
 }
 
 const FIRESTORE_SAVE_TIMEOUT_MS = 45000;

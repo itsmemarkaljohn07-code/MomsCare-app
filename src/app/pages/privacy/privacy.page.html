@@ -45,7 +45,7 @@
             </div>
             <div>
               <strong>Account Information</strong>
-              <p>Name, email address, phone number, and password you provide on registration.</p>
+              <p>Name, username, email address, mobile number, and password you provide on registration.</p>
             </div>
           </div>
           <div class="info-card">
@@ -68,8 +68,8 @@
               </svg>
             </div>
             <div>
-              <strong>Usage Data</strong>
-              <p>Pages visited, features used, time spent in the App, and interaction patterns.</p>
+              <strong>Your Entries</strong>
+              <p>Appointments, checklist progress, health readings, and Snapshot photos you add in the App.</p>
             </div>
           </div>
           <div class="info-card">
@@ -81,7 +81,7 @@
             </div>
             <div>
               <strong>Device Information</strong>
-              <p>Device type, operating system, app version, and unique device identifiers.</p>
+              <p>A notification token for this phone, so the App can send you reminders and messages from your care team.</p>
             </div>
           </div>
         </div>
@@ -95,9 +95,8 @@
         <ul class="legal-list">
           <li>Provide and personalise the MomCare experience for your stage of pregnancy</li>
           <li>Display accurate week-by-week pregnancy insights and baby development updates</li>
-          <li>Send you appointment reminders and health check notifications</li>
-          <li>Improve and develop new features based on how users interact with the App</li>
-          <li>Ensure the security of your account and detect fraudulent activity</li>
+          <li>Send you appointment and checklist reminders, and notifications from your care team</li>
+          <li>Keep your account secure, including sign-in and email verification codes</li>
           <li>Communicate important updates, changes to our policies, or service announcements</li>
           <li>Comply with applicable legal obligations</li>
         </ul>
@@ -118,11 +117,11 @@
         <p class="section-body">MomCare handles sensitive health information with the utmost care. All health-related data
         you provide — including due dates, pregnancy details, and clinic information — is:</p>
         <ul class="legal-list">
-          <li>Encrypted in transit using industry-standard TLS/SSL protocols</li>
-          <li>Stored in encrypted databases with access controls limited to essential personnel</li>
+          <li>Sent over encrypted (HTTPS) connections</li>
+          <li>Stored in Google Firebase, which encrypts stored data</li>
           <li>Never shared with advertisers, data brokers, or marketing platforms</li>
           <li>Retained only for as long as necessary to provide the service or as required by law</li>
-          <li>Accessible only to you via your authenticated account</li>
+          <li>Visible to you, and to your clinic's admins and the doctors assigned to you</li>
         </ul>
       </div>
 
@@ -133,8 +132,8 @@
         <p class="section-body">We do not sell your personal data. We may share your information only in the following
         limited circumstances:</p>
         <ul class="legal-list">
-          <li><strong>Service Providers:</strong> Trusted third-party vendors who assist us in operating
-          the App (e.g., cloud hosting, analytics), bound by strict confidentiality agreements</li>
+          <li><strong>Service Providers:</strong> Google Firebase (accounts, data, and notifications),
+          Cloudinary (photo storage), and EmailJS (sending verification codes), under their own terms</li>
           <li><strong>Legal Requirements:</strong> When required to comply with a legal obligation,
           court order, or government request</li>
           <li><strong>Safety:</strong> To protect the rights, property, or safety of MomCare, our users,
@@ -148,10 +147,7 @@
       <div class="section-block">
         <div class="section-number">05</div>
         <h2 class="section-heading">Cookies and Tracking</h2>
-        <p class="section-body">We use limited analytics tools to understand how users interact with our App. This helps
-        us improve performance and user experience. We do not use third-party advertising cookies or
-        cross-site tracking technologies. You may opt out of analytics collection through your device
-        settings or by contacting us.</p>
+        <p class="section-body">The App does not use analytics, advertising cookies, or cross-site tracking.</p>
       </div>
 
       <!-- 6 -->
@@ -159,12 +155,11 @@
         <div class="section-number">06</div>
         <h2 class="section-heading">Data Retention</h2>
         <p class="section-body">We retain your personal data for as long as your account is active or as needed to provide
-        you with services. If you delete your account:</p>
+        you with services. If you ask us to delete your account:</p>
         <ul class="legal-list">
-          <li>Your personal profile and health data will be permanently deleted within 30 days</li>
-          <li>Anonymised, aggregated usage data may be retained for service improvement purposes</li>
+          <li>Your personal profile and health data will be deleted after we confirm the request with your registered email address</li>
           <li>Some data may be retained longer if required by applicable law</li>
-          <li>You may request data export before deletion by contacting support</li>
+          <li>You may request a copy of your data from App Settings, which opens an email to us</li>
         </ul>
       </div>
 
@@ -184,7 +179,7 @@
           <li><strong>Withdrawal of Consent:</strong> Withdraw consent at any time for consent-based processing</li>
         </ul>
         <p class="section-body">To exercise any of these rights, please contact us at <strong>momscare.noreply&#64;gmail.com</strong>.
-        We will respond within 30 days.</p>
+        We will respond as soon as we can.</p>
       </div>
 
       <!-- 8 -->
@@ -203,15 +198,12 @@
         <h2 class="section-heading">Security</h2>
         <p class="section-body">We implement industry-standard security measures to protect your data, including:</p>
         <ul class="legal-list">
-          <li>End-to-end encryption for data in transit (TLS 1.3)</li>
-          <li>AES-256 encryption for data at rest</li>
-          <li>Regular security audits and penetration testing</li>
-          <li>Multi-factor authentication support for your account</li>
-          <li>Role-based access controls for our internal teams</li>
+          <li>Encrypted (HTTPS) connections for data in transit</li>
+          <li>Encryption at rest for data stored by Google Firebase</li>
+          <li>Database rules that limit each account to the data its role allows</li>
         </ul>
         <p class="section-body">While we take every precaution, no method of transmission over the internet is 100%
-        secure. We encourage you to use a strong, unique password and enable any available
-        security features on your account.</p>
+        secure. We encourage you to use a strong, unique password.</p>
       </div>
 
       <!-- 10 -->
@@ -229,16 +221,16 @@
         <div class="section-number">11</div>
         <h2 class="section-heading">Uploaded Photos and Care Team Sharing</h2>
         <p class="section-body">When you use the Snapshot feature to upload photos, that image — together with any
-        health data recorded at the time of upload — is stored securely and associated with your account. This
+        health data recorded at the time of upload — is stored on Cloudinary, our photo storage provider, and associated with your account. This
         information is visible to:</p>
         <ul class="legal-list">
           <li>You, at any time, through your own account</li>
-          <li>A healthcare provider assigned to your care within the App, solely for the purpose of monitoring
+          <li>Your clinic's admins and the doctors assigned to you, solely for the purpose of monitoring
           your pregnancy and communicating with you about your Snapshot uploads</li>
         </ul>
         <p class="section-body">Uploaded photos and related comments are never shared with any other party, used for
-        advertising, or made publicly visible. Deleting a photo removes it from your gallery; some records may be
-        retained briefly as described in the Data Retention section above.</p>
+        advertising, or posted publicly. Deleting a photo removes it from your gallery and the App's records; the
+        image file stays on Cloudinary. To have the file removed, email us at momscare.noreply&#64;gmail.com.</p>
       </div>
 
       <!-- 12 -->
@@ -255,19 +247,12 @@
             </svg>
             <span>momscare.noreply&#64;gmail.com</span>
           </div>
-          <div class="contact-row">
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-              <circle cx="8" cy="7" r="4" stroke="#b57fd4" stroke-width="1.3"/>
-              <path d="M8 11v4" stroke="#b57fd4" stroke-width="1.3" stroke-linecap="round"/>
-            </svg>
-            <span>www.momscare.app/privacy</span>
-          </div>
         </div>
       </div>
 
       <div class="legal-footer">
         <p>© 2026 MomCare. All rights reserved.</p>
-        <p>This Privacy Policy was last updated on June 26, 2026.</p>
+        <p>This Privacy Policy was last updated on October 16, 2026.</p>
       </div>
 
     </div><!-- end legal-body -->

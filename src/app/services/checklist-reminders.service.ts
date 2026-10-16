@@ -4,6 +4,7 @@ import { Firestore, doc } from '@angular/fire/firestore';
 import { readSettledDoc } from '../shared/firestore-read';
 import { ReminderSchedulerService } from './reminder-scheduler.service';
 import { REMINDER_CHANNEL_ID } from './reminder-plan';
+import { parseStoredDate } from '../shared/date-utils';
 import type { LocalNotificationsPlugin } from '@capacitor/local-notifications';
 import {
   ALL_CHECKLIST_REMINDER_IDS,
@@ -42,11 +43,12 @@ export class ChecklistRemindersService {
    * Makes the phone match this user's checklist. `enabled: false` (the
    * Pregnancy Settings switch is off) cancels everything. With
    * `requestPermission: false` nothing is scheduled unless notifications
-   * are already allowed, and no dialog is ever shown.
+   * are already allowed, and no dialog is ever shown. `dueDate` (as stored)
+   * ends the reminders after the due date; without one they never end.
    */
   sync(
     state: ChecklistState,
-    options: { enabled: boolean; requestPermission: boolean },
+    options: { enabled: boolean; requestPermission: boolean; dueDate?: string | null },
   ): Promise<number> {
     return this.enqueue(async () => {
       const native = await this.plugin();
@@ -63,7 +65,7 @@ export class ChecklistRemindersService {
         return 0;
       }
 
-      const plan = buildChecklistReminderPlan(new Date(), state);
+      const plan = buildChecklistReminderPlan(new Date(), state, parseStoredDate(options.dueDate));
       if (plan.length === 0) return 0;
       const useChannel = await this.reminderScheduler.reminderChannelExists();
       await this.withTimeout('schedule', LocalNotifications.schedule({

@@ -94,7 +94,7 @@ export class AppComponent {
       const state = enabled
         ? await this.checklistReminders.loadState(uid)
         : { unchecked: [] };
-      await this.checklistReminders.sync(state, { enabled, requestPermission: false });
+      await this.checklistReminders.sync(state, { enabled, requestPermission: false, dueDate: profile?.dueDate });
     } catch (err) {
       console.error('Checklist reminder sync failed:', err);
     }

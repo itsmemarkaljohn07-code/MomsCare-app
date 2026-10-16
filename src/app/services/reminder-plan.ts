@@ -6,6 +6,7 @@
 // file on purpose, so every rule can be tested on its own.
 
 import { CHECKLIST_REMINDER_SLOT_MINUTES } from './checklist-reminder-plan';
+import { pregnancyRemindersEnded } from '../shared/pregnancy-status';
 
 export interface ReminderPrefs {
   weeklyUpdates?: boolean;
@@ -102,11 +103,19 @@ function separate(plan: PlannedReminder[]): PlannedReminder[] {
   return out;
 }
 
-/** Turns the patient's switches into the exact list of reminders to schedule. */
+/** Turns the patient's switches into the exact list of reminders to schedule.
+ *  Nothing once the pregnancy reminders have ended (REMINDERS_END_DAYS_AFTER_DUE
+ *  after `dueDate`); a missing or unreadable due date changes nothing.
+ *  Known limit: these repeat on the phone with no end date, so they only
+ *  stop at the next sync (the app opening, or saving Pregnancy Settings)
+ *  after the end. A later due date brings them back at the next sync. */
 export function buildReminderPlan(
   prefs: ReminderPrefs | null | undefined,
   kickTime?: string | null,
+  dueDate?: Date | null,
+  now: Date = new Date(),
 ): PlannedReminder[] {
+  if (pregnancyRemindersEnded(dueDate, now)) return [];
   const p = prefs ?? {};
   const plan: PlannedReminder[] = [];
   // The Daily Checklist reminders include vitamins and water, and stop once

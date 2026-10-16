@@ -20,6 +20,10 @@
 //    minutes, which is why reminders at the same time are 10 minutes apart.
 //  - "Force stop" in Android settings cancels all of the app's alarms until
 //    the app is opened again.
+//  - Nothing is planned from REMINDERS_END_DAYS_AFTER_DUE after the due date
+//    on (see shared/pregnancy-status.ts); a missing due date changes nothing.
+
+import { pregnancyRemindersEndAt } from '../shared/pregnancy-status';
 
 /** Today plus the next two days. */
 export const CHECKLIST_REMINDER_HORIZON_DAYS = 3;
@@ -130,9 +134,12 @@ export interface ChecklistReminder {
  * Every reminder to schedule from `now`: today's slots of the items still
  * unchecked, then the next days' slots of every item (the checklist resets
  * daily). Slots less than a minute away are skipped, so nothing fires at
- * once. Sorted by time; ids are numbered from CHECKLIST_REMINDER_ID_BASE.
+ * once, and so is every slot from the end of the pregnancy reminders
+ * (after `dueDate`) on. Sorted by time; ids are numbered from
+ * CHECKLIST_REMINDER_ID_BASE.
  */
-export function buildChecklistReminderPlan(now: Date, state: ChecklistState): ChecklistReminder[] {
+export function buildChecklistReminderPlan(now: Date, state: ChecklistState, dueDate?: Date | null): ChecklistReminder[] {
+  const end = pregnancyRemindersEndAt(dueDate);
   const planned: Omit<ChecklistReminder, 'id'>[] = [];
   for (let day = 0; day < CHECKLIST_REMINDER_HORIZON_DAYS; day++) {
     for (const item of CHECKLIST_REMINDER_ITEMS) {
@@ -140,6 +147,7 @@ export function buildChecklistReminderPlan(now: Date, state: ChecklistState): Ch
       for (const slot of item.slots) {
         const at = new Date(now.getFullYear(), now.getMonth(), now.getDate() + day, slot.hour, slot.minute, 0, 0);
         if (at.getTime() < now.getTime() + MIN_LEAD_MS) continue;
+        if (end && at.getTime() >= end.getTime()) continue;
         planned.push({ itemId: item.id, at, title: CHECKLIST_REMINDER_TITLE, body: slot.body });
       }
     }
@@ -164,16 +172,19 @@ export interface ChecklistBellSlot {
  * the in-app bell. This lists today's reminder slots that have already
  * passed for items still unchecked, for the bell to catch up on when the
  * app opens: the same times (local), title and text as the phone reminders.
- * Nothing when reminders are off, never a slot from an earlier day, and
- * none from before `notBefore` (when the account was created).
+ * Nothing when reminders are off, never a slot from an earlier day, none
+ * from before `notBefore` (when the account was created), and none from
+ * the end of the pregnancy reminders (after `dueDate`) on.
  */
 export function dueChecklistBellSlots(
   now: Date,
   state: ChecklistState,
   enabled: boolean,
   notBefore?: Date | null,
+  dueDate?: Date | null,
 ): ChecklistBellSlot[] {
   if (!enabled) return [];
+  const end = pregnancyRemindersEndAt(dueDate);
   const slots: ChecklistBellSlot[] = [];
   for (const item of CHECKLIST_REMINDER_ITEMS) {
     if (!state.unchecked.includes(item.id)) continue;
@@ -181,6 +192,7 @@ export function dueChecklistBellSlots(
       const at = new Date(now.getFullYear(), now.getMonth(), now.getDate(), slot.hour, slot.minute, 0, 0);
       if (at.getTime() > now.getTime()) continue;
       if (notBefore && !isNaN(notBefore.getTime()) && at.getTime() < notBefore.getTime()) continue;
+      if (end && at.getTime() >= end.getTime()) continue;
       slots.push({
         id: `checklist-${localDateKey(at)}-${item.id}-${String(slot.hour).padStart(2, '0')}`,
         itemId: item.id,

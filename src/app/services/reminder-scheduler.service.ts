@@ -8,9 +8,11 @@ import {
   REMINDER_IDS,
   buildReminderPlan,
 } from './reminder-plan';
+import { parseStoredDate } from '../shared/date-utils';
 
-/** Just the two profile fields the reminders depend on. */
-export type ReminderSource = Pick<UserProfile, 'notificationPrefs' | 'kickReminderTime'>;
+/** Just the profile fields the reminders depend on. The due date ends them
+ *  (see buildReminderPlan); without one they never end. */
+export type ReminderSource = Pick<UserProfile, 'notificationPrefs' | 'kickReminderTime' | 'dueDate'>;
 
 export interface ReminderSyncResult {
   /** How many reminders are now scheduled on this phone. */
@@ -116,7 +118,7 @@ export class ReminderSchedulerService {
     if (!native) return unavailable;
     const LocalNotifications = native.plugin;
 
-    const plan = buildReminderPlan(source.notificationPrefs, source.kickReminderTime);
+    const plan = buildReminderPlan(source.notificationPrefs, source.kickReminderTime, parseStoredDate(source.dueDate));
 
     // Always clear first, so edits and switch-offs take effect.
     await this.cancelOwn(LocalNotifications);

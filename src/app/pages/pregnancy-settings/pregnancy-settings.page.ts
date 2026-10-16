@@ -306,7 +306,7 @@ export class PregnancySettingsPage implements OnInit, OnDestroy, ViewWillEnter, 
       .some(k => notificationPrefs[k]);
     try {
       const result = await this.reminders.sync(
-        { notificationPrefs, kickReminderTime: this.settings.kickReminderTime },
+        { notificationPrefs, kickReminderTime: this.settings.kickReminderTime, dueDate: this.settings.dueDate },
         { requestPermission: true },
       );
       this.reminderNote = this.describeReminders(result, anyOn);
@@ -329,7 +329,7 @@ export class PregnancySettingsPage implements OnInit, OnDestroy, ViewWillEnter, 
         return;
       }
       const state = await this.checklistReminders.loadState(uid);
-      await this.checklistReminders.sync(state, { enabled: true, requestPermission: true });
+      await this.checklistReminders.sync(state, { enabled: true, requestPermission: true, dueDate: this.settings.dueDate });
     } catch (err) {
       console.error('Failed to update checklist reminders:', err);
     }

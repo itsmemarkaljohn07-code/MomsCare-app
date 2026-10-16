@@ -674,6 +674,7 @@ export class HomePage implements OnInit, OnDestroy, DoCheck {
         // Nothing from before the account existed (a new account signing
         // up at night got every earlier slot of the day).
         parseStoredDate(profile?.createdAt),
+        parseStoredDate(profile?.dueDate),
       );
       for (const slot of slots) {
         await this.notificationsService.createIfMissing(uid, slot.id,
@@ -736,7 +737,11 @@ export class HomePage implements OnInit, OnDestroy, DoCheck {
         const profile = await this.profileStore.whenLoaded();
         await this.checklistReminders.sync(
           state,
-          { enabled: profile?.notificationPrefs?.checklistReminders !== false, requestPermission: false },
+          {
+            enabled: profile?.notificationPrefs?.checklistReminders !== false,
+            requestPermission: false,
+            dueDate: profile?.dueDate,
+          },
         );
         return;
       }

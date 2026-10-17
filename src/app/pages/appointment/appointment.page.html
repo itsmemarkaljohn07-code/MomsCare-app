@@ -179,6 +179,165 @@
           <p class="empty-sub">Your care team will schedule your next appointment</p>
         </div>
       </div>
+
+      <!-- Appointment requests: the patient asks, the clinic schedules. -->
+      <div class="req-section">
+        <button class="action-btn action-secondary req-open-btn" *ngIf="!requestFormOpen" (click)="openRequestForm()">
+          <svg width="14" height="14" viewBox="0 0 22 22" fill="none">
+            <path d="M11 5v12M5 11h12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+          </svg>
+          Request an appointment
+        </button>
+
+        <div class="req-panel" *ngIf="requestFormOpen">
+          <h2 class="req-title">Request an appointment</h2>
+          <p class="req-sub">The clinic reviews your request and schedules the appointment. Nothing is booked until then.</p>
+
+          <div class="field-group">
+            <label class="field-label">Appointment</label>
+            <mc-dropdown label="Appointment" placeholder="Choose the kind of appointment"
+                         [options]="requestTypeOptions" [(ngModel)]="requestForm.type"
+                         (ngModelChange)="revalidateRequest()" [disabled]="requestSaving"></mc-dropdown>
+            <p class="req-error" *ngIf="requestErrors.type">{{ requestErrors.type }}</p>
+          </div>
+
+          <div class="req-option" *ngFor="let option of requestForm.options; let i = index">
+            <div class="req-option-head">
+              <span class="field-label">{{ i === 0 ? 'Preferred date and time' : 'Second option (optional)' }}</span>
+              <button type="button" class="req-remove" *ngIf="i > 0" (click)="removeRequestOption(i)"
+                      [disabled]="requestSaving">Remove</button>
+            </div>
+            <mc-datepicker [label]="i === 0 ? 'Preferred date' : 'Second option date'" [min]="todayYmd"
+                           [(ngModel)]="option.date" (ngModelChange)="revalidateRequest()"
+                           [disabled]="requestSaving"></mc-datepicker>
+            <div class="req-times">
+              <mc-dropdown label="From" placeholder="From" [options]="requestFromOptions"
+                           [(ngModel)]="option.from" (ngModelChange)="onFromChange(option)"
+                           [disabled]="requestSaving"></mc-dropdown>
+              <mc-dropdown label="To" placeholder="To" [options]="toOptionsFor(option)"
+                           [(ngModel)]="option.to" (ngModelChange)="revalidateRequest()"
+                           [disabled]="requestSaving || !option.from"></mc-dropdown>
+            </div>
+            <p class="req-error" *ngIf="i === 0 && requestErrors.option0">{{ requestErrors.option0 }}</p>
+            <p class="req-error" *ngIf="i === 1 && requestErrors.option1">{{ requestErrors.option1 }}</p>
+          </div>
+          <button type="button" class="req-add" *ngIf="requestForm.options.length < requestOptionsMax"
+                  (click)="addRequestOption()" [disabled]="requestSaving">Add a second option</button>
+
+          <div class="field-group">
+            <label class="field-label" for="req-reason">Reason</label>
+            <textarea id="req-reason" class="cancel-confirm-input" rows="3" [maxlength]="requestReasonMax"
+                      [(ngModel)]="requestForm.reason" (ngModelChange)="revalidateRequest()"
+                      [disabled]="requestSaving" placeholder="What is this appointment for?"></textarea>
+            <p class="cancel-confirm-count">{{ requestForm.reason.length }}/{{ requestReasonMax }}</p>
+            <p class="req-error" *ngIf="requestErrors.reason">{{ requestErrors.reason }}</p>
+          </div>
+
+          <div class="field-group">
+            <label class="field-label" for="req-notes">Notes (optional)</label>
+            <textarea id="req-notes" class="cancel-confirm-input" rows="2" [maxlength]="requestNotesMax"
+                      [(ngModel)]="requestForm.notes" (ngModelChange)="revalidateRequest()"
+                      [disabled]="requestSaving" placeholder="Anything else the clinic should know"></textarea>
+            <p class="cancel-confirm-count">{{ requestForm.notes.length }}/{{ requestNotesMax }}</p>
+            <p class="req-error" *ngIf="requestErrors.notes">{{ requestErrors.notes }}</p>
+          </div>
+
+          <div class="field-group">
+            <span class="field-label">Icon</span>
+            <div class="req-icons" role="radiogroup" aria-label="Icon">
+              <button type="button" class="req-icon" *ngFor="let icon of requestIcons"
+                      role="radio" [attr.aria-checked]="requestForm.icon === icon.value" [attr.aria-label]="icon.label"
+                      [class.selected]="requestForm.icon === icon.value" [disabled]="requestSaving"
+                      (click)="requestForm.icon = icon.value; revalidateRequest()">{{ icon.value }}</button>
+            </div>
+            <p class="req-error" *ngIf="requestErrors.icon">{{ requestErrors.icon }}</p>
+          </div>
+
+          <div class="field-group">
+            <span class="field-label">Colour</span>
+            <div class="req-colors" role="radiogroup" aria-label="Colour">
+              <button type="button" *ngFor="let c of requestColors" [class]="'req-color req-color--' + c"
+                      role="radio" [attr.aria-checked]="requestForm.accentColor === c" [attr.aria-label]="c"
+                      [class.selected]="requestForm.accentColor === c" [disabled]="requestSaving"
+                      (click)="requestForm.accentColor = c; revalidateRequest()"></button>
+            </div>
+            <p class="req-error" *ngIf="requestErrors.accentColor">{{ requestErrors.accentColor }}</p>
+          </div>
+
+          <div class="cancel-confirm-actions">
+            <button class="action-btn action-secondary" (click)="closeRequestForm()" [disabled]="requestSaving">Cancel</button>
+            <button class="action-btn req-send" (click)="sendRequest()" [disabled]="requestSaving">
+              {{ requestSaving ? 'Sending...' : 'Send request' }}
+            </button>
+          </div>
+        </div>
+
+        <ng-container *ngIf="requests.length > 0">
+          <div class="next-label req-list-label">
+            <span class="next-dot past-dot"></span>
+            MY REQUESTS
+          </div>
+          <div class="appt-cards">
+            <div *ngFor="let req of requests"
+                 [class]="'appt-card req-card appt-accent-' + (req.accentColor || 'purple')"
+                 [class.expanded]="expandedRequestId === req.id"
+                 (click)="toggleRequest(req.id)">
+              <div class="card-main">
+                <div class="card-avatar">
+                  <span class="card-emoji">{{ req.icon || '🩺' }}</span>
+                </div>
+                <div class="card-info">
+                  <span class="card-type">Request</span>
+                  <p class="card-name">{{ req.type }}</p>
+                  <div class="card-meta">
+                    <span class="card-time" *ngIf="req.options?.length">{{ formatRequestOption(req.options[0]) }}</span>
+                    <span class="card-tag tag-pending" *ngIf="req.status === 'pending'">Pending</span>
+                    <span class="card-tag tag-green" *ngIf="req.status === 'scheduled'">Scheduled</span>
+                    <span class="card-tag tag-rejected" *ngIf="req.status === 'declined'">Declined</span>
+                    <span class="card-tag tag-past" *ngIf="req.status === 'withdrawn'">Withdrawn</span>
+                  </div>
+                </div>
+                <div class="card-chevron" [class.open]="expandedRequestId === req.id">
+                  <svg width="16" height="16" viewBox="0 0 22 22" fill="none">
+                    <path d="M6 9l5 5 5-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                  </svg>
+                </div>
+              </div>
+
+              <div class="card-summary" *ngIf="expandedRequestId === req.id">
+                <div class="summary-divider"></div>
+                <div class="summary-section">
+                  <p class="summary-label">{{ req.options.length > 1 ? 'Preferred times' : 'Preferred time' }}</p>
+                  <p class="summary-value" *ngFor="let o of req.options">{{ formatRequestOption(o) }}</p>
+                </div>
+                <div class="summary-section">
+                  <p class="summary-label">Reason</p>
+                  <p class="summary-value">{{ req.reason }}</p>
+                </div>
+                <div class="summary-section" *ngIf="req.notes">
+                  <p class="summary-label">Notes</p>
+                  <p class="summary-value">{{ req.notes }}</p>
+                </div>
+                <div class="summary-section" *ngIf="req.status === 'declined'">
+                  <p class="summary-label">Declined by the clinic</p>
+                  <p class="summary-value cancel-status cancel-status--declined">
+                    {{ req.adminNote ? req.adminNote : 'The clinic could not schedule this request.' }}
+                  </p>
+                </div>
+                <div class="summary-actions">
+                  <button class="action-btn action-secondary" *ngIf="req.status === 'scheduled' && req.appointmentId"
+                          (click)="$event.stopPropagation(); openScheduledAppointment(req)">View appointment</button>
+                  <button class="action-btn action-cancel" *ngIf="req.status === 'pending'"
+                          [disabled]="withdrawingId === req.id"
+                          (click)="$event.stopPropagation(); withdrawRequest(req)">
+                    {{ withdrawingId === req.id ? 'Withdrawing...' : 'Withdraw request' }}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </ng-container>
+      </div>
     </div>
 
     <div class="tab-content" [class.visible]="animReady" *ngIf="activeTab === 'past'">

@@ -160,6 +160,61 @@ service cloud.firestore {
         }
       }
 
+      // -- appointment requests --
+      // The patient ASKS for an appointment; only the clinic creates the
+      // appointment itself (from the dashboard server, which also writes
+      // adminNote and appointmentId). The patient may create a request
+      // once per id (a second write to the same id is an update and is
+      // refused), read her own, and withdraw one while it is pending.
+      // Admins read them through the collection-group rule further down;
+      // doctors and other patients get nothing.
+      match /appointmentRequests/{requestId} {
+        allow get, list: if isOwner(uid);
+        allow create: if isOwner(uid) && validNewAppointmentRequest();
+        allow update: if isOwner(uid)
+          && resource.data.status == 'pending'
+          && request.resource.data.status == 'withdrawn'
+          && request.resource.data.withdrawnAt == request.time
+          && request.resource.data.diff(resource.data).affectedKeys()
+               .hasOnly(['status', 'withdrawnAt']);
+        allow delete: if false;
+
+        // One preferred slot: a date and a half-hour window, from < to.
+        function validRequestOption(o) {
+          return o is map
+            && o.keys().hasOnly(['date', 'from', 'to'])
+            && o.keys().hasAll(['date', 'from', 'to'])
+            && o.date is string
+            && o.date.matches('^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$')
+            && o.from is string && o.from.matches('^([01][0-9]|2[0-3]):(00|30)$')
+            && o.to is string && o.to.matches('^([01][0-9]|2[0-3]):(00|30)$')
+            && o.from < o.to;
+        }
+
+        // Same appointment names, icons and colours as the dashboard's
+        // appointment form (appointment-form-dialog.tsx).
+        function validNewAppointmentRequest() {
+          let d = request.resource.data;
+          return d.keys().hasOnly(['userId', 'type', 'options', 'reason', 'notes',
+                                   'icon', 'accentColor', 'status', 'createdAt'])
+            && d.keys().hasAll(['userId', 'type', 'options', 'reason',
+                                'icon', 'accentColor', 'status', 'createdAt'])
+            && d.userId == uid
+            && d.type in ['Prenatal Checkup', 'Booking Appointment', 'Nuchal Scan',
+                          'Anomaly Scan', 'Glucose Tolerance Test', 'Group B Strep Test',
+                          'Ultrasound', 'Blood Test', 'Postpartum Checkup', 'Other']
+            && d.options is list && d.options.size() >= 1 && d.options.size() <= 2
+            && validRequestOption(d.options[0])
+            && (d.options.size() == 1 || validRequestOption(d.options[1]))
+            && d.reason is string && d.reason.size() > 0 && d.reason.size() <= 300
+            && (!('notes' in d) || (d.notes is string && d.notes.size() <= 500))
+            && d.icon in ['🩺', '🔬', '🩸', '🥗', '👩‍⚕️', '💊', '🫀', '🧬']
+            && d.accentColor in ['green', 'pink', 'purple', 'blue', 'orange']
+            && d.status == 'pending'
+            && d.createdAt == request.time;
+        }
+      }
+
       // -- devices (this patient's phones that can receive pushes) --
       // The app stores one document per installation with its FCM token,
       // and deletes it before signing out. Only the patient can see or
@@ -245,6 +300,13 @@ service cloud.firestore {
                .hasOnly(['read']);
         allow delete: if false;
       }
+    }
+
+    // ------------------- appointment requests (all) -------------------
+    // The dashboard's admins read every patient's requests at once
+    // (collection group). Read only; answers are written by the server.
+    match /{path=**}/appointmentRequests/{requestId} {
+      allow read: if isAdmin();
     }
 
     // --------------------- username -> email lookup ---------------------

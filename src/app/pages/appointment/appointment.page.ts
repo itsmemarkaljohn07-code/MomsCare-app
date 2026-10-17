@@ -16,6 +16,15 @@ import {
   CANCELLATION_REASON_MAX,
 } from '../../services/appointments.service';
 import { AppointmentRemindersService } from '../../services/appointment-reminders.service';
+import { AppointmentRequestsService, AppointmentRequestRecord } from '../../services/appointment-requests.service';
+import { SaveFeedbackService } from '../../services/save-feedback.service';
+import { McDropdownComponent, McDropdownOption } from '../../shared/mc-dropdown/mc-dropdown.component';
+import { McDatepickerComponent } from '../../shared/mc-datepicker/mc-datepicker.component';
+import {
+  DEFAULT_REQUEST_COLOR, DEFAULT_REQUEST_ICON, REQUEST_COLORS, REQUEST_ICONS, REQUEST_NOTES_MAX,
+  REQUEST_OPTIONS_MAX, REQUEST_REASON_MAX, REQUEST_TYPES, RequestForm, RequestFormErrors, RequestOption,
+  emptyOption, formatSlot, fromSlots, localYmd, toSlots, validateRequestForm,
+} from '../../shared/appointment-request';
 import { Subscription } from 'rxjs';
 
 export interface Appointment {
@@ -52,7 +61,7 @@ const DAYS   = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
   templateUrl: './appointment.page.html',
   styleUrls:  ['./appointment.page.scss'],
   standalone: true,
-  imports: [IonicModule, CommonModule, FormsModule],
+  imports: [IonicModule, CommonModule, FormsModule, McDropdownComponent, McDatepickerComponent],
 })
 export class AppointmentsPage implements OnInit, OnDestroy {
 
@@ -62,6 +71,7 @@ export class AppointmentsPage implements OnInit, OnDestroy {
   private apptSub!: Subscription;
   private userSub!: Subscription;
   private profileSub?: Subscription;
+  private requestsSub?: Subscription;
   private currentUid: string | null = null;
 
   /** Computed from the user's real stored due date (same source and
@@ -264,6 +274,140 @@ export class AppointmentsPage implements OnInit, OnDestroy {
     }
   }
 
+  // ── Appointment requests ──────────────────────────────
+  // The patient ASKS for an appointment (users/{uid}/appointmentRequests);
+  // only the clinic creates appointments. One document id per form open,
+  // so a double tap or a retry can never create two requests.
+
+  readonly requestTypeOptions: McDropdownOption[] = REQUEST_TYPES.map(t => ({ value: t, label: t }));
+  readonly requestFromOptions: McDropdownOption[] = fromSlots().map(t => ({ value: t, label: formatSlot(t) }));
+  readonly requestIcons = REQUEST_ICONS;
+  readonly requestColors = REQUEST_COLORS;
+  readonly requestReasonMax = REQUEST_REASON_MAX;
+  readonly requestNotesMax = REQUEST_NOTES_MAX;
+  readonly requestOptionsMax = REQUEST_OPTIONS_MAX;
+
+  requests: AppointmentRequestRecord[] = [];
+  requestFormOpen = false;
+  requestForm: RequestForm = this.blankRequestForm();
+  requestErrors: RequestFormErrors = {};
+  /** Set after the first "Send" so errors show only once she has tried. */
+  requestTried = false;
+  requestSaving = false;
+  /** Request with a withdraw in flight. */
+  withdrawingId: string | null = null;
+  /** Request whose details are open in "My requests". */
+  expandedRequestId: string | null = null;
+  private requestId: string | null = null;
+
+  get todayYmd(): string {
+    return localYmd(new Date());
+  }
+
+  private blankRequestForm(): RequestForm {
+    return {
+      type: '', options: [emptyOption()], reason: '', notes: '',
+      icon: DEFAULT_REQUEST_ICON, accentColor: DEFAULT_REQUEST_COLOR,
+    };
+  }
+
+  toOptionsFor(option: RequestOption): McDropdownOption[] {
+    return toSlots(option.from).map(t => ({ value: t, label: formatSlot(t) }));
+  }
+
+  /** A new start time can leave the end time before it; clear it then. */
+  onFromChange(option: RequestOption): void {
+    if (option.to && option.to <= option.from) option.to = '';
+    this.revalidateRequest();
+  }
+
+  openRequestForm(): void {
+    if (!this.currentUid) return;
+    this.requestForm = this.blankRequestForm();
+    this.requestErrors = {};
+    this.requestTried = false;
+    this.requestId = this.requestsService.newRequestId(this.currentUid);
+    this.requestFormOpen = true;
+  }
+
+  closeRequestForm(): void {
+    if (this.requestSaving) return;
+    this.requestFormOpen = false;
+    this.requestId = null;
+  }
+
+  addRequestOption(): void {
+    if (this.requestForm.options.length < REQUEST_OPTIONS_MAX) this.requestForm.options.push(emptyOption());
+  }
+
+  removeRequestOption(index: number): void {
+    if (index > 0) this.requestForm.options.splice(index, 1);
+    this.revalidateRequest();
+  }
+
+  /** Re-checks while she edits, once she has tried to send. */
+  revalidateRequest(): void {
+    if (this.requestTried) this.requestErrors = validateRequestForm(this.requestForm);
+  }
+
+  async sendRequest(): Promise<void> {
+    if (this.requestSaving || !this.requestId) return;
+    this.requestTried = true;
+    this.requestErrors = validateRequestForm(this.requestForm);
+    if (Object.keys(this.requestErrors).length > 0) return;
+    this.requestSaving = true;
+    try {
+      const id = this.requestId;
+      const form = this.requestForm;
+      const result = await this.feedback.save(() => this.requestsService.submit(id, form));
+      // Saved, or kept on the phone until it is back online: either way
+      // this request is done; the next form gets a new id.
+      if (result.outcome !== 'failed') {
+        this.requestFormOpen = false;
+        this.requestId = null;
+      }
+    } finally {
+      this.requestSaving = false;
+    }
+  }
+
+  async withdrawRequest(req: AppointmentRequestRecord): Promise<void> {
+    if (this.withdrawingId || req.status !== 'pending') return;
+    this.withdrawingId = req.id;
+    try {
+      await this.feedback.save(() => this.requestsService.withdraw(req.id));
+    } finally {
+      this.withdrawingId = null;
+    }
+  }
+
+  toggleRequest(id: string): void {
+    this.expandedRequestId = this.expandedRequestId === id ? null : id;
+  }
+
+  /** "Scheduled": shows the appointment the clinic made from the request. */
+  openScheduledAppointment(req: AppointmentRequestRecord): void {
+    if (!req.appointmentId) return;
+    const upcoming = this.upcomingAppointments.findIndex(a => a.id === req.appointmentId);
+    if (upcoming >= 0) {
+      this.setTab('upcoming');
+      this.expandedCard = upcoming;
+      return;
+    }
+    const past = this.pastAppointments.findIndex(a => a.id === req.appointmentId);
+    if (past >= 0) {
+      this.setTab('past');
+      this.expandedPast = past;
+    }
+  }
+
+  /** "Tue, Nov 3 · 9:00 AM – 10:30 AM" */
+  formatRequestOption(o: RequestOption): string {
+    const d = new Date(o.date + 'T00:00:00');
+    const day = isNaN(d.getTime()) ? o.date : `${DAYS[d.getDay()]}, ${MONTHS[d.getMonth()]} ${d.getDate()}`;
+    return `${day} · ${formatSlot(o.from)} – ${formatSlot(o.to)}`;
+  }
+
   constructor(
     private router: Router,
     private theme: ThemeService,
@@ -271,6 +415,8 @@ export class AppointmentsPage implements OnInit, OnDestroy {
     private appointmentsService: AppointmentsService,
     private appointmentReminders: AppointmentRemindersService,
     private profileStore: ProfileStoreService,
+    private requestsService: AppointmentRequestsService,
+    private feedback: SaveFeedbackService,
   ) {}
 
   /** The shared formula (shared/pregnancy-status.ts), the same one Home
@@ -294,6 +440,11 @@ export class AppointmentsPage implements OnInit, OnDestroy {
 
     this.profileSub = this.profileStore.profile$.subscribe(profile => this.applyProfileDueDate(profile));
 
+    this.requestsSub = this.requestsService.getRequests$().subscribe({
+      next: list => (this.requests = list),
+      error: err => console.error('Failed to load appointment requests:', err?.code ?? err),
+    });
+
     requestAnimationFrame(() => {
       setTimeout(() => (this.animReady = true), 80);
     });
@@ -309,6 +460,7 @@ export class AppointmentsPage implements OnInit, OnDestroy {
     this.apptSub?.unsubscribe();
     this.userSub?.unsubscribe();
     this.profileSub?.unsubscribe();
+    this.requestsSub?.unsubscribe();
   }
 
   navigate(route: string, tab?: string): void {

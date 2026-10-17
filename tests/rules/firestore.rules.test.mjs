@@ -12,7 +12,7 @@ import {
   initializeTestEnvironment,
 } from '@firebase/rules-unit-testing';
 import {
-  addDoc, collection, deleteDoc, doc, getDoc, getDocs, serverTimestamp, setDoc, updateDoc, Timestamp,
+  addDoc, collection, collectionGroup, deleteDoc, doc, getDoc, getDocs, serverTimestamp, setDoc, updateDoc, Timestamp,
 } from 'firebase/firestore';
 
 const PROJECT_ID = 'demo-momscare';
@@ -594,5 +594,97 @@ describe('dashboard compatibility (client-SDK reads/writes in momscare-admin)', 
   });
   test('clinical-notes-panel: assigned doctor lists users/{patient}/clinicalNotes', async () => {
     await assertSucceeds(getDocs(collection(doctor(DOC_ASSIGNED), `users/${PATIENT_A}/clinicalNotes`)));
+  });
+});
+
+describe('patient A: appointment requests', () => {
+  const REQ = `users/${PATIENT_A}/appointmentRequests/req1`;
+  const newRequest = (overrides = {}) => ({
+    userId: PATIENT_A,
+    type: 'Prenatal Checkup',
+    options: [{ date: '2026-11-03', from: '09:00', to: '10:30' }],
+    reason: 'Routine checkup',
+    notes: 'Mornings are easier',
+    icon: '🩺',
+    accentColor: 'purple',
+    status: 'pending',
+    createdAt: serverTimestamp(),
+    ...overrides,
+  });
+  const seed = (data) => env.withSecurityRulesDisabled(ctx =>
+    setDoc(doc(ctx.firestore(), REQ), { ...newRequest(), createdAt: Timestamp.now(), ...data }));
+
+  test('can create a valid request (one or two options, notes optional)', async () => {
+    await assertSucceeds(setDoc(doc(patientA(), REQ), newRequest()));
+    const { notes, ...noNotes } = newRequest({
+      options: [{ date: '2026-11-03', from: '09:00', to: '10:30' }, { date: '2026-11-05', from: '14:00', to: '14:30' }],
+      type: 'Other', icon: '👩‍⚕️',
+    });
+    await assertSucceeds(setDoc(doc(patientA(), `users/${PATIENT_A}/appointmentRequests/req2`), noNotes));
+  });
+  test("cannot create under patient B's account or with another userId", async () => {
+    await assertFails(setDoc(doc(patientA(), `users/${PATIENT_B}/appointmentRequests/req1`), newRequest({ userId: PATIENT_B })));
+    await assertFails(setDoc(doc(patientA(), REQ), newRequest({ userId: PATIENT_B })));
+  });
+  test('cannot create with a status other than pending', async () => {
+    await assertFails(setDoc(doc(patientA(), REQ), newRequest({ status: 'scheduled' })));
+  });
+  test('cannot create with an extra or server-only field', async () => {
+    await assertFails(setDoc(doc(patientA(), REQ), newRequest({ adminNote: 'ok' })));
+    await assertFails(setDoc(doc(patientA(), REQ), newRequest({ appointmentId: 'appt1' })));
+    await assertFails(setDoc(doc(patientA(), REQ), newRequest({ role: 'admin' })));
+  });
+  test('cannot create oversize, empty or malformed values', async () => {
+    const slot = { date: '2026-11-03', from: '09:00', to: '10:00' };
+    for (const bad of [
+      { reason: 'x'.repeat(301) }, { reason: '' }, { notes: 'x'.repeat(501) },
+      { options: [] }, { options: [slot, slot, slot] },
+      { options: [{ ...slot, from: '10:00', to: '09:00' }] }, { options: [{ ...slot, from: '09:15' }] },
+      { options: [{ ...slot, date: '03/11/2026' }] }, { options: [{ ...slot, extra: 1 }] },
+      { type: 'Surgery' }, { icon: '🚀' }, { accentColor: 'red' }, { createdAt: Timestamp.now() },
+    ]) {
+      await assertFails(setDoc(doc(patientA(), REQ), newRequest(bad)));
+    }
+  });
+  test('cannot write the same id twice', async () => {
+    await assertSucceeds(setDoc(doc(patientA(), REQ), newRequest()));
+    await assertFails(setDoc(doc(patientA(), REQ), newRequest({ reason: 'Changed' })));
+  });
+  test('can withdraw a pending request', async () => {
+    await seed({});
+    await assertSucceeds(updateDoc(doc(patientA(), REQ), { status: 'withdrawn', withdrawnAt: serverTimestamp() }));
+  });
+  test('forbidden transitions and edits', async () => {
+    await seed({});
+    await assertFails(updateDoc(doc(patientA(), REQ), { status: 'scheduled' }));
+    await assertFails(updateDoc(doc(patientA(), REQ), { status: 'withdrawn', withdrawnAt: serverTimestamp(), reason: 'x' }));
+    await assertFails(updateDoc(doc(patientA(), REQ), { status: 'withdrawn', withdrawnAt: Timestamp.now() }));
+    await assertFails(updateDoc(doc(patientA(), REQ), { reason: 'Edited' }));
+    await assertFails(deleteDoc(doc(patientA(), REQ)));
+    for (const status of ['scheduled', 'declined', 'withdrawn']) {
+      await seed({ status });
+      await assertFails(updateDoc(doc(patientA(), REQ), { status: 'withdrawn', withdrawnAt: serverTimestamp() }));
+      await assertFails(updateDoc(doc(patientA(), REQ), { status: 'pending' }));
+    }
+  });
+  test('the owner can read her own requests; patient B cannot', async () => {
+    await seed({});
+    await assertSucceeds(getDoc(doc(patientA(), REQ)));
+    await assertSucceeds(getDocs(collection(patientA(), `users/${PATIENT_A}/appointmentRequests`)));
+    const patientB = env.authenticatedContext(PATIENT_B, { email: 'b@example.com' }).firestore();
+    await assertFails(getDoc(doc(patientB, REQ)));
+    await assertFails(getDocs(collectionGroup(patientA(), 'appointmentRequests')));
+  });
+  test('an admin can read one request and all of them (collection group), but not write', async () => {
+    await seed({});
+    await assertSucceeds(getDoc(doc(admin(), REQ)));
+    await assertSucceeds(getDocs(collectionGroup(admin(), 'appointmentRequests')));
+    await assertFails(updateDoc(doc(admin(), REQ), { status: 'scheduled' }));
+  });
+  test('doctors cannot read requests, even for an assigned patient', async () => {
+    await seed({});
+    await assertFails(getDoc(doc(doctor(DOC_ASSIGNED), REQ)));
+    await assertFails(getDocs(collection(doctor(DOC_ASSIGNED), `users/${PATIENT_A}/appointmentRequests`)));
+    await assertFails(getDocs(collectionGroup(doctor(DOC_ASSIGNED), 'appointmentRequests')));
   });
 });

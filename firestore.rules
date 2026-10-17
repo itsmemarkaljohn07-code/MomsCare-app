@@ -177,7 +177,7 @@ service cloud.firestore {
           && request.resource.data.withdrawnAt == request.time
           && request.resource.data.diff(resource.data).affectedKeys()
                .hasOnly(['status', 'withdrawnAt']);
-        allow delete: if false;
+        allow delete: if isOwner(uid) && resource.data.status in ['declined', 'withdrawn'];
 
         // One preferred slot: a date and a half-hour window, from < to.
         function validRequestOption(o) {

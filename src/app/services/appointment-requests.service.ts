@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import {
-  Firestore, collection, collectionData, doc, setDoc, updateDoc, serverTimestamp,
+  Firestore, collection, collectionData, deleteDoc, doc, setDoc, updateDoc, serverTimestamp,
 } from '@angular/fire/firestore';
 import { Observable, of, firstValueFrom } from 'rxjs';
 import { map, switchMap } from 'rxjs/operators';
@@ -70,6 +70,14 @@ export class AppointmentRequestsService {
     const user = await firstValueFrom(this.auth.user$);
     if (!user) throw new Error('Not authenticated');
     await updateDoc(doc(this.col(user.uid), id), { status: 'withdrawn', withdrawnAt: serverTimestamp() });
+  }
+
+  /** Deletes a declined or withdrawn request (firestore.rules refuses any
+   *  other). Only the request itself: appointments and notifications stay. */
+  async deleteRequest(id: string): Promise<void> {
+    const user = await firstValueFrom(this.auth.user$);
+    if (!user) throw new Error('Not authenticated');
+    await deleteDoc(doc(this.col(user.uid), id));
   }
 }
 

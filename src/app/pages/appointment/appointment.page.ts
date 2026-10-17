@@ -296,6 +296,10 @@ export class AppointmentsPage implements OnInit, OnDestroy {
   requestSaving = false;
   /** Request with a withdraw in flight. */
   withdrawingId: string | null = null;
+  /** Declined/withdrawn request whose "Delete?" confirmation is open. */
+  confirmingDeleteId: string | null = null;
+  /** Request with a delete in flight. */
+  deletingId: string | null = null;
   /** Request whose details are open in "My requests". */
   expandedRequestId: string | null = null;
   private requestId: string | null = null;
@@ -378,6 +382,36 @@ export class AppointmentsPage implements OnInit, OnDestroy {
       await this.feedback.save(() => this.requestsService.withdraw(req.id));
     } finally {
       this.withdrawingId = null;
+    }
+  }
+
+  /** Only finished requests can be deleted (firestore.rules agrees). */
+  canDeleteRequest(req: AppointmentRequestRecord): boolean {
+    return req.status === 'declined' || req.status === 'withdrawn';
+  }
+
+  askDeleteRequest(req: AppointmentRequestRecord): void {
+    if (!this.canDeleteRequest(req) || this.deletingId) return;
+    this.confirmingDeleteId = req.id;
+  }
+
+  cancelDeleteRequest(): void {
+    if (!this.deletingId) this.confirmingDeleteId = null;
+  }
+
+  /** Deletes the request only (never its appointment or notifications).
+   *  The live list then drops the card by itself. */
+  async deleteRequest(req: AppointmentRequestRecord): Promise<void> {
+    if (this.deletingId || !this.canDeleteRequest(req)) return;
+    this.deletingId = req.id;
+    try {
+      const result = await this.feedback.save(
+        () => this.requestsService.deleteRequest(req.id),
+        { successMessage: 'Request deleted' },
+      );
+      if (result.outcome !== 'failed') this.confirmingDeleteId = null;
+    } finally {
+      this.deletingId = null;
     }
   }
 

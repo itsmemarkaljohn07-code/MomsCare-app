@@ -688,3 +688,41 @@ describe('patient A: appointment requests', () => {
     await assertFails(getDocs(collectionGroup(doctor(DOC_ASSIGNED), 'appointmentRequests')));
   });
 });
+
+describe('appointment requests: deleting', () => {
+  const REQ = `users/${PATIENT_A}/appointmentRequests/del1`;
+  const seed = (status) => env.withSecurityRulesDisabled(ctx => setDoc(doc(ctx.firestore(), REQ), {
+    userId: PATIENT_A, type: 'Prenatal Checkup', reason: 'Checkup', status, createdAt: Timestamp.now(),
+    options: [{ date: '2026-11-03', from: '09:00', to: '10:00' }], icon: '🩺', accentColor: 'pink',
+  }));
+  const patientB = () => env.authenticatedContext(PATIENT_B, { email: 'b@example.com' }).firestore();
+
+  test('the owner can delete a declined request', async () => {
+    await seed('declined');
+    await assertSucceeds(deleteDoc(doc(patientA(), REQ)));
+  });
+  test('the owner can delete a withdrawn request', async () => {
+    await seed('withdrawn');
+    await assertSucceeds(deleteDoc(doc(patientA(), REQ)));
+  });
+  test('the owner cannot delete a pending request', async () => {
+    await seed('pending');
+    await assertFails(deleteDoc(doc(patientA(), REQ)));
+  });
+  test('the owner cannot delete a scheduled request', async () => {
+    await seed('scheduled');
+    await assertFails(deleteDoc(doc(patientA(), REQ)));
+  });
+  test('another patient cannot delete it', async () => {
+    await seed('declined');
+    await assertFails(deleteDoc(doc(patientB(), REQ)));
+  });
+  test('a doctor cannot delete it', async () => {
+    await seed('declined');
+    await assertFails(deleteDoc(doc(doctor(DOC_ASSIGNED), REQ)));
+  });
+  test('a signed-out user cannot delete it', async () => {
+    await seed('withdrawn');
+    await assertFails(deleteDoc(doc(signedOut(), REQ)));
+  });
+});

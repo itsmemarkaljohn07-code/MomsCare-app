@@ -83,14 +83,18 @@ test('the written document has exactly the allowed fields', () => {
   assert.equal(buildRequestDoc('uid1', form({ notes: ' Mornings ' })).notes, 'Mornings');
 });
 
-test('the app lists match firestore.rules exactly', () => {
+test('the app lists match firestore.rules', () => {
   const rules = readFileSync(new URL('../../firestore.rules', import.meta.url), 'utf8');
   const listAfter = (marker: string) => {
     const start = rules.indexOf('[', rules.indexOf(marker));
     const body = rules.slice(start + 1, rules.indexOf(']', start));
     return [...body.matchAll(/'([^']*)'/g)].map(m => m[1]);
   };
-  assert.deepEqual(listAfter('d.type in'), [...REQUEST_TYPES]);
+  // The rules still accept "Booking Appointment" (unchanged); the app no
+  // longer offers it, so its list must be a subset of the rules' list.
+  const ruleTypes = listAfter('d.type in');
+  assert.ok(REQUEST_TYPES.every(t => ruleTypes.includes(t)));
+  assert.ok(!(REQUEST_TYPES as readonly string[]).includes('Booking Appointment'));
   assert.deepEqual(listAfter('d.icon in'), REQUEST_ICONS.map(i => i.value));
   assert.deepEqual(listAfter('d.accentColor in'), [...REQUEST_COLORS]);
 });

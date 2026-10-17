@@ -807,6 +807,29 @@ ion-content[data-theme="dark"] {
 
 .req-list-label { margin-top: 22px; }
 
+.req-delete-row {
+  display: flex; justify-content: flex-end;
+  margin-top: 10px;
+}
+.req-delete-confirm { width: 100%; margin-top: 0; }
+
+.req-delete-btn {
+  min-height: 44px; min-width: 44px;
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 0 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(224, 85, 128, 0.18);
+  background: rgba(224, 85, 128, 0.08);
+  color: #e05580;
+  font-size: 0.78rem; font-weight: 800;
+  font-family: 'Nunito', 'Poppins', sans-serif;
+  cursor: pointer;
+  &:active { transform: scale(0.96); }
+  &:disabled { opacity: 0.6; cursor: default; transform: none; }
+}
+
+.action-btn.req-touch { min-height: 44px; }
+
 /* ══════════════════════════════════════════
    BOTTOM NAVIGATION — icon-only, Snapshot centered + highlighted
 ══════════════════════════════════════════ */

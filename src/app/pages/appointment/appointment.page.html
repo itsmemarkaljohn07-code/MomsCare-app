@@ -324,7 +324,7 @@
                     {{ req.adminNote ? req.adminNote : 'The clinic could not schedule this request.' }}
                   </p>
                 </div>
-                <div class="summary-actions">
+                <div class="summary-actions" *ngIf="req.status === 'pending' || req.status === 'scheduled'">
                   <button class="action-btn action-secondary" *ngIf="req.status === 'scheduled' && req.appointmentId"
                           (click)="$event.stopPropagation(); openScheduledAppointment(req)">View appointment</button>
                   <button class="action-btn action-cancel" *ngIf="req.status === 'pending'"
@@ -332,6 +332,31 @@
                           (click)="$event.stopPropagation(); withdrawRequest(req)">
                     {{ withdrawingId === req.id ? 'Withdrawing...' : 'Withdraw request' }}
                   </button>
+                </div>
+              </div>
+
+              <!-- Declined and withdrawn requests can be deleted (shown without expanding). -->
+              <div class="req-delete-row" *ngIf="canDeleteRequest(req)" (click)="$event.stopPropagation()">
+                <button class="req-delete-btn" *ngIf="confirmingDeleteId !== req.id"
+                        [disabled]="deletingId === req.id" (click)="askDeleteRequest(req)"
+                        aria-label="Delete this request">
+                  <svg width="15" height="15" viewBox="0 0 22 22" fill="none" aria-hidden="true">
+                    <path d="M4 6h14M9 6V4.5A1.5 1.5 0 0110.5 3h1A1.5 1.5 0 0113 4.5V6M6 6l.8 11.2A1.9 1.9 0 008.7 19h4.6a1.9 1.9 0 001.9-1.8L16 6M9.5 9.5v6M12.5 9.5v6"
+                          stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+                  </svg>
+                  Delete
+                </button>
+                <div class="cancel-confirm req-delete-confirm" *ngIf="confirmingDeleteId === req.id" role="alertdialog"
+                     aria-label="Delete this request?">
+                  <p class="cancel-confirm-text">Delete this request? This can't be undone.</p>
+                  <div class="cancel-confirm-actions">
+                    <button class="action-btn action-secondary req-touch" (click)="cancelDeleteRequest()"
+                            [disabled]="deletingId === req.id">Cancel</button>
+                    <button class="action-btn action-cancel req-touch" (click)="deleteRequest(req)"
+                            [disabled]="deletingId === req.id">
+                      {{ deletingId === req.id ? 'Deleting...' : 'Delete' }}
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>

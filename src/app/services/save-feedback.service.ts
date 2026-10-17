@@ -67,8 +67,9 @@ export class SaveFeedbackService {
 
   constructor(private toastCtrl: ToastController) {}
 
-  /** Runs one write with a timeout and shows the matching toast. Never throws. */
-  async save(write: () => Promise<unknown>): Promise<SaveResult> {
+  /** Runs one write with a timeout and shows the matching toast. Never throws.
+   *  `successMessage` replaces the generic "Changes saved" text. */
+  async save(write: () => Promise<unknown>, opts?: { successMessage?: string }): Promise<SaveResult> {
     let timer: ReturnType<typeof setTimeout> | undefined;
     const pending = write();
     const timeout = new Promise<'timeout'>(resolve => {
@@ -77,8 +78,9 @@ export class SaveFeedbackService {
     try {
       const result = await Promise.race([pending.then(() => 'done' as const), timeout]);
       if (result === 'done') {
-        void this.show(SAVE_SUCCESS_MESSAGE, 'success');
-        return { outcome: 'saved', message: SAVE_SUCCESS_MESSAGE };
+        const message = opts?.successMessage ?? SAVE_SUCCESS_MESSAGE;
+        void this.show(message, 'success');
+        return { outcome: 'saved', message };
       }
       // Still pending: offline (or very slow). If it fails later, say so.
       pending.catch(err => {

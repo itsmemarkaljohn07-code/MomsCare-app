@@ -122,6 +122,11 @@ export class ProfilePage implements OnInit, OnDestroy {
     this.profileSub?.unsubscribe();
   }
 
+  /** The same tutorial as after registering, with Close; writes nothing. */
+  openTutorial(): void {
+    this.router.navigate(['/tutorial'], { queryParams: { mode: 'replay' } });
+  }
+
   navigate(route: string): void {
     this.router.navigate([route]);
   }

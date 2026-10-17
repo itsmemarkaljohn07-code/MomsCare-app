@@ -134,6 +134,22 @@ describe('patient A: profiles', () => {
   test('cannot update email', async () => {
     await assertFails(updateDoc(doc(patientA(), `users/${PATIENT_A}`), { email: 'evil@example.com' }));
   });
+  test('can set tutorialSeen', async () => {
+    await assertSucceeds(updateDoc(doc(patientA(), `users/${PATIENT_A}`), { tutorialSeen: true }));
+  });
+  test('cannot set assignedDoctorNames together with tutorialSeen', async () => {
+    await assertFails(updateDoc(doc(patientA(), `users/${PATIENT_A}`),
+      { tutorialSeen: true, assignedDoctorNames: ['Dr. Other'] }));
+  });
+  test('cannot set an unknown field together with tutorialSeen', async () => {
+    await assertFails(updateDoc(doc(patientA(), `users/${PATIENT_A}`), { tutorialSeen: true, role: 'admin' }));
+  });
+  test('cannot change username together with tutorialSeen', async () => {
+    await assertFails(updateDoc(doc(patientA(), `users/${PATIENT_A}`), { tutorialSeen: true, username: 'other' }));
+  });
+  test("cannot set tutorialSeen on patient B's profile", async () => {
+    await assertFails(updateDoc(doc(patientA(), `users/${PATIENT_B}`), { tutorialSeen: true }));
+  });
 });
 
 describe('patient A: comments', () => {

@@ -309,6 +309,12 @@ service cloud.firestore {
       allow read: if isAdmin();
     }
 
+    // The dashboard's admins also listen to every patient's appointments at
+    // once (live cancellation requests). Read only; writes stay server-side.
+    match /{path=**}/appointments/{id} {
+      allow read: if isAdmin();
+    }
+
     // --------------------- username -> email lookup ---------------------
     // Login takes a username, so the app must resolve it to an email
     // BEFORE anyone is signed in. That makes a single-document read public

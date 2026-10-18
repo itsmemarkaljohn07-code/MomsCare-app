@@ -688,3 +688,18 @@ describe('patient A: appointment requests', () => {
     await assertFails(getDocs(collectionGroup(doctor(DOC_ASSIGNED), 'appointmentRequests')));
   });
 });
+
+describe('appointments: collection-group read (dashboard live cancellations)', () => {
+  test('an admin can read all appointments at once', async () => {
+    await assertSucceeds(getDocs(collectionGroup(admin(), 'appointments')));
+  });
+  test('an assigned doctor cannot', async () => {
+    await assertFails(getDocs(collectionGroup(doctor(DOC_ASSIGNED), 'appointments')));
+  });
+  test('a patient cannot', async () => {
+    await assertFails(getDocs(collectionGroup(patientA(), 'appointments')));
+  });
+  test('a signed-out user cannot', async () => {
+    await assertFails(getDocs(collectionGroup(signedOut(), 'appointments')));
+  });
+});

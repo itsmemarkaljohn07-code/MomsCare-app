@@ -13,6 +13,9 @@ export interface PregnancyStatus {
   days: number;
   /** Whole days left until the due date (0 once it has passed). */
   daysUntilDue: number;
+  /** Calendar days since the due date (local days): 0 up to and including
+   *  the due date, 1 the day after, and so on. The week stays capped at 40. */
+  daysPastDue: number;
 }
 
 /** The pregnancy reminders (kick count, weekly update, Daily Checklist,
@@ -35,12 +38,26 @@ export function pregnancyRemindersEnded(dueDate: Date | null | undefined, now: D
 }
 
 export function pregnancyStatus(dueDate: Date | null, now: Date = new Date()): PregnancyStatus {
-  if (!dueDate || isNaN(dueDate.getTime())) return { week: 0, days: 0, daysUntilDue: 0 };
+  if (!dueDate || isNaN(dueDate.getTime())) return { week: 0, days: 0, daysUntilDue: 0, daysPastDue: 0 };
   const daysUntilDue = Math.round((dueDate.getTime() - now.getTime()) / MS_PER_DAY);
   const elapsed = Math.max(0, Math.min(TOTAL_PREGNANCY_DAYS, TOTAL_PREGNANCY_DAYS - daysUntilDue));
   return {
     week: Math.min(40, Math.floor(elapsed / 7)),
     days: elapsed % 7,
     daysUntilDue: Math.max(0, daysUntilDue),
+    daysPastDue: Math.max(0, localDaysBetween(dueDate, now)),
   };
+}
+
+/** "Due 1 day ago", "Due 30 days ago" (the Home pill after the due date). */
+export function pastDueLabel(daysPastDue: number): string {
+  return `Due ${daysPastDue} ${daysPastDue === 1 ? 'day' : 'days'} ago`;
+}
+
+/** Whole local calendar days from `from`'s day to `to`'s day (negative if
+ *  `to` is earlier). Rounded, so a daylight-saving hour doesn't matter. */
+function localDaysBetween(from: Date, to: Date): number {
+  const a = new Date(from.getFullYear(), from.getMonth(), from.getDate()).getTime();
+  const b = new Date(to.getFullYear(), to.getMonth(), to.getDate()).getTime();
+  return Math.round((b - a) / MS_PER_DAY);
 }

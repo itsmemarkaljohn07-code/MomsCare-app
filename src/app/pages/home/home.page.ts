@@ -10,7 +10,7 @@ import { ThemeService } from '../../services/theme';
 import { AuthService, UserProfile } from '../../services/auth.service';
 import { ProfileStoreService } from '../../services/profile-store.service';
 import { parseStoredDate } from '../../shared/date-utils';
-import { pregnancyStatus } from '../../shared/pregnancy-status';
+import { pastDueLabel, pregnancyStatus } from '../../shared/pregnancy-status';
 import { BabySize, babySizeFor } from '../../shared/baby-size';
 import { WeightUnit, kgToUnit, weightUnitOf } from '../../shared/weight-units';
 import { isMissedAppointment } from '../../shared/appointment-status';
@@ -119,6 +119,8 @@ export class HomePage implements OnInit, OnDestroy, DoCheck {
 
   pregnancyWeek = 0;
   pregnancyDays = 0;
+  /** Calendar days since the due date; 0 until it has passed. */
+  pregnancyDaysPastDue = 0;
 
   /** The week currently being DISPLAYED in the fetal illustration area —
    *  the single source for the image, length, weight, size text, message
@@ -150,6 +152,7 @@ export class HomePage implements OnInit, OnDestroy, DoCheck {
     const status = pregnancyStatus(this.currentUser.dueDate);
     this.pregnancyWeek = status.week;
     this.pregnancyDays = status.days;
+    this.pregnancyDaysPastDue = status.daysPastDue;
 
     if (!this.viewingWeekInitialized) {
       this.viewingWeek = this.pregnancyWeek;
@@ -379,6 +382,11 @@ export class HomePage implements OnInit, OnDestroy, DoCheck {
   }
 
   get daysRemaining(): number { return this.countdownDays; }
+
+  get isPastDue(): boolean { return this.pregnancyDaysPastDue > 0; }
+
+  /** Header pill after the due date: "Due 1 day ago", "Due 30 days ago". */
+  get pastDueLabel(): string { return pastDueLabel(this.pregnancyDaysPastDue); }
 
   showNotifPanel = false;
   notifications: AppNotification[] = [];

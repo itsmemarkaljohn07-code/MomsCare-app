@@ -689,7 +689,6 @@ describe('patient A: appointment requests', () => {
   });
 });
 
-<<<<<<< HEAD
 describe('appointment requests: deleting', () => {
   const REQ = `users/${PATIENT_A}/appointmentRequests/del1`;
   const seed = (status) => env.withSecurityRulesDisabled(ctx => setDoc(doc(ctx.firestore(), REQ), {
@@ -725,7 +724,9 @@ describe('appointment requests: deleting', () => {
   test('a signed-out user cannot delete it', async () => {
     await seed('withdrawn');
     await assertFails(deleteDoc(doc(signedOut(), REQ)));
-=======
+  });
+});
+
 describe('appointments: collection-group read (dashboard live cancellations)', () => {
   test('an admin can read all appointments at once', async () => {
     await assertSucceeds(getDocs(collectionGroup(admin(), 'appointments')));
@@ -738,6 +739,5 @@ describe('appointments: collection-group read (dashboard live cancellations)', (
   });
   test('a signed-out user cannot', async () => {
     await assertFails(getDocs(collectionGroup(signedOut(), 'appointments')));
->>>>>>> feat/app-polish
   });
 });

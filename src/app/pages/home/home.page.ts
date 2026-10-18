@@ -414,6 +414,9 @@ export class HomePage implements OnInit, OnDestroy, DoCheck {
       case 'appointment_created':  return 'calendar';
       case 'appointment_approved': return 'calendar-check';
       case 'appointment_declined': return 'calendar-x';
+      // A request the clinic scheduled (doctor approval still to come) or declined.
+      case 'appointment_request_scheduled': return 'calendar-check';
+      case 'appointment_request_declined':  return 'calendar-x';
       // Approved = the appointment is cancelled; declined = it still stands.
       case 'cancellation_update':  return n.icon === '✅' ? 'calendar-x' : 'calendar-check';
     }

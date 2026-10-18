@@ -7,6 +7,7 @@ import { AuthService, AvatarSelection, UserProfile } from '../../services/auth.s
 import { ProfileStoreService } from '../../services/profile-store.service';
 import { parseStoredDate } from '../../shared/date-utils';
 import { pregnancyStatus } from '../../shared/pregnancy-status';
+import { BabySize, babySizeFor } from '../../shared/baby-size';
 import { ThemeService } from '../../services/theme';
 import { Subscription } from 'rxjs';
 
@@ -49,31 +50,9 @@ export class ProfilePage implements OnInit, OnDestroy {
   // could show one account's avatar on another account.
   selectedAvatar: AvatarSelection | { emoji: string; bgColor: string } = { emoji: '🐻', bgColor: '#e07eb8' };
 
-  babySizes: Record<number, { emoji: string; fruit: string }> = {
-    8:  { emoji: '🫐', fruit: 'blueberry' },
-    10: { emoji: '🍓', fruit: 'strawberry' },
-    12: { emoji: '🍋', fruit: 'lime' },
-    14: { emoji: '🍑', fruit: 'peach' },
-    16: { emoji: '🥑', fruit: 'avocado' },
-    18: { emoji: '🥕', fruit: 'sweet potato' },
-    20: { emoji: '🥭', fruit: 'mango' },
-    22: { emoji: '🌽', fruit: 'corn' },
-    24: { emoji: '🌽', fruit: 'corn' },
-    26: { emoji: '🥬', fruit: 'lettuce head' },
-    28: { emoji: '🍆', fruit: 'eggplant' },
-    30: { emoji: '🥦', fruit: 'broccoli' },
-    32: { emoji: '🥥', fruit: 'coconut' },
-    34: { emoji: '🍍', fruit: 'pineapple' },
-    36: { emoji: '🥬', fruit: 'romaine lettuce' },
-    38: { emoji: '🎃', fruit: 'small pumpkin' },
-    40: { emoji: '🍉', fruit: 'watermelon' },
-  };
-
-  get babySize() {
-    const weeks = [8,10,12,14,16,18,20,22,24,26,28,30,32,34,36,38,40];
-    let closest = weeks[0];
-    for (const w of weeks) { if (this.pregnancyWeek >= w) closest = w; }
-    return this.babySizes[closest];
+  /** The same table as Home (shared/baby-size.ts), for the real week. */
+  get babySize(): BabySize {
+    return babySizeFor(this.pregnancyWeek);
   }
 
   get pregnancyProgress(): number {

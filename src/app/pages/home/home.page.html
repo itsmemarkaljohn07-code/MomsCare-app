@@ -107,7 +107,7 @@
         <!-- "–" until the profile has loaded, not placeholder numbers. -->
         <span class="pill pill-week">Week {{ isLoadingUser ? '–' : pregnancyWeek }}</span>
         <span class="pill pill-trim">{{ isLoadingUser ? '–' : actualTrimester }}</span>
-        <span class="pill pill-days">{{ isLoadingUser ? '–' : daysRemaining + 'd to go' }}</span>
+        <span class="pill pill-days">{{ isLoadingUser ? '–' : (isPastDue ? pastDueLabel : daysRemaining + 'd to go') }}</span>
       </div>
     </div>
 
@@ -219,7 +219,8 @@
         <p class="fetal-size-label">
           About the size of a <strong>{{ babySize.fruit }}</strong> {{ babySize.emoji }}
         </p>
-        <p class="fetal-message">{{ weeklyMessage }}</p>
+        <!-- "Any day now" no longer fits once the due date has passed. -->
+        <p class="fetal-message" *ngIf="!(isPastDue && isViewingCurrentWeek)">{{ weeklyMessage }}</p>
 
         <div class="fetal-progress-wrap">
           <div class="fetal-progress-track">
@@ -230,7 +231,7 @@
           </div>
           <span class="fetal-progress-pct">{{ pregnancyProgress }}%</span>
         </div>
-        <p class="fetal-progress-label" *ngIf="isViewingCurrentWeek">{{ 40 - pregnancyWeek }} weeks until your due date</p>
+        <p class="fetal-progress-label" *ngIf="isViewingCurrentWeek && !isPastDue">{{ 40 - pregnancyWeek }} weeks until your due date</p>
       </div>
     </div>
 
@@ -250,7 +251,8 @@
         </div>
       </div>
       <div class="due-countdown-right">
-        <div class="countdown-blocks">
+        <p class="countdown-passed" *ngIf="isPastDue">Due date passed</p>
+        <div class="countdown-blocks" *ngIf="!isPastDue">
           <div class="countdown-block">
             <span class="countdown-num">{{ countdownDays }}</span>
             <span class="countdown-unit">days</span>

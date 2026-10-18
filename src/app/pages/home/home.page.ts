@@ -10,7 +10,8 @@ import { ThemeService } from '../../services/theme';
 import { AuthService, UserProfile } from '../../services/auth.service';
 import { ProfileStoreService } from '../../services/profile-store.service';
 import { parseStoredDate } from '../../shared/date-utils';
-import { pregnancyStatus } from '../../shared/pregnancy-status';
+import { pastDueLabel, pregnancyStatus } from '../../shared/pregnancy-status';
+import { BabySize, babySizeFor } from '../../shared/baby-size';
 import { WeightUnit, kgToUnit, weightUnitOf } from '../../shared/weight-units';
 import { isMissedAppointment } from '../../shared/appointment-status';
 import { NotificationsService, AppNotification } from '../../services/notifications.service';
@@ -118,6 +119,8 @@ export class HomePage implements OnInit, OnDestroy, DoCheck {
 
   pregnancyWeek = 0;
   pregnancyDays = 0;
+  /** Calendar days since the due date; 0 until it has passed. */
+  pregnancyDaysPastDue = 0;
 
   /** The week currently being DISPLAYED in the fetal illustration area —
    *  the single source for the image, length, weight, size text, message
@@ -149,6 +152,7 @@ export class HomePage implements OnInit, OnDestroy, DoCheck {
     const status = pregnancyStatus(this.currentUser.dueDate);
     this.pregnancyWeek = status.week;
     this.pregnancyDays = status.days;
+    this.pregnancyDaysPastDue = status.daysPastDue;
 
     if (!this.viewingWeekInitialized) {
       this.viewingWeek = this.pregnancyWeek;
@@ -194,28 +198,6 @@ export class HomePage implements OnInit, OnDestroy, DoCheck {
     });
   }
 
-  babySizes: Record<number, { emoji: string; fruit: string; length: string; weight: string }> = {
-    4:  { emoji: '🫐', fruit: 'poppy seed',      length: '0.1 cm',  weight: '<1 g' },
-    6:  { emoji: '🫐', fruit: 'lentil',          length: '0.6 cm',  weight: '<1 g' },
-    8:  { emoji: '🍓', fruit: 'raspberry',       length: '1.6 cm',  weight: '1 g' },
-    10: { emoji: '🍓', fruit: 'strawberry',      length: '3.1 cm',  weight: '4 g' },
-    12: { emoji: '🍋', fruit: 'lime',            length: '5.4 cm',  weight: '14 g' },
-    14: { emoji: '🍑', fruit: 'peach',           length: '8.7 cm',  weight: '43 g' },
-    16: { emoji: '🥑', fruit: 'avocado',         length: '11.6 cm', weight: '100 g' },
-    18: { emoji: '🥕', fruit: 'sweet potato',    length: '14.2 cm', weight: '190 g' },
-    20: { emoji: '🥭', fruit: 'mango',           length: '16.4 cm', weight: '300 g' },
-    22: { emoji: '🌽', fruit: 'corn',            length: '27.8 cm', weight: '430 g' },
-    24: { emoji: '🌽', fruit: 'corn',            length: '30 cm',   weight: '600 g' },
-    26: { emoji: '🥬', fruit: 'lettuce head',    length: '35.6 cm', weight: '760 g' },
-    28: { emoji: '🍆', fruit: 'eggplant',        length: '37.6 cm', weight: '1 kg' },
-    30: { emoji: '🥦', fruit: 'broccoli',        length: '39.9 cm', weight: '1.3 kg' },
-    32: { emoji: '🥥', fruit: 'coconut',         length: '42.4 cm', weight: '1.7 kg' },
-    34: { emoji: '🍍', fruit: 'pineapple',       length: '45 cm',   weight: '2.1 kg' },
-    36: { emoji: '🥬', fruit: 'romaine lettuce', length: '47.4 cm', weight: '2.6 kg' },
-    38: { emoji: '🎃', fruit: 'small pumpkin',   length: '49.8 cm', weight: '3 kg' },
-    40: { emoji: '🍉', fruit: 'watermelon',      length: '51.2 cm', weight: '3.5 kg' },
-  };
-
   weeklyMessages: Record<number, string> = {
     4:  'Implantation is happening — your journey begins! 🌱',
     6:  "Your baby's heart is starting to beat!",
@@ -241,11 +223,8 @@ export class HomePage implements OnInit, OnDestroy, DoCheck {
   // These now reflect the browsed viewingWeek, not the real pregnancyWeek
   // — so exploring other weeks shows accurate info for that week without
   // touching any stored data.
-  get babySize() {
-    const keys = Object.keys(this.babySizes).map(Number).sort((a, b) => a - b);
-    let closest = keys[0];
-    for (const w of keys) { if (this.viewingWeek >= w) closest = w; }
-    return this.babySizes[closest];
+  get babySize(): BabySize {
+    return babySizeFor(this.viewingWeek);
   }
 
   get weeklyMessage(): string {
@@ -404,6 +383,11 @@ export class HomePage implements OnInit, OnDestroy, DoCheck {
 
   get daysRemaining(): number { return this.countdownDays; }
 
+  get isPastDue(): boolean { return this.pregnancyDaysPastDue > 0; }
+
+  /** Header pill after the due date: "Due 1 day ago", "Due 30 days ago". */
+  get pastDueLabel(): string { return pastDueLabel(this.pregnancyDaysPastDue); }
+
   showNotifPanel = false;
   notifications: AppNotification[] = [];
 
@@ -430,6 +414,9 @@ export class HomePage implements OnInit, OnDestroy, DoCheck {
       case 'appointment_created':  return 'calendar';
       case 'appointment_approved': return 'calendar-check';
       case 'appointment_declined': return 'calendar-x';
+      // A request the clinic scheduled (doctor approval still to come) or declined.
+      case 'appointment_request_scheduled': return 'calendar-check';
+      case 'appointment_request_declined':  return 'calendar-x';
       // Approved = the appointment is cancelled; declined = it still stands.
       case 'cancellation_update':  return n.icon === '✅' ? 'calendar-x' : 'calendar-check';
     }

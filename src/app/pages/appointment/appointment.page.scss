@@ -777,7 +777,7 @@ ion-content[data-theme="dark"] {
 
 .req-icons { display: flex; flex-wrap: wrap; gap: 8px; }
 .req-icon {
-  width: 42px; height: 42px; border-radius: 12px;
+  width: 44px; height: 44px; border-radius: 12px;
   border: 1.5px solid rgba(181, 127, 212, 0.18);
   background: var(--field-bg);
   font-size: 1.15rem; cursor: pointer;
@@ -785,18 +785,28 @@ ion-content[data-theme="dark"] {
   &:disabled { opacity: 0.6; cursor: default; }
 }
 
-.req-colors { display: flex; gap: 10px; }
+// Each colour is a 44px touch target; the visible dot stays 30px (::before).
+.req-colors { display: flex; flex-wrap: wrap; gap: 2px; margin-left: -7px; }
 .req-color {
-  width: 30px; height: 30px; border-radius: 50%;
-  border: 2px solid transparent; cursor: pointer;
-  box-shadow: 0 0 0 1px rgba(181, 127, 212, 0.18);
-  &.selected { border-color: var(--card-bg); box-shadow: 0 0 0 2px var(--purple); }
+  position: relative;
+  width: 44px; height: 44px; padding: 0;
+  border: none; border-radius: 50%; background: transparent;
+  cursor: pointer;
+  &::before {
+    content: ""; position: absolute; inset: 7px;
+    border-radius: 50%; box-sizing: border-box;
+    background: var(--req-dot);
+    border: 2px solid transparent;
+    box-shadow: 0 0 0 1px rgba(181, 127, 212, 0.18);
+  }
+  &.selected::before { border-color: var(--card-bg); box-shadow: 0 0 0 2px var(--purple); }
+  &:focus-visible { outline: 2px solid var(--purple); outline-offset: -2px; }
   &:disabled { opacity: 0.6; cursor: default; }
-  &--green  { background: #00c9a7; }
-  &--pink   { background: var(--pink); }
-  &--purple { background: var(--purple); }
-  &--blue   { background: var(--blue); }
-  &--orange { background: var(--orange); }
+  &--green  { --req-dot: #00c9a7; }
+  &--pink   { --req-dot: var(--pink); }
+  &--purple { --req-dot: var(--purple); }
+  &--blue   { --req-dot: var(--blue); }
+  &--orange { --req-dot: var(--orange); }
 }
 
 .action-btn.req-send {

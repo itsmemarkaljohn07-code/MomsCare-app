@@ -183,8 +183,8 @@ export class InsightsPage implements OnInit, OnDestroy {
   get mindArticles():      ArticleCard[] { return this.cardsForSection('mind'); }
   get birthArticles():     ArticleCard[] { return this.cardsForSection('birth'); }
 
-  // Checkpoints at the same weeks as babySizes below, for a consistent
-  // pattern across the file. General educational information only —
+  // Checkpoints every two weeks, like the baby-size table
+  // (shared/baby-size.ts). General educational information only —
   // not medical advice, and phrased to defer to a provider on anything
   // symptom- or decision-related rather than instructing directly.
   weeklyTipsByWeek: Record<number, string[]> = {
@@ -209,30 +209,13 @@ export class InsightsPage implements OnInit, OnDestroy {
   };
 
   /** Picks the tip set for the closest checkpoint at or before the
-   *  current pregnancyWeek — same "closest match" pattern babySize
-   *  below already uses, so the two stay visually/behaviorally
-   *  consistent with each other. */
+   *  current pregnancyWeek (the same "closest match" rule as the
+   *  baby-size table). */
   get weeklyTips(): string[] {
     const keys = Object.keys(this.weeklyTipsByWeek).map(Number).sort((a, b) => a - b);
     let closest = keys[0];
     for (const w of keys) { if (this.pregnancyWeek >= w) closest = w; }
     return this.weeklyTipsByWeek[closest];
-  }
-
-  babySizes: Record<number, { fruit: string }> = {
-    4: { fruit: 'poppy seed' }, 8: { fruit: 'raspberry' }, 10: { fruit: 'strawberry' },
-    12: { fruit: 'lime' }, 14: { fruit: 'peach' }, 16: { fruit: 'avocado' },
-    18: { fruit: 'sweet potato' }, 20: { fruit: 'mango' }, 22: { fruit: 'corn' },
-    24: { fruit: 'corn' }, 26: { fruit: 'lettuce head' }, 28: { fruit: 'eggplant' },
-    30: { fruit: 'broccoli' }, 32: { fruit: 'coconut' }, 34: { fruit: 'pineapple' },
-    36: { fruit: 'romaine lettuce' }, 38: { fruit: 'small pumpkin' }, 40: { fruit: 'watermelon' },
-  };
-
-  get babySize() {
-    const keys = Object.keys(this.babySizes).map(Number).sort((a, b) => a - b);
-    let c = keys[0];
-    for (const w of keys) { if (this.pregnancyWeek >= w) c = w; }
-    return this.babySizes[c];
   }
 
   get trimester(): string {

@@ -272,12 +272,18 @@
           </div>
         </div>
 
-        <ng-container *ngIf="requests.length > 0">
-          <div class="next-label req-list-label">
-            <span class="next-dot past-dot"></span>
-            MY REQUESTS
-          </div>
-          <div class="appt-cards">
+        <!-- Requests are not appointments: kept behind a control, closed by default. -->
+        <button type="button" class="req-toggle" (click)="showRequests = !showRequests"
+                [attr.aria-expanded]="showRequests" aria-controls="req-list">
+          <span>Show appointment requests ({{ requests.length }})</span>
+          <svg class="req-toggle-chevron" [class.open]="showRequests" width="16" height="16" viewBox="0 0 22 22" fill="none" aria-hidden="true">
+            <path d="M6 9l5 5 5-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+
+        <div id="req-list" *ngIf="showRequests">
+          <p class="req-empty" *ngIf="requests.length === 0">No appointment requests</p>
+          <div class="appt-cards" *ngIf="requests.length > 0">
             <div *ngFor="let req of requests"
                  [class]="'appt-card req-card appt-accent-' + (req.accentColor || 'purple')"
                  [class.expanded]="expandedRequestId === req.id"
@@ -361,7 +367,7 @@
               </div>
             </div>
           </div>
-        </ng-container>
+        </div>
       </div>
     </div>
 

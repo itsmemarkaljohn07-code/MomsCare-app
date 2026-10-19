@@ -288,6 +288,9 @@ export class AppointmentsPage implements OnInit, OnDestroy {
   readonly requestOptionsMax = REQUEST_OPTIONS_MAX;
 
   requests: AppointmentRequestRecord[] = [];
+  /** "Show appointment requests": closed by default, so requests never
+   *  read like appointments in the Upcoming view. */
+  showRequests = false;
   requestFormOpen = false;
   requestForm: RequestForm = this.blankRequestForm();
   requestErrors: RequestFormErrors = {};

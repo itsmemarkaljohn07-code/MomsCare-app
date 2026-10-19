@@ -1,12 +1,14 @@
 // notifications.service.ts
 import { Injectable } from '@angular/core';
 import {
-  Firestore, collection, collectionData, doc, updateDoc, addDoc, query, orderBy, Timestamp,
-  runTransaction,
+  Firestore, collection, collectionData, collectionSnapshots, doc, getDocs, updateDoc, addDoc, query,
+  orderBy, limit, startAfter, where, Timestamp, runTransaction,
+  type DocumentData, type QueryDocumentSnapshot,
 } from '@angular/fire/firestore';
 import { AuthService } from './auth.service';
 import { Observable, of, map } from 'rxjs';
 import { switchMap } from 'rxjs/operators';
+import { NOTIFICATION_PAGE_SIZE } from '../shared/notification-feed';
 
 export interface AppNotification {
   id: string;
@@ -21,6 +23,15 @@ export interface AppNotification {
   type?: string;
 }
 
+/** One page of the bell, and the cursor for the page after it. */
+export interface NotificationPage {
+  /** Whose notifications these are (null when signed out). */
+  uid: string | null;
+  items: AppNotification[];
+  /** The last document of this page (startAfter it for the next page). */
+  last: QueryDocumentSnapshot<DocumentData> | null;
+}
+
 @Injectable({ providedIn: 'root' })
 export class NotificationsService {
   constructor(private firestore: Firestore, private auth: AuthService) {}
@@ -29,20 +40,36 @@ export class NotificationsService {
     return collection(this.firestore, `users/${uid}/notifications`);
   }
 
-  notifications$(): Observable<AppNotification[]> {
+  /** The newest page, live: new entries arrive at once and read state
+   *  stays current. Ordered by the real Firestore timestamp, not the
+   *  display string. */
+  newestPage$(): Observable<NotificationPage> {
     return this.auth.user$.pipe(
       switchMap(user => {
-        if (!user) return of([]);
-        // Ordered by the real Firestore timestamp, not the display
-        // string, so ordering is always chronologically correct.
-        const q = query(this.col(user.uid), orderBy('createdAt', 'desc'));
-        return collectionData(q, { idField: 'id' }) as Observable<AppNotification[]>;
+        if (!user) return of<NotificationPage>({ uid: null, items: [], last: null });
+        const q = query(this.col(user.uid), orderBy('createdAt', 'desc'), limit(NOTIFICATION_PAGE_SIZE));
+        return collectionSnapshots(q).pipe(map(snaps => toPage(user.uid, snaps)));
       })
     );
   }
 
-  unreadCount$(): Observable<number> {
-    return this.notifications$().pipe(map(list => list.filter(n => !n.read).length));
+  /** The page after `after` ("Load more"), read once. */
+  async olderPage(uid: string, after: QueryDocumentSnapshot<DocumentData>): Promise<NotificationPage> {
+    const q = query(this.col(uid), orderBy('createdAt', 'desc'), startAfter(after), limit(NOTIFICATION_PAGE_SIZE));
+    const snap = await getDocs(q);
+    return toPage(uid, snap.docs);
+  }
+
+  /** Ids of every unread entry, live, whether or not its page is loaded,
+   *  so the badge count and "mark all read" never depend on paging. */
+  unreadIds$(): Observable<string[]> {
+    return this.auth.user$.pipe(
+      switchMap(user => {
+        if (!user) return of([]);
+        const q = query(this.col(user.uid), where('read', '==', false));
+        return (collectionData(q, { idField: 'id' }) as Observable<{ id: string }[]>).pipe(map(list => list.map(n => n.id)));
+      })
+    );
   }
 
   async markRead(uid: string, id: string): Promise<void> {
@@ -100,4 +127,12 @@ export class NotificationsService {
       });
     });
   }
+}
+
+function toPage(uid: string, snaps: QueryDocumentSnapshot<DocumentData>[]): NotificationPage {
+  return {
+    uid,
+    items: snaps.map(s => ({ ...(s.data() as Omit<AppNotification, 'id'>), id: s.id })),
+    last: snaps.length ? snaps[snaps.length - 1] : null,
+  };
 }

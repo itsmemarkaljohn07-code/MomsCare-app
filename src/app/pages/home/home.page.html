@@ -14,7 +14,12 @@
         </button>
       </div>
 
-      <div class="notif-empty" *ngIf="notifications.length === 0">
+      <div class="notif-error" *ngIf="notifLiveError" role="alert">
+        <p>{{ notifLiveError }}</p>
+        <button type="button" class="notif-more-btn" (click)="subscribeNotifications()">Retry</button>
+      </div>
+
+      <div class="notif-empty" *ngIf="notifications.length === 0 && !notifLiveError">
         <span class="notif-empty-icon">🔔</span>
         <p>No notifications yet</p>
       </div>
@@ -54,6 +59,17 @@
             <p class="notif-item-time" *ngIf="notifTime(n) as when">{{ when }}</p>
           </div>
           <div class="notif-unread-dot" *ngIf="!n.read"></div>
+        </div>
+        <div class="notif-more">
+          <button type="button" class="notif-more-btn" *ngIf="!notifEnd && !notifLoadError"
+                  [disabled]="notifLoadingMore" (click)="loadMoreNotifs()">
+            {{ notifLoadingMore ? 'Loading...' : 'Load more' }}
+          </button>
+          <div class="notif-more-error" *ngIf="notifLoadError" role="alert">
+            <span>{{ notifLoadError }}</span>
+            <button type="button" class="notif-more-btn" (click)="loadMoreNotifs()">Retry</button>
+          </div>
+          <p class="notif-end" *ngIf="notifEnd">No more notifications</p>
         </div>
       </div>
     </div>

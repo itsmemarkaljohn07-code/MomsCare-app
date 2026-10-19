@@ -14,7 +14,8 @@ import { pastDueLabel, pregnancyStatus } from '../../shared/pregnancy-status';
 import { BabySize, babySizeFor } from '../../shared/baby-size';
 import { WeightUnit, kgToUnit, weightUnitOf } from '../../shared/weight-units';
 import { isMissedAppointment } from '../../shared/appointment-status';
-import { NotificationsService, AppNotification } from '../../services/notifications.service';
+import { NotificationsService, AppNotification, NotificationPage } from '../../services/notifications.service';
+import { droppedFromLive, mergeFeed, reachedEnd } from '../../shared/notification-feed';
 import { AppointmentsService, AppointmentRecord } from '../../services/appointments.service';
 import { HealthService, HealthData } from '../../services/health.service';
 import { ChecklistRemindersService } from '../../services/checklist-reminders.service';
@@ -91,7 +92,8 @@ export class HomePage implements OnInit, OnDestroy, DoCheck {
   private themeSub!: Subscription;
   private userSub!: Subscription;
   private profileSub?: Subscription;
-  private notifSub!: Subscription;
+  private notifSub?: Subscription;
+  private unreadSub?: Subscription;
   private apptSub!: Subscription;
   private healthSub!: Subscription;
   private currentUid: string | null = null;
@@ -391,7 +393,96 @@ export class HomePage implements OnInit, OnDestroy, DoCheck {
   showNotifPanel = false;
   notifications: AppNotification[] = [];
 
-  get unreadCount(): number { return this.notifications.filter(n => !n.read).length; }
+  // ── Bell, paged ──────────────────────────────────────
+  // The newest page is live; "Load more" adds older pages (startAfter).
+  // Entries pushed out of the live page by newer ones stay (retained).
+  // The badge counts every unread entry with its own live query, so it is
+  // right whatever is loaded. See shared/notification-feed.ts.
+  private feedUid: string | null = null;
+  private liveNotifs: AppNotification[] = [];
+  private retainedNotifs: AppNotification[] = [];
+  private olderNotifs: AppNotification[] = [];
+  private liveLast: NotificationPage['last'] = null;
+  private olderLast: NotificationPage['last'] = null;
+  private olderPagesLoaded = 0;
+  private lastOlderPageSize: number | null = null;
+  private unreadIds: string[] = [];
+  notifLoadingMore = false;
+  notifLoadError = '';
+  notifLiveError = '';
+
+  get unreadCount(): number { return this.unreadIds.length; }
+
+  get notifEnd(): boolean {
+    return reachedEnd(this.liveNotifs.length, this.olderPagesLoaded, this.lastOlderPageSize);
+  }
+
+  private resetFeed(uid: string | null): void {
+    this.feedUid = uid;
+    this.liveNotifs = [];
+    this.retainedNotifs = [];
+    this.olderNotifs = [];
+    this.liveLast = null;
+    this.olderLast = null;
+    this.olderPagesLoaded = 0;
+    this.lastOlderPageSize = null;
+    this.notifLoadError = '';
+    this.notifications = [];
+  }
+
+  private applyLivePage(page: NotificationPage): void {
+    if (page.uid !== this.feedUid) this.resetFeed(page.uid);
+    const dropped = droppedFromLive(this.liveNotifs, page.items);
+    const liveIds = new Set(page.items.map(n => n.id));
+    this.retainedNotifs = mergeFeed([], [...this.retainedNotifs, ...dropped], [])
+      .filter(n => !liveIds.has(n.id));
+    this.liveNotifs = page.items;
+    this.liveLast = page.last;
+    this.notifLiveError = '';
+    this.notifications = mergeFeed(this.liveNotifs, this.retainedNotifs, this.olderNotifs);
+  }
+
+  /** (Re)starts the live newest page and the unread count. */
+  subscribeNotifications(): void {
+    this.notifSub?.unsubscribe();
+    this.unreadSub?.unsubscribe();
+    this.notifLiveError = '';
+    this.notifSub = this.notificationsService.newestPage$().subscribe({
+      next: page => this.applyLivePage(page),
+      error: err => {
+        console.error('Notifications listener failed:', err?.code ?? err);
+        this.notifLiveError = "Couldn't load your notifications.";
+      },
+    });
+    this.unreadSub = this.notificationsService.unreadIds$().subscribe({
+      next: ids => (this.unreadIds = ids),
+      error: err => console.error('Unread count listener failed:', err?.code ?? err),
+    });
+  }
+
+  /** "Load more": the next page after the oldest one loaded. */
+  async loadMoreNotifs(): Promise<void> {
+    if (this.notifLoadingMore || this.notifEnd || !this.feedUid) return;
+    const cursor = this.olderLast ?? this.liveLast;
+    if (!cursor) return;
+    const uid = this.feedUid;
+    this.notifLoadingMore = true;
+    this.notifLoadError = '';
+    try {
+      const page = await this.notificationsService.olderPage(uid, cursor);
+      if (uid !== this.feedUid) return; // signed out or switched meanwhile
+      this.olderNotifs = [...this.olderNotifs, ...page.items];
+      if (page.last) this.olderLast = page.last;
+      this.olderPagesLoaded++;
+      this.lastOlderPageSize = page.items.length;
+      this.notifications = mergeFeed(this.liveNotifs, this.retainedNotifs, this.olderNotifs);
+    } catch (err: any) {
+      console.error('Loading older notifications failed:', err?.code ?? err);
+      this.notifLoadError = "Couldn't load older notifications.";
+    } finally {
+      this.notifLoadingMore = false;
+    }
+  }
 
   /** The time under a bell entry. Entries from the clinic dashboard don't
    *  store the display text, so it comes from when they were created, in
@@ -442,9 +533,10 @@ export class HomePage implements OnInit, OnDestroy, DoCheck {
     }
   }
 
+  /** Marks every unread entry read, loaded or not. */
   clearAllNotifs(): void {
-    if (!this.currentUid || this.notifications.length === 0) return;
-    this.notificationsService.markAllRead(this.currentUid, this.notifications.map(n => n.id));
+    if (!this.currentUid || this.unreadIds.length === 0) return;
+    this.notificationsService.markAllRead(this.currentUid, [...this.unreadIds]);
   }
 
   // ════════════════════════════════════════════════════════
@@ -853,8 +945,7 @@ export class HomePage implements OnInit, OnDestroy, DoCheck {
 
     this.profileSub = this.profileStore.profile$.subscribe(profile => this.applyProfile(profile));
 
-    this.notifSub = this.notificationsService.notifications$()
-      .subscribe((list: AppNotification[]) => (this.notifications = list));
+    this.subscribeNotifications();
 
     // Back in the foreground: add any checklist reminder slots that passed
     // meanwhile to the bell (the gates are inside catchUpChecklistBell).
@@ -905,6 +996,7 @@ export class HomePage implements OnInit, OnDestroy, DoCheck {
     this.userSub?.unsubscribe();
     this.profileSub?.unsubscribe();
     this.notifSub?.unsubscribe();
+    this.unreadSub?.unsubscribe();
     this.apptSub?.unsubscribe();
     this.healthSub?.unsubscribe();
     if (this.clockInterval)     clearInterval(this.clockInterval);

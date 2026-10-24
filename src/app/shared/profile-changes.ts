@@ -1,6 +1,7 @@
 // profile-changes.ts
 import type { UserProfile } from '../services/auth.service';
 import { fromDateInputValue } from './date-utils';
+import { ProfileAddress, emptyAddress, isAddressEmpty, sameAddress, trimAddress } from './profile-fields';
 
 /**
  * What Profile Edit and Pregnancy Settings save: only the fields whose value
@@ -15,7 +16,9 @@ export interface ProfileEditForm {
   lastName: string;
   email: string;
   phone: string;
-  address: string;
+  /** Birthday, yyyy-MM-dd ('' when none). */
+  birthday: string;
+  address: ProfileAddress;
   dueDate: string;
   firstTimeMom: string;
   bloodType: string;
@@ -25,7 +28,7 @@ export interface ProfileEditForm {
 }
 
 /** Fields that must not be cleared once they have a value. */
-const REQUIRED_FIELDS: { key: keyof ProfileEditForm; label: string }[] = [
+const REQUIRED_FIELDS: { key: 'firstName' | 'lastName' | 'phone'; label: string }[] = [
   { key: 'firstName', label: 'First name' },
   { key: 'lastName', label: 'Last name' },
   { key: 'phone', label: 'Phone number' },
@@ -52,7 +55,16 @@ export function profileEditChanges(loaded: ProfileEditForm, current: ProfileEdit
     changes.fullName = `${current.firstName} ${current.lastName}`.trim();
   }
   if (changed('phone')) changes.mobile = current.phone;
-  if (changed('address')) changes.address = current.address;
+  // Birthday and address are optional for older accounts, but once saved
+  // they can't be emptied (nothing blank is written over a saved value).
+  if (loaded.birthday && !current.birthday) clearedRequired.push('Birthday');
+  else if (current.birthday !== loaded.birthday && current.birthday) changes.dob = current.birthday;
+  const loadedAddress = loaded.address ?? emptyAddress();
+  const currentAddress = current.address ?? emptyAddress();
+  if (!isAddressEmpty(loadedAddress) && isAddressEmpty(currentAddress)) clearedRequired.push('Address');
+  else if (!sameAddress(loadedAddress, currentAddress) && !isAddressEmpty(currentAddress)) {
+    changes.address = trimAddress(currentAddress);
+  }
   if (changed('dueDate')) changes.dueDate = fromDateInputValue(current.dueDate);
   if (changed('firstTimeMom')) changes.firstTimeMom = current.firstTimeMom === 'yes';
   if (changed('bloodType')) changes.bloodType = current.bloodType;

@@ -12,7 +12,10 @@ import { ProfileStoreService } from '../../services/profile-store.service';
 import { McDropdownComponent, McDropdownOption } from '../../shared/mc-dropdown/mc-dropdown.component';
 import { McDatepickerComponent } from '../../shared/mc-datepicker/mc-datepicker.component';
 import { toDateInputValue, fromDateInputValue, parseStoredDate } from '../../shared/date-utils';
-import { formatAddress, readAddress } from '../../shared/profile-fields';
+import {
+  ADDRESS_PART_MAX, STREET_MAX, addressErrors, ageOn, birthdayError, emptyAddress, isRealYmd,
+  readAddress, readBirthday, todayLocalYmd, yearsBefore,
+} from '../../shared/profile-fields';
 import { pregnancyStatus } from '../../shared/pregnancy-status';
 import { ProfileEditForm, profileEditChanges } from '../../shared/profile-changes';
 import { Subscription } from 'rxjs';
@@ -50,7 +53,8 @@ export class ProfileEditPage implements OnInit, OnDestroy, ViewWillEnter, ViewWi
   form = {
     firstName: '', lastName: '',
     email: '', phone: '',
-    address: '',
+    birthday: '',
+    address: emptyAddress(),
     dueDate: '',
     firstTimeMom: '', bloodType: '',
     doctorName: '', clinic: '',
@@ -68,7 +72,34 @@ export class ProfileEditPage implements OnInit, OnDestroy, ViewWillEnter, ViewWi
   // The form as it was loaded on this visit. Save sends only the fields
   // that differ from it, so an untouched field (e.g. the due date stored
   // at registration) is never rewritten, shifted or blanked.
-  private loadedForm: ProfileEditForm = { ...this.form };
+  private loadedForm: ProfileEditForm = this.snapshotForm();
+
+  /** A copy of the form (the address is an object, so copied too). */
+  private snapshotForm(): ProfileEditForm {
+    return { ...this.form, address: { ...this.form.address } };
+  }
+
+  // ── Birthday and address ─────────────────────────────
+  // Optional here (older accounts may have neither), checked the same way
+  // as at signup once filled in; the age is worked out, never saved.
+  readonly addressPartMax = ADDRESS_PART_MAX;
+  readonly streetMax = STREET_MAX;
+  fieldErrors: { birthday?: string; province?: string; city?: string; barangay?: string; street?: string } = {};
+
+  get todayYmd(): string { return todayLocalYmd(); }
+  get birthdayOpenAt(): string { return yearsBefore(this.todayYmd, 25); }
+  get birthdayAge(): number | null {
+    return isRealYmd(this.form.birthday) && this.form.birthday <= this.todayYmd
+      ? ageOn(this.form.birthday, this.todayYmd) : null;
+  }
+
+  /** Re-checks the birthday and address; true when both are fine. */
+  validatePersonal(): boolean {
+    const birthday = birthdayError(this.form.birthday, this.todayYmd, false);
+    const address = addressErrors(this.form.address, false);
+    this.fieldErrors = { ...(birthday ? { birthday } : {}), ...address };
+    return Object.keys(this.fieldErrors).length === 0;
+  }
 
   selectedAvatar: AvatarSelection | { emoji: string; bgColor: string } = { emoji: '🐻', bgColor: '#e07eb8' };
 
@@ -171,8 +202,10 @@ export class ProfileEditPage implements OnInit, OnDestroy, ViewWillEnter, ViewWi
       firstName, lastName,
       email: profile.email ?? '',
       phone: profile.mobile ?? '',
-      // Shown as one line here for now (an older string or the new parts).
-      address: formatAddress(readAddress(profile.address)),
+      // '' / missing = no birthday yet; an older ISO value is read too.
+      birthday: readBirthday(profile.dob) ?? '',
+      // An older plain-string address shows as the Purok/Street line.
+      address: readAddress(profile.address) ?? emptyAddress(),
       dueDate: toDateInputValue(profile.dueDate),
       firstTimeMom: profile.firstTimeMom === false ? 'no' : 'yes',
       bloodType: profile.bloodType ?? '',
@@ -182,7 +215,7 @@ export class ProfileEditPage implements OnInit, OnDestroy, ViewWillEnter, ViewWi
       clinic: profile.clinicName ?? '',
       emergencyContact: profile.emergencyContact ?? '',
     };
-    this.loadedForm = { ...this.form };
+    this.loadedForm = this.snapshotForm();
     if (profile.avatar) this.selectedAvatar = profile.avatar;
   }
 
@@ -205,6 +238,10 @@ export class ProfileEditPage implements OnInit, OnDestroy, ViewWillEnter, ViewWi
       // Only the fields changed on this visit (profile-changes.ts), so
       // nothing untouched is ever rewritten. updateDoc leaves every field
       // it isn't given (e.g. dob) as it is.
+      if (!this.validatePersonal()) {
+        this.saveError = 'Please check the highlighted fields.';
+        return;
+      }
       const { changes, clearedRequired } = profileEditChanges(this.loadedForm, this.form);
       if (clearedRequired.length) {
         this.saveError = `${clearedRequired.join(', ')} can't be left empty.`;
@@ -221,7 +258,7 @@ export class ProfileEditPage implements OnInit, OnDestroy, ViewWillEnter, ViewWi
       if (result.outcome === 'failed') {
         this.saveError = result.message;
       } else {
-        this.loadedForm = { ...this.form };
+        this.loadedForm = this.snapshotForm();
         this.editMode = false;
       }
     } finally {

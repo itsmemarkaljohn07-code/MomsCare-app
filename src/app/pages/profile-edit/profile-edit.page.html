@@ -82,10 +82,45 @@
           <label class="field-label">Phone Number <span class="field-required">*</span></label>
           <input class="field-input" type="tel" [(ngModel)]="form.phone" [disabled]="!editMode" placeholder="+63 900 000 0000"/>
         </div>
-        <div class="field-group">
-          <label class="field-label">Address <span class="field-optional">(optional)</span></label>
-          <input class="field-input" [(ngModel)]="form.address" [disabled]="!editMode" placeholder="Home address"/>
+        <div class="field-group" [class.has-error]="!!fieldErrors.birthday">
+          <label class="field-label" for="pe-birthday">Birthday</label>
+          <div id="pe-birthday">
+            <mc-datepicker label="Birthday" [max]="todayYmd" [openAt]="birthdayOpenAt"
+                           [(ngModel)]="form.birthday" [disabled]="!editMode"
+                           (ngModelChange)="validatePersonal()"></mc-datepicker>
+          </div>
+          <p class="age-readout" *ngIf="birthdayAge !== null" aria-live="polite">Age: {{ birthdayAge }}</p>
+          <p class="field-error" *ngIf="fieldErrors.birthday">{{ fieldErrors.birthday }}</p>
         </div>
+
+        <fieldset class="address-group">
+          <legend class="field-label">Address</legend>
+          <div class="field-group">
+            <label class="field-label" for="pe-province">Province</label>
+            <input class="field-input" id="pe-province" autocomplete="address-level1" [maxlength]="addressPartMax"
+                   [(ngModel)]="form.address.province" [disabled]="!editMode" (blur)="validatePersonal()" placeholder="e.g. Samar"/>
+            <p class="field-error" *ngIf="fieldErrors.province">{{ fieldErrors.province }}</p>
+          </div>
+          <div class="field-group">
+            <label class="field-label" for="pe-city">City/Municipality</label>
+            <input class="field-input" id="pe-city" autocomplete="address-level2" [maxlength]="addressPartMax"
+                   [(ngModel)]="form.address.city" [disabled]="!editMode" (blur)="validatePersonal()" placeholder="e.g. Catbalogan City"/>
+            <p class="field-error" *ngIf="fieldErrors.city">{{ fieldErrors.city }}</p>
+          </div>
+          <div class="field-group">
+            <label class="field-label" for="pe-barangay">Barangay</label>
+            <input class="field-input" id="pe-barangay" autocomplete="address-level3" [maxlength]="addressPartMax"
+                   [(ngModel)]="form.address.barangay" [disabled]="!editMode" (blur)="validatePersonal()" placeholder="Your barangay"/>
+            <p class="field-error" *ngIf="fieldErrors.barangay">{{ fieldErrors.barangay }}</p>
+          </div>
+          <div class="field-group">
+            <label class="field-label" for="pe-street">Purok/Street <span class="field-optional">(optional)</span></label>
+            <input class="field-input" id="pe-street" autocomplete="address-line1" [maxlength]="streetMax"
+                   [(ngModel)]="form.address.street" [disabled]="!editMode" (blur)="validatePersonal()" placeholder="e.g. Purok 3, Rizal Street"/>
+            <p class="field-hint">Your purok, sitio, street or house number, if any.</p>
+            <p class="field-error" *ngIf="fieldErrors.street">{{ fieldErrors.street }}</p>
+          </div>
+        </fieldset>
       </div>
 
       <!-- Pregnancy Info -->

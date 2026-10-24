@@ -41,6 +41,36 @@
       </div>
     </div>
 
+    <!-- Calm, dismissible, My Profile only; never blocks anything. -->
+    <div class="complete-prompt" *ngIf="showCompletePrompt" role="note">
+      <div class="complete-prompt-text">
+        <p class="complete-prompt-title">Complete your profile</p>
+        <p class="complete-prompt-sub">Add your {{ !birthdayText && !addressLine ? 'birthday and address' : !birthdayText ? 'birthday' : 'address' }} so your clinic has it on file.</p>
+        <button type="button" class="complete-prompt-link" (click)="navigate('/profile-edit')">Add now</button>
+      </div>
+      <button type="button" class="complete-prompt-close" (click)="dismissCompletePrompt()" aria-label="Close">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+          <path d="M3 3l8 8M11 3l-8 8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+        </svg>
+      </button>
+    </div>
+
+    <div class="profile-section-label">Personal Information</div>
+    <div class="profile-theme-card personal-card">
+      <div class="personal-row">
+        <span class="personal-label">Birthday</span>
+        <span class="personal-value">{{ profileLoaded ? (birthdayText || 'Not added yet') : '–' }}</span>
+      </div>
+      <div class="personal-row">
+        <span class="personal-label">Age</span>
+        <span class="personal-value">{{ profileLoaded ? (age !== null ? age : '–') : '–' }}</span>
+      </div>
+      <div class="personal-row">
+        <span class="personal-label">Address</span>
+        <span class="personal-value">{{ profileLoaded ? (addressLine || 'Not added yet') : '–' }}</span>
+      </div>
+    </div>
+
     <div class="profile-section-label">Appearance</div>
     <div class="profile-theme-card">
       <div class="theme-row">

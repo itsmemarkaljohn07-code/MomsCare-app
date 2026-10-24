@@ -8,6 +8,10 @@ import { ProfileStoreService } from '../../services/profile-store.service';
 import { parseStoredDate } from '../../shared/date-utils';
 import { pregnancyStatus } from '../../shared/pregnancy-status';
 import { BabySize, babySizeFor } from '../../shared/baby-size';
+import { ageOn, formatAddress, formatBirthday, readAddress, readBirthday, todayLocalYmd } from '../../shared/profile-fields';
+
+/** "Complete your profile" was closed for this account on this phone. */
+const PROMPT_DISMISSED_KEY = 'momcare_profile_prompt_dismissed_';
 import { ThemeService } from '../../services/theme';
 import { Subscription } from 'rxjs';
 
@@ -31,6 +35,27 @@ export class ProfilePage implements OnInit, OnDestroy {
   // person's name. Until the profile has loaded, the header shows "–".
   userName = 'User';
   profileLoaded = false;
+
+  /** Birthday ("YYYY-MM-DD") and address, from the live profile. The age
+   *  is worked out when shown, never stored. */
+  private birthday: string | null = null;
+  addressLine = '';
+  private uid: string | null = null;
+  promptDismissed = false;
+
+  get birthdayText(): string { return this.birthday ? formatBirthday(this.birthday) : ''; }
+  get age(): number | null { return this.birthday ? ageOn(this.birthday, todayLocalYmd()) : null; }
+
+  /** Shown only in My Profile, only while something is missing, and only
+   *  until she closes it. It never blocks anything. */
+  get showCompletePrompt(): boolean {
+    return this.profileLoaded && !!this.uid && !this.promptDismissed && (!this.birthday || !this.addressLine);
+  }
+
+  dismissCompletePrompt(): void {
+    this.promptDismissed = true;
+    try { if (this.uid) localStorage.setItem(PROMPT_DISMISSED_KEY + this.uid, '1'); } catch { /* ignore */ }
+  }
   private dueDate: Date | null = null;
 
   /** The shared formula (shared/pregnancy-status.ts), the same one every
@@ -90,6 +115,13 @@ export class ProfilePage implements OnInit, OnDestroy {
   private applyProfile(profile: UserProfile | null): void {
     this.profileLoaded = true;
     this.userName = profile?.fullName || 'User';
+    this.birthday = readBirthday(profile?.dob);
+    this.addressLine = formatAddress(readAddress(profile?.address));
+    if (profile?.uid !== this.uid) {
+      this.uid = profile?.uid ?? null;
+      try { this.promptDismissed = !!this.uid && localStorage.getItem(PROMPT_DISMISSED_KEY + this.uid) === '1'; }
+      catch { this.promptDismissed = false; }
+    }
     this.dueDate = parseStoredDate(profile?.dueDate);
     if (profile?.avatar) {
       this.selectedAvatar = profile.avatar;

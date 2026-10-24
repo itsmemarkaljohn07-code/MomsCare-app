@@ -1,7 +1,8 @@
 // profile-changes.ts
 import type { UserProfile } from '../services/auth.service';
 import { fromDateInputValue } from './date-utils';
-import { ProfileAddress, emptyAddress, isAddressEmpty, sameAddress, trimAddress } from './profile-fields';
+import { emptyAddress, isAddressEmpty, sameAddress, trimAddress } from './profile-fields';
+import type { ProfileAddress } from './profile-fields';
 
 /**
  * What Profile Edit and Pregnancy Settings save: only the fields whose value

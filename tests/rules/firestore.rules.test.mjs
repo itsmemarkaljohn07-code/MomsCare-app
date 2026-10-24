@@ -741,3 +741,29 @@ describe('appointments: collection-group read (dashboard live cancellations)', (
     await assertFails(getDocs(collectionGroup(signedOut(), 'appointments')));
   });
 });
+
+describe('profile: birthday (dob) and address', () => {
+  const ADDRESS = { province: 'Samar', city: 'Catbalogan City', barangay: 'Zz Test Barangay', street: 'Purok 1' };
+
+  test('signup: creating own profile with dob "YYYY-MM-DD" and the address map is allowed', async () => {
+    await env.withSecurityRulesDisabled(ctx => deleteDoc(doc(ctx.firestore(), `users/${PATIENT_A}`)));
+    await assertSucceeds(setDoc(doc(patientA(), `users/${PATIENT_A}`),
+      { ...registration(PATIENT_A), dob: '1998-05-01', address: ADDRESS }));
+  });
+  test('editing own dob and address is allowed', async () => {
+    await assertSucceeds(updateDoc(doc(patientA(), `users/${PATIENT_A}`), { dob: '1998-05-01', address: ADDRESS }));
+    await assertSucceeds(updateDoc(doc(patientA(), `users/${PATIENT_A}`), { dob: '1999-12-31' }));
+  });
+  test("writing dob or address on patient B's profile is refused", async () => {
+    await assertFails(updateDoc(doc(patientA(), `users/${PATIENT_B}`), { dob: '1998-05-01' }));
+    await assertFails(updateDoc(doc(patientA(), `users/${PATIENT_B}`), { address: ADDRESS }));
+  });
+  test('a protected field sent together with a dob write is refused', async () => {
+    await assertFails(updateDoc(doc(patientA(), `users/${PATIENT_A}`),
+      { dob: '1998-05-01', assignedDoctorNames: ['Dr. Other'] }));
+    await assertFails(updateDoc(doc(patientA(), `users/${PATIENT_A}`), { dob: '1998-05-01', role: 'admin' }));
+  });
+  test('signed out: no dob write at all', async () => {
+    await assertFails(updateDoc(doc(signedOut(), `users/${PATIENT_A}`), { dob: '1998-05-01' }));
+  });
+});

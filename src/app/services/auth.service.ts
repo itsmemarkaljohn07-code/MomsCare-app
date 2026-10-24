@@ -28,6 +28,8 @@ import {
 } from '@angular/fire/firestore';
 import { Observable } from 'rxjs';
 import { ReadUnavailableError } from '../shared/firestore-read';
+import { buildRegistrationProfile } from '../shared/registration-profile';
+import type { ProfileAddress } from '../shared/profile-fields';
 
 /** The profile could not be read (offline, timed out, signed out while
  *  waiting). Never means "there is no profile": that is a plain null. */
@@ -69,8 +71,12 @@ export interface UserProfile {
   // something.
   firstName?: string;
   lastName?: string;
+  /** Birthday, "YYYY-MM-DD" (older accounts may hold an ISO timestamp; ''
+   *  means none). The age is never stored. See shared/profile-fields.ts. */
   dob?: string;
-  address?: string;
+  /** { province, city, barangay, street }; older accounts may hold a plain
+   *  string (read as the street line). */
+  address?: ProfileAddress | string;
   bloodType?: string;
   emergencyContact?: string;
   // The admin dashboard's REAL doctor-assignment field (it queries
@@ -190,20 +196,8 @@ export class AuthService {
       throw new Error(this.mapAuthError(err));
     }
 
-        const userData: UserProfile = {
-      uid:           cred.user.uid,
-      fullName:      profile.fullName      ?? '',
-      username:      profile.username      ?? '',
-      email:         email,
-      mobile:        profile.mobile        ?? '',
-      dueDate:       profile.dueDate       ?? '',
-      weeksPregnant: profile.weeksPregnant ?? 0,
-      lmpDate:       profile.lmpDate       ?? '',
-      firstTimeMom:  profile.firstTimeMom  ?? true,
-      clinicName:    profile.clinicName    ?? '',
-      createdAt:     new Date().toISOString(),
-      setupComplete: true,
-    };
+    // Same builder as retryProfileSave(), so a retry saves the same fields.
+    const userData = buildRegistrationProfile(cred.user.uid, email, profile, new Date().toISOString());
 
     // Backed up locally BEFORE the network call, so the EDD and rest of
     // the profile can never be silently lost even if every save attempt
@@ -234,20 +228,8 @@ export class AuthService {
     if (!this.currentUid) {
       throw new Error('No signed-in account found. Please sign in and try again.');
     }
-        const userData: UserProfile = {
-      uid:           this.currentUid,
-      fullName:      profile.fullName      ?? '',
-      username:      profile.username      ?? '',
-      email:         this.auth.currentUser?.email ?? '',
-      mobile:        profile.mobile        ?? '',
-      dueDate:       profile.dueDate       ?? '',
-      weeksPregnant: profile.weeksPregnant ?? 0,
-      lmpDate:       profile.lmpDate       ?? '',
-      firstTimeMom:  profile.firstTimeMom  ?? true,
-      clinicName:    profile.clinicName    ?? '',
-      createdAt:     new Date().toISOString(),
-      setupComplete: true,
-    };
+    const userData = buildRegistrationProfile(
+      this.currentUid, this.auth.currentUser?.email ?? '', profile, new Date().toISOString());
     this.savePendingProfileLocally(userData);
     await this.saveProfileWithRetry(this.currentUid, userData);
     this.clearPendingProfileLocally();

@@ -12,6 +12,7 @@ import { ProfileStoreService } from '../../services/profile-store.service';
 import { McDropdownComponent, McDropdownOption } from '../../shared/mc-dropdown/mc-dropdown.component';
 import { McDatepickerComponent } from '../../shared/mc-datepicker/mc-datepicker.component';
 import { toDateInputValue, fromDateInputValue, parseStoredDate } from '../../shared/date-utils';
+import { formatAddress, readAddress } from '../../shared/profile-fields';
 import { pregnancyStatus } from '../../shared/pregnancy-status';
 import { ProfileEditForm, profileEditChanges } from '../../shared/profile-changes';
 import { Subscription } from 'rxjs';
@@ -170,7 +171,8 @@ export class ProfileEditPage implements OnInit, OnDestroy, ViewWillEnter, ViewWi
       firstName, lastName,
       email: profile.email ?? '',
       phone: profile.mobile ?? '',
-      address: profile.address ?? '',
+      // Shown as one line here for now (an older string or the new parts).
+      address: formatAddress(readAddress(profile.address)),
       dueDate: toDateInputValue(profile.dueDate),
       firstTimeMom: profile.firstTimeMom === false ? 'no' : 'yes',
       bloodType: profile.bloodType ?? '',

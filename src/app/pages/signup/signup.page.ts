@@ -14,6 +14,11 @@ import { FirstRunTutorialService } from '../../services/first-run-tutorial.servi
 import { Auth, fetchSignInMethodsForEmail } from '@angular/fire/auth';
 import { runInInjectionContext, EnvironmentInjector, inject } from '@angular/core';
 import { Subscription } from 'rxjs';
+import { McDatepickerComponent } from '../../shared/mc-datepicker/mc-datepicker.component';
+import {
+  ADDRESS_PART_MAX, STREET_MAX, addressErrors, ageOn, birthdayError, emptyAddress, isRealYmd,
+  todayLocalYmd, trimAddress, yearsBefore,
+} from '../../shared/profile-fields';
 
 interface CalCell {
   day: number | null;
@@ -33,7 +38,7 @@ const OTP_SEND_TIMEOUT_MS = 25000;
   templateUrl: './signup.page.html',
   styleUrls: ['./signup.page.scss'],
   standalone: true,
-  imports: [IonicModule, CommonModule, FormsModule, DatePipe],
+  imports: [IonicModule, CommonModule, FormsModule, DatePipe, McDatepickerComponent],
   animations: [
     trigger('slideStep', [
       transition(':enter', [
@@ -81,6 +86,9 @@ export class SignupPage implements OnInit, OnDestroy, AfterViewInit {
     username:        '',
     email:           '',
     mobile:          '',
+    /** "YYYY-MM-DD" from the date picker; the age is shown, never saved. */
+    birthday:        '',
+    address:         emptyAddress(),
     password:        '',
     confirmPassword: '',
     agreed:          false,
@@ -98,10 +106,25 @@ export class SignupPage implements OnInit, OnDestroy, AfterViewInit {
   focus = {
     name: false, username: false, email: false, mobile: false,
     password: false, confirm: false, dueDate: false,
+    province: false, city: false, barangay: false, street: false,
   };
   errors = {
-    name: '', username: '', email: '', mobile: '', password: '', confirm: '', terms: '',
+    name: '', birthday: '', mobile: '', province: '', city: '', barangay: '', street: '',
+    username: '', email: '', password: '', confirm: '', terms: '',
   };
+
+  readonly addressPartMax = ADDRESS_PART_MAX;
+  readonly streetMax = STREET_MAX;
+
+  /** Today on this device, local time (the age and the picker's limit). */
+  get todayYmd(): string { return todayLocalYmd(); }
+  /** With no birthday yet, the calendar opens 25 years back, not today. */
+  get birthdayOpenAt(): string { return yearsBefore(this.todayYmd, 25); }
+  /** Shown as soon as a real birthday is picked; worked out, never saved. */
+  get birthdayAge(): number | null {
+    return isRealYmd(this.form.birthday) && this.form.birthday <= this.todayYmd
+      ? ageOn(this.form.birthday, this.todayYmd) : null;
+  }
 
   show = { password: false, confirm: false };
   passwordStrength = 0;
@@ -353,6 +376,8 @@ export class SignupPage implements OnInit, OnDestroy, AfterViewInit {
       fullName:      this.form.fullName.trim(),
       username:      this.form.username.trim(),
       mobile:        this.form.mobile.trim(),
+      dob:           this.form.birthday,
+      address:       trimAddress(this.form.address),
       dueDate:       this.form.dueDate       || '',
       weeksPregnant: this.form.weeksPregnant !== null ? this.form.weeksPregnant : 0,
       lmpDate:       this.form.lmpDate       || '',
@@ -492,6 +517,39 @@ export class SignupPage implements OnInit, OnDestroy, AfterViewInit {
     this.errors.email = '';
   }
 
+  validateBirthday(): void {
+    this.errors.birthday = birthdayError(this.form.birthday, this.todayYmd);
+  }
+
+  validateAddress(): void {
+    const e = addressErrors(this.form.address, true);
+    this.errors.province = e.province ?? '';
+    this.errors.city = e.city ?? '';
+    this.errors.barangay = e.barangay ?? '';
+    this.errors.street = e.street ?? '';
+  }
+
+  /** Scrolls to and focuses the first field with a message, top to bottom
+   *  (Mother Information first, then User Credentials). Nothing typed is
+   *  cleared. */
+  private focusFirstError(): void {
+    const order: [keyof typeof this.errors, string][] = [
+      ['name', 'su-name'], ['birthday', 'su-birthday'], ['mobile', 'su-mobile'],
+      ['province', 'su-province'], ['city', 'su-city'], ['barangay', 'su-barangay'], ['street', 'su-street'],
+      ['username', 'su-username'], ['email', 'su-email'], ['password', 'su-password'], ['confirm', 'su-confirm'],
+      ['terms', 'su-terms'],
+    ];
+    const first = order.find(([key]) => !!this.errors[key]);
+    if (!first) return;
+    setTimeout(() => {
+      const host = document.getElementById(first[1]);
+      // The birthday picker's focusable part is the button inside it.
+      const target = (host?.matches('input, [tabindex]') ? host : host?.querySelector<HTMLElement>('button, input')) ?? host;
+      host?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      target?.focus({ preventScroll: true });
+    });
+  }
+
   validateMobile(): void {
     const digits = this.form.mobile.replace(/\D/g, '');
     this.errors.mobile = digits.length < 10
@@ -516,8 +574,8 @@ export class SignupPage implements OnInit, OnDestroy, AfterViewInit {
   }
 
     private isStep1Valid(): boolean {
-    this.validateName(); this.validateUsername(); this.validateEmail();
-    this.validateMobile(); this.validatePassword(); this.validateConfirm();
+    this.validateName(); this.validateBirthday(); this.validateMobile(); this.validateAddress();
+    this.validateUsername(); this.validateEmail(); this.validatePassword(); this.validateConfirm();
     this.errors.terms = !this.form.agreed ? 'Please agree to the Terms & Conditions' : '';
     return !Object.values(this.errors).some(e => e);
   }
@@ -544,7 +602,7 @@ export class SignupPage implements OnInit, OnDestroy, AfterViewInit {
   async onStep1(): Promise<void> {
     this.form.email = this.form.email.trim();
 
-    if (!this.isStep1Valid()) return;
+    if (!this.isStep1Valid()) { this.focusFirstError(); return; }
 
     this.isLoading     = true;
     this.checkingEmail = true;
@@ -557,6 +615,7 @@ export class SignupPage implements OnInit, OnDestroy, AfterViewInit {
       this.errors.email  = "This email domain doesn't appear to accept email. Please check for typos.";
       this.isLoading     = false;
       this.checkingEmail = false;
+      this.focusFirstError();
       return;
     }
 
@@ -587,11 +646,13 @@ export class SignupPage implements OnInit, OnDestroy, AfterViewInit {
 
       if (methods && methods.length > 0) {
         this.errors.email = 'This email is already registered. Please sign in instead.';
+        this.focusFirstError();
         return;
       }
 
       if (usernameTaken) {
         this.errors.username = 'This username is already taken. Please choose another.';
+        this.focusFirstError();
         return;
       }
 

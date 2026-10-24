@@ -33,10 +33,14 @@
 
       <div class="card" [class.visible]="animReady" @slideStep>
 
-                <!-- Full Name + Username -->
-        <div class="field-row">
+        <!-- ── Mother Information: about her, saved in her profile ── -->
+        <section class="form-section" aria-labelledby="su-sec-mother">
+          <h2 class="section-title" id="su-sec-mother">Mother Information</h2>
+          <p class="section-help">Tell us about you</p>
+
+          <!-- Full Name -->
           <div class="field-group" [class.focused]="focus.name" [class.error]="!!errors.name">
-            <label class="field-label">Full Name</label>
+            <label class="field-label" for="su-name">Full Name</label>
             <div class="field-inner">
               <span class="f-ico">
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
@@ -44,7 +48,7 @@
                   <path d="M2 14c0-3.3 2.7-6 6-6s6 2.7 6 6" stroke="#b57fd4" stroke-width="1.4" stroke-linecap="round"/>
                 </svg>
               </span>
-              <input class="f-input" type="text" autocomplete="name"
+              <input class="f-input" id="su-name" name="name" type="text" autocomplete="name"
                      [(ngModel)]="form.fullName"
                      (focus)="focus.name=true" (blur)="focus.name=false; validateName()"
                      placeholder="Maria Santos"/>
@@ -52,26 +56,114 @@
             <p class="field-error" *ngIf="errors.name">{{ errors.name }}</p>
           </div>
 
+          <!-- Birthday, with the age worked out from it (read-only, never saved) -->
+          <div class="field-group" [class.error]="!!errors.birthday">
+            <label class="field-label" for="su-birthday">Birthday</label>
+            <div id="su-birthday">
+              <mc-datepicker label="Birthday" placeholder="mm/dd/yyyy"
+                             [max]="todayYmd" [openAt]="birthdayOpenAt"
+                             [(ngModel)]="form.birthday"
+                             (ngModelChange)="validateBirthday()"></mc-datepicker>
+            </div>
+            <p class="age-readout" *ngIf="birthdayAge !== null" aria-live="polite">Age: {{ birthdayAge }}</p>
+            <p class="field-error" *ngIf="errors.birthday">{{ errors.birthday }}</p>
+          </div>
+
+          <!-- Mobile -->
+          <div class="field-group" [class.focused]="focus.mobile" [class.error]="!!errors.mobile">
+            <label class="field-label" for="su-mobile">Mobile Number</label>
+            <div class="field-inner">
+              <span class="f-ico">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                  <rect x="4" y="1" width="8" height="14" rx="2" stroke="#b57fd4" stroke-width="1.4"/>
+                  <circle cx="8" cy="12.5" r="0.8" fill="#b57fd4"/>
+                </svg>
+              </span>
+              <span class="ph-prefix">+63</span>
+              <input class="f-input ph-input" id="su-mobile" name="tel" type="tel" inputmode="numeric" autocomplete="tel-national"
+                     [(ngModel)]="form.mobile"
+                     (focus)="focus.mobile=true" (blur)="focus.mobile=false; validateMobile()"
+                     placeholder="9XX XXX XXXX" maxlength="11"/>
+            </div>
+            <p class="field-error" *ngIf="errors.mobile">{{ errors.mobile }}</p>
+          </div>
+
+          <!-- Address: four plain text fields -->
+          <fieldset class="address-group">
+            <legend class="field-label">Address</legend>
+
+            <div class="field-group" [class.focused]="focus.province" [class.error]="!!errors.province">
+              <label class="field-label" for="su-province">Province</label>
+              <div class="field-inner">
+                <input class="f-input" id="su-province" name="province" type="text" autocomplete="address-level1"
+                       [(ngModel)]="form.address.province" [maxlength]="addressPartMax"
+                       (focus)="focus.province=true" (blur)="focus.province=false; validateAddress()"
+                       placeholder="e.g. Samar"/>
+              </div>
+              <p class="field-error" *ngIf="errors.province">{{ errors.province }}</p>
+            </div>
+
+            <div class="field-group" [class.focused]="focus.city" [class.error]="!!errors.city">
+              <label class="field-label" for="su-city">City/Municipality</label>
+              <div class="field-inner">
+                <input class="f-input" id="su-city" name="city" type="text" autocomplete="address-level2"
+                       [(ngModel)]="form.address.city" [maxlength]="addressPartMax"
+                       (focus)="focus.city=true" (blur)="focus.city=false; validateAddress()"
+                       placeholder="e.g. Catbalogan City"/>
+              </div>
+              <p class="field-error" *ngIf="errors.city">{{ errors.city }}</p>
+            </div>
+
+            <div class="field-group" [class.focused]="focus.barangay" [class.error]="!!errors.barangay">
+              <label class="field-label" for="su-barangay">Barangay</label>
+              <div class="field-inner">
+                <input class="f-input" id="su-barangay" name="barangay" type="text" autocomplete="address-level3"
+                       [(ngModel)]="form.address.barangay" [maxlength]="addressPartMax"
+                       (focus)="focus.barangay=true" (blur)="focus.barangay=false; validateAddress()"
+                       placeholder="Your barangay"/>
+              </div>
+              <p class="field-error" *ngIf="errors.barangay">{{ errors.barangay }}</p>
+            </div>
+
+            <div class="field-group" [class.focused]="focus.street" [class.error]="!!errors.street">
+              <label class="field-label" for="su-street">Purok/Street <span class="opt-note">(optional)</span></label>
+              <div class="field-inner">
+                <input class="f-input" id="su-street" name="street" type="text" autocomplete="address-line1"
+                       [(ngModel)]="form.address.street" [maxlength]="streetMax"
+                       (focus)="focus.street=true" (blur)="focus.street=false; validateAddress()"
+                       placeholder="e.g. Purok 3, Rizal Street"/>
+              </div>
+              <p class="field-guide">Your purok, sitio, street or house number, if any.</p>
+              <p class="field-error" *ngIf="errors.street">{{ errors.street }}</p>
+            </div>
+          </fieldset>
+        </section>
+
+        <!-- ── User Credentials: how she signs in ── -->
+        <section class="form-section form-section--divided" aria-labelledby="su-sec-cred">
+          <h2 class="section-title" id="su-sec-cred">User Credentials</h2>
+          <p class="section-help">Choose how you will sign in</p>
+
+          <!-- Username -->
           <div class="field-group" [class.focused]="focus.username" [class.error]="!!errors.username">
-            <label class="field-label">Username</label>
+            <label class="field-label" for="su-username">Username</label>
             <div class="field-inner">
               <span class="f-ico">
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                   <path d="M8 2L2 5v3c0 3.5 2.5 6.5 6 7.5 3.5-1 6-4 6-7.5V5L8 2z" stroke="#b57fd4" stroke-width="1.3" stroke-linejoin="round"/>
                 </svg>
               </span>
-              <input class="f-input" type="text" autocomplete="username"
+              <input class="f-input" id="su-username" name="username" type="text" autocomplete="username"
                      [(ngModel)]="form.username"
                      (focus)="focus.username=true" (blur)="focus.username=false; validateUsername()"
                      placeholder="mariasantos"/>
             </div>
             <p class="field-error" *ngIf="errors.username">{{ errors.username }}</p>
           </div>
-        </div>
 
         <!-- Email -->
         <div class="field-group" [class.focused]="focus.email" [class.error]="!!errors.email">
-          <label class="field-label">
+          <label class="field-label" for="su-email">
             Email Address
             <span class="opt-tag">OTP</span>
           </label>
@@ -82,7 +174,7 @@
                 <path d="M1.5 4.5L8 9L14.5 4.5" stroke="#b57fd4" stroke-width="1.4" stroke-linecap="round"/>
               </svg>
             </span>
-            <input class="f-input" type="email" autocomplete="email"
+            <input class="f-input" id="su-email" name="email" type="email" autocomplete="email"
                    [(ngModel)]="form.email"
                    (focus)="focus.email=true" (blur)="focus.email=false; validateEmail()"
                    placeholder="maria@email.com"/>
@@ -90,28 +182,9 @@
           <p class="field-error" *ngIf="errors.email">{{ errors.email }}</p>
         </div>
 
-        <!-- Mobile -->
-        <div class="field-group" [class.focused]="focus.mobile" [class.error]="!!errors.mobile">
-          <label class="field-label">Mobile Number</label>
-          <div class="field-inner">
-            <span class="f-ico">
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                <rect x="4" y="1" width="8" height="14" rx="2" stroke="#b57fd4" stroke-width="1.4"/>
-                <circle cx="8" cy="12.5" r="0.8" fill="#b57fd4"/>
-              </svg>
-            </span>
-            <span class="ph-prefix">+63</span>
-            <input class="f-input ph-input" type="tel" inputmode="numeric"
-                   [(ngModel)]="form.mobile"
-                   (focus)="focus.mobile=true" (blur)="focus.mobile=false; validateMobile()"
-                   placeholder="9XX XXX XXXX" maxlength="11"/>
-          </div>
-          <p class="field-error" *ngIf="errors.mobile">{{ errors.mobile }}</p>
-        </div>
-
         <!-- Password -->
         <div class="field-group" [class.focused]="focus.password" [class.error]="!!errors.password">
-          <label class="field-label">Password</label>
+          <label class="field-label" for="su-password">Password</label>
           <div class="field-inner">
             <span class="f-ico">
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
@@ -120,7 +193,7 @@
                 <circle cx="8" cy="10.5" r="1.1" fill="#b57fd4"/>
               </svg>
             </span>
-            <input class="f-input" [type]="show.password ? 'text' : 'password'"
+            <input class="f-input" id="su-password" name="new-password" [type]="show.password ? 'text' : 'password'"
                    autocomplete="new-password"
                    [(ngModel)]="form.password"
                    (focus)="focus.password=true" (blur)="focus.password=false; validatePassword()"
@@ -152,7 +225,7 @@
 
         <!-- Confirm Password -->
         <div class="field-group" [class.focused]="focus.confirm" [class.error]="!!errors.confirm">
-          <label class="field-label">Confirm Password</label>
+          <label class="field-label" for="su-confirm">Confirm Password</label>
           <div class="field-inner">
             <span class="f-ico">
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
@@ -160,7 +233,7 @@
                       stroke-linecap="round" stroke-linejoin="round"/>
               </svg>
             </span>
-            <input class="f-input" [type]="show.confirm ? 'text' : 'password'"
+            <input class="f-input" id="su-confirm" name="confirm-password" [type]="show.confirm ? 'text' : 'password'"
                    autocomplete="new-password"
                    [(ngModel)]="form.confirmPassword"
                    (focus)="focus.confirm=true" (blur)="focus.confirm=false; validateConfirm()"
@@ -180,9 +253,12 @@
           <p class="field-error" *ngIf="errors.confirm">{{ errors.confirm }}</p>
         </div>
 
+        </section>
+
         <!-- Terms -->
         <div class="terms-row" [class.error]="!!errors.terms">
-          <div class="checkbox-wrap" (click)="form.agreed = !form.agreed">
+          <div class="checkbox-wrap" id="su-terms" tabindex="0" role="checkbox" [attr.aria-checked]="form.agreed"
+               (click)="form.agreed = !form.agreed" (keydown.space)="$event.preventDefault(); form.agreed = !form.agreed">
             <div class="checkbox" [class.checked]="form.agreed">
               <svg *ngIf="form.agreed" width="10" height="10" viewBox="0 0 10 10" fill="none">
                 <path d="M2 5L4.2 7.5L8 3" stroke="white" stroke-width="1.8"
@@ -320,6 +396,7 @@
         </div>
 
         <div class="flo-body">
+          <p class="section-kicker">Mother Information</p>
           <h2 class="flo-title">Do you know your due date?</h2>
           <p class="flo-sub">We'll use this to show you your baby's size.</p>
 
@@ -379,6 +456,7 @@
         </div>
 
         <div class="flo-body flo-body--cal">
+          <p class="section-kicker" style="text-align:center">Mother Information</p>
           <h2 class="flo-title" style="text-align:center">Select the expected due date</h2>
 
           <div class="cal-wrap">
@@ -460,6 +538,7 @@
         </div>
 
         <div class="flo-body">
+          <p class="section-kicker">Mother Information</p>
           <h2 class="flo-title">Choose one of these options to calculate your due date</h2>
 
           <div class="flo-options">
@@ -518,6 +597,7 @@
         </div>
 
         <div class="flo-body flo-body--cal">
+          <p class="section-kicker" style="text-align:center">Mother Information</p>
           <h2 class="flo-title" style="text-align:center">
             Tap the date your last period started.
             <span style="font-weight:400; font-size:.9em"> An estimate is fine.</span>
@@ -602,6 +682,7 @@
         </div>
 
         <div class="flo-body flo-body--picker">
+          <p class="section-kicker" style="text-align:center">Mother Information</p>
           <h2 class="flo-title" style="text-align:center">How many weeks pregnant are you?</h2>
 
           <!-- Drum-roll picker -->
@@ -656,6 +737,7 @@
         </div>
 
         <div class="flo-body">
+          <p class="section-kicker">Mother Information</p>
           <h2 class="flo-title">Is this your first pregnancy? 🌸</h2>
           <p class="flo-sub">Help us personalize your journey.</p>
 

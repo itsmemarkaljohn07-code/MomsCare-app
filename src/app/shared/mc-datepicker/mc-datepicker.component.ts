@@ -47,6 +47,9 @@ export class McDatepickerComponent implements ControlValueAccessor, OnDestroy {
   /** Show a "Clear" button that empties the value (only where a field may
    *  be left empty, e.g. LMP). */
   @Input() clearable = false;
+  /** The day the calendar opens on while the field is empty (yyyy-MM-dd);
+   *  unset means today. E.g. a birthday opens years back, not on today. */
+  @Input() openAt = '';
 
   @ViewChild('trigger') private trigger?: ElementRef<HTMLButtonElement>;
   @ViewChild('sheet') private sheetRef?: ElementRef<HTMLElement>;
@@ -110,8 +113,8 @@ export class McDatepickerComponent implements ControlValueAccessor, OnDestroy {
     if (this.disabled || this.open) return;
     this.dark = document.body.classList.contains('dark');
     this.today = formatLocalDate(new Date());
-    // Start on the selected date's month, or today's.
-    this.activeValue = parseYmd(this.value) ? this.value : this.today;
+    // Start on the selected date's month, or openAt's, or today's.
+    this.activeValue = parseYmd(this.value) ? this.value : parseYmd(this.openAt) ? this.openAt : this.today;
     const start = parseYmd(this.activeValue)!;
     this.view = 'days';
     this.showMonth(start.y, start.m);

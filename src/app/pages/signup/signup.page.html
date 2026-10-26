@@ -38,22 +38,42 @@
           <h2 class="section-title" id="su-sec-mother">Mother Information</h2>
           <p class="section-help">Tell us about you</p>
 
-          <!-- Full Name -->
-          <div class="field-group" [class.focused]="focus.name" [class.error]="!!errors.name">
-            <label class="field-label" for="su-name">Full Name</label>
-            <div class="field-inner">
-              <span class="f-ico">
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                  <circle cx="8" cy="5.5" r="3" stroke="#b57fd4" stroke-width="1.4"/>
-                  <path d="M2 14c0-3.3 2.7-6 6-6s6 2.7 6 6" stroke="#b57fd4" stroke-width="1.4" stroke-linecap="round"/>
-                </svg>
-              </span>
-              <input class="f-input" id="su-name" name="name" type="text" autocomplete="name"
-                     [(ngModel)]="form.fullName"
-                     (focus)="focus.name=true" (blur)="focus.name=false; validateName()"
-                     placeholder="Maria Santos"/>
+          <!-- Name: first, optional middle, last (stacked on phones, one row from sm up) -->
+          <div class="name-row">
+            <div class="field-group" [class.focused]="focus.firstName" [class.error]="!!errors.firstName">
+              <label class="field-label" for="su-first">First name</label>
+              <div class="field-inner">
+                <input class="f-input" id="su-first" name="given-name" type="text" autocomplete="given-name"
+                       [maxlength]="namePartMax"
+                       [(ngModel)]="form.firstName"
+                       (focus)="focus.firstName=true" (blur)="focus.firstName=false; validateNamePart('firstName')"
+                       placeholder="Maria"/>
+              </div>
+              <p class="field-error" *ngIf="errors.firstName">{{ errors.firstName }}</p>
             </div>
-            <p class="field-error" *ngIf="errors.name">{{ errors.name }}</p>
+            <div class="field-group" [class.focused]="focus.middleName" [class.error]="!!errors.middleName">
+              <label class="field-label" for="su-middle">Middle name <span class="opt-note">(optional)</span></label>
+              <div class="field-inner">
+                <input class="f-input" id="su-middle" name="additional-name" type="text" autocomplete="additional-name"
+                       [maxlength]="namePartMax"
+                       [(ngModel)]="form.middleName"
+                       (focus)="focus.middleName=true" (blur)="focus.middleName=false; validateNamePart('middleName')"
+                       placeholder="Reyes"/>
+              </div>
+              <p class="field-error" *ngIf="errors.middleName">{{ errors.middleName }}</p>
+            </div>
+            <div class="field-group" [class.focused]="focus.lastName" [class.error]="!!errors.lastName">
+              <label class="field-label" for="su-last">Last name</label>
+              <div class="field-inner">
+                <input class="f-input" id="su-last" name="family-name" type="text" autocomplete="family-name"
+                       [maxlength]="namePartMax"
+                       [(ngModel)]="form.lastName"
+                       (focus)="focus.lastName=true" (blur)="focus.lastName=false; validateNamePart('lastName')"
+                       placeholder="Santos"/>
+              </div>
+              <p class="field-guide">Include Jr., Sr. or III here if it applies.</p>
+              <p class="field-error" *ngIf="errors.lastName">{{ errors.lastName }}</p>
+            </div>
           </div>
 
           <!-- Birthday, with the age worked out from it (read-only, never saved) -->

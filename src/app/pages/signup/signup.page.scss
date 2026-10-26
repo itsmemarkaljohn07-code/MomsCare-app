@@ -695,6 +695,17 @@ ion-content[data-theme="dark"] {
   .f-input { min-height: 44px; }
 }
 .opt-note { font-weight: 600; color: var(--muted); }
+
+/* First / middle / last: stacked on phones, one row from sm (576px) up. */
+.name-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  column-gap: 12px;
+  .f-input { min-height: 44px; }
+}
+@media (min-width: 576px) {
+  .name-row { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
 .field-guide {
   margin: 4px 0 0 2px;
   font-size: 0.7rem; color: var(--muted);

@@ -19,6 +19,7 @@ import {
   ADDRESS_PART_MAX, STREET_MAX, addressErrors, ageOn, birthdayError, emptyAddress, isRealYmd,
   todayLocalYmd, trimAddress, yearsBefore,
 } from '../../shared/profile-fields';
+import { NAME_PART_MAX, buildFullName, nameError, normalizeNamePart } from '../../shared/person-name';
 
 interface CalCell {
   day: number | null;
@@ -82,7 +83,10 @@ export class SignupPage implements OnInit, OnDestroy, AfterViewInit {
 
   /* ── Form ── */
   form = {
-    fullName:        '',
+    firstName:       '',
+    /** Optional; saved only when not empty. */
+    middleName:      '',
+    lastName:        '',
     username:        '',
     email:           '',
     mobile:          '',
@@ -104,16 +108,22 @@ export class SignupPage implements OnInit, OnDestroy, AfterViewInit {
   calcMethod: 'lmp' | 'weeks' | null = null;
 
   focus = {
-    name: false, username: false, email: false, mobile: false,
+    firstName: false, middleName: false, lastName: false, username: false, email: false, mobile: false,
     password: false, confirm: false, dueDate: false,
     province: false, city: false, barangay: false, street: false,
   };
   errors = {
-    name: '', birthday: '', mobile: '', province: '', city: '', barangay: '', street: '',
+    firstName: '', middleName: '', lastName: '', birthday: '', mobile: '', province: '', city: '', barangay: '', street: '',
     username: '', email: '', password: '', confirm: '', terms: '',
   };
 
+  readonly namePartMax = NAME_PART_MAX;
   readonly addressPartMax = ADDRESS_PART_MAX;
+
+  /** "First Middle Last", the same way Profile Edit and the retry build it. */
+  private get fullName(): string {
+    return buildFullName(this.form.firstName, this.form.middleName, this.form.lastName);
+  }
   readonly streetMax = STREET_MAX;
 
   /** Today on this device, local time (the age and the picker's limit). */
@@ -373,7 +383,10 @@ export class SignupPage implements OnInit, OnDestroy, AfterViewInit {
    *  drift out of sync. */
     private buildProfilePayload() {
     return {
-      fullName:      this.form.fullName.trim(),
+      firstName:     normalizeNamePart(this.form.firstName),
+      ...(normalizeNamePart(this.form.middleName) ? { middleName: normalizeNamePart(this.form.middleName) } : {}),
+      lastName:      normalizeNamePart(this.form.lastName),
+      fullName:      this.fullName,
       username:      this.form.username.trim(),
       mobile:        this.form.mobile.trim(),
       dob:           this.form.birthday,
@@ -466,9 +479,18 @@ export class SignupPage implements OnInit, OnDestroy, AfterViewInit {
   // ───────────────────────────────────────────────
   // STEP 1 — VALIDATION
   // ───────────────────────────────────────────────
-    validateName(): void {
-    this.errors.name = this.form.fullName.trim().length < 2
-      ? 'Please enter your full name' : '';
+  /** One name part: trimmed with spaces collapsed (kept in the box as typed
+   *  otherwise), then checked; the middle name may be left empty. */
+  validateNamePart(key: 'firstName' | 'middleName' | 'lastName'): void {
+    this.form[key] = normalizeNamePart(this.form[key]);
+    const label = key === 'firstName' ? 'first name' : key === 'middleName' ? 'middle name' : 'last name';
+    this.errors[key] = nameError(this.form[key], label, key !== 'middleName');
+  }
+
+  validateNames(): void {
+    this.validateNamePart('firstName');
+    this.validateNamePart('middleName');
+    this.validateNamePart('lastName');
   }
 
   validateUsername(): void {
@@ -534,7 +556,7 @@ export class SignupPage implements OnInit, OnDestroy, AfterViewInit {
    *  cleared. */
   private focusFirstError(): void {
     const order: [keyof typeof this.errors, string][] = [
-      ['name', 'su-name'], ['birthday', 'su-birthday'], ['mobile', 'su-mobile'],
+      ['firstName', 'su-first'], ['middleName', 'su-middle'], ['lastName', 'su-last'], ['birthday', 'su-birthday'], ['mobile', 'su-mobile'],
       ['province', 'su-province'], ['city', 'su-city'], ['barangay', 'su-barangay'], ['street', 'su-street'],
       ['username', 'su-username'], ['email', 'su-email'], ['password', 'su-password'], ['confirm', 'su-confirm'],
       ['terms', 'su-terms'],
@@ -574,7 +596,7 @@ export class SignupPage implements OnInit, OnDestroy, AfterViewInit {
   }
 
     private isStep1Valid(): boolean {
-    this.validateName(); this.validateBirthday(); this.validateMobile(); this.validateAddress();
+    this.validateNames(); this.validateBirthday(); this.validateMobile(); this.validateAddress();
     this.validateUsername(); this.validateEmail(); this.validatePassword(); this.validateConfirm();
     this.errors.terms = !this.form.agreed ? 'Please agree to the Terms & Conditions' : '';
     return !Object.values(this.errors).some(e => e);
@@ -608,7 +630,6 @@ export class SignupPage implements OnInit, OnDestroy, AfterViewInit {
     this.checkingEmail = true;
     this.generalError  = '';
     this.errors.email  = '';
-    this.errors.name   = '';
 
     const domainOk = await this.isDomainDeliverable(this.form.email);
     if (!domainOk) {
@@ -702,7 +723,7 @@ export class SignupPage implements OnInit, OnDestroy, AfterViewInit {
     this.isSendingEmail = true;
 
     return this.withTimeout(
-      this.otpService.sendOtp(this.form.email.trim(), this.form.fullName.trim()),
+      this.otpService.sendOtp(this.form.email.trim(), this.fullName),
       OTP_SEND_TIMEOUT_MS,
       'Sending the verification code is taking too long.'
     )

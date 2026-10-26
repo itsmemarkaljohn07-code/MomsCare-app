@@ -70,6 +70,8 @@ export interface UserProfile {
   // absent (not a placeholder value) until the user actually saves
   // something.
   firstName?: string;
+  /** Optional; saved only when not empty (see shared/person-name.ts). */
+  middleName?: string;
   lastName?: string;
   /** Birthday, "YYYY-MM-DD" (older accounts may hold an ISO timestamp; ''
    *  means none). The age is never stored. See shared/profile-fields.ts. */

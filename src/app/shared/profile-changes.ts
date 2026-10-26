@@ -3,6 +3,7 @@ import type { UserProfile } from '../services/auth.service';
 import { fromDateInputValue } from './date-utils';
 import { emptyAddress, isAddressEmpty, sameAddress, trimAddress } from './profile-fields';
 import type { ProfileAddress } from './profile-fields';
+import { buildFullName, normalizeNamePart } from './person-name';
 
 /**
  * What Profile Edit and Pregnancy Settings save: only the fields whose value
@@ -14,6 +15,8 @@ import type { ProfileAddress } from './profile-fields';
 /** Profile Edit's form, as strings (yyyy-MM-dd for dates). */
 export interface ProfileEditForm {
   firstName: string;
+  /** Optional ('' when none). */
+  middleName: string;
   lastName: string;
   email: string;
   phone: string;
@@ -50,10 +53,14 @@ export function profileEditChanges(loaded: ProfileEditForm, current: ProfileEdit
   // email (the login identity) and doctorName (set by the clinic) are
   // shown read-only and never written from here.
   const changes: Partial<UserProfile> = {};
-  if (changed('firstName')) changes.firstName = current.firstName;
-  if (changed('lastName')) changes.lastName = current.lastName;
-  if (changed('firstName') || changed('lastName')) {
-    changes.fullName = `${current.firstName} ${current.lastName}`.trim();
+  // The name: when any part really changed (extra spaces don't count),
+  // all three parts are written as they now are, with fullName rebuilt
+  // from them in the same update. An untouched name is never written.
+  if (nameChanged(loaded, current)) {
+    changes.firstName = normalizeNamePart(current.firstName);
+    changes.middleName = normalizeNamePart(current.middleName);
+    changes.lastName = normalizeNamePart(current.lastName);
+    changes.fullName = buildFullName(current.firstName, current.middleName, current.lastName);
   }
   if (changed('phone')) changes.mobile = current.phone;
   // Birthday and address are optional for older accounts, but once saved
@@ -99,4 +106,10 @@ export function pregnancySettingsChanges(loaded: PregnancySettingsForm, current:
     changes.notificationPrefs = { ...current.notificationPrefs } as UserProfile['notificationPrefs'];
   }
   return changes;
+}
+
+/** True when a name part differs from what was loaded (spaces collapsed). */
+export function nameChanged(loaded: ProfileEditForm, current: ProfileEditForm): boolean {
+  return (['firstName', 'middleName', 'lastName'] as const)
+    .some(k => normalizeNamePart(loaded[k]) !== normalizeNamePart(current[k]));
 }

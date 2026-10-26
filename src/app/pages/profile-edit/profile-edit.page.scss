@@ -160,6 +160,33 @@ ion-content { --background: var(--bg); }
   margin: 0; padding: 0; border: none; min-width: 0;
   > legend { padding: 0; margin-bottom: 8px; }
 }
+
+/* The Address heading stands out as a new field: larger, accent colour,
+   a "New" pill (read as "Address, new field") and a 2px accent line. */
+.address-group > legend.address-legend {
+  display: flex; align-items: center; gap: 8px;
+  width: 100%; box-sizing: border-box;
+  margin: 0 0 12px; padding: 0 0 6px;
+  border-bottom: 2px solid var(--purple);
+  color: var(--purple);
+  font-size: 0.95rem; font-weight: 800;
+  font-family: 'Nunito', 'Poppins', sans-serif;
+  letter-spacing: 0.2px; text-transform: none; line-height: 1.3;
+}
+.address-legend .new-badge {
+  flex-shrink: 0;
+  padding: 2px 8px;
+  border-radius: 99px;
+  background: rgba(181, 127, 212, 0.16);
+  color: var(--purple);
+  font-size: 0.62rem; font-weight: 800; line-height: 1.4;
+  letter-spacing: 0.6px; text-transform: uppercase;
+  white-space: nowrap;
+}
+.address-legend .sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+}
 .field-error {
   margin: 4px 0 0 2px;
   font-size: 0.7rem; color: #e05580;

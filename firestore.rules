@@ -80,7 +80,7 @@ service cloud.firestore {
     //   anything else the dashboard stores on the patient document
     function profileEditableKeys() {
       return [
-        'fullName', 'firstName', 'lastName', 'mobile',
+        'fullName', 'firstName', 'middleName', 'lastName', 'mobile',
         'dueDate', 'weeksPregnant', 'lmpDate', 'firstTimeMom',
         'clinicName', 'setupComplete', 'createdAt', 'avatar',
         'dob', 'address', 'bloodType', 'emergencyContact',

@@ -370,6 +370,12 @@ ion-content { --background: var(--bg); }
 /* Field row (two columns) */
 .field-row { display: flex; gap: 10px; }
 .field-group.half { flex: 1; }
+/* First, middle, last: stacked in order at every width (this card stays
+   phone-width, so three side by side would be too narrow). */
+.field-row.name-row {
+  flex-wrap: wrap;
+  .field-group.half { flex: 1 1 100%; min-width: 0; }
+}
 
 /* Save header btn */
 .save-header-btn {

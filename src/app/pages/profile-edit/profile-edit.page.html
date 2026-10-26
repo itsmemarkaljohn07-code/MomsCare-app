@@ -32,7 +32,7 @@
           </div>
         </div>
         <div class="avatar-name-area">
-          <p class="avatar-display-name">{{ form.firstName }} {{ form.lastName }}</p>
+          <p class="avatar-display-name">{{ displayName }}</p>
           <p class="avatar-display-sub">{{ form.email }}</p>
         </div>
       </div>
@@ -63,14 +63,25 @@
       <!-- Personal Info -->
       <p class="section-label">Personal Information</p>
       <div class="card">
-        <div class="field-row">
+        <div class="field-row name-row">
           <div class="field-group half">
-            <label class="field-label">First Name <span class="field-required">*</span></label>
-            <input class="field-input" [(ngModel)]="form.firstName" [disabled]="!editMode" placeholder="First name"/>
+            <label class="field-label" for="pe-first">First Name <span class="field-required">*</span></label>
+            <input class="field-input" id="pe-first" autocomplete="given-name" [maxlength]="namePartMax"
+                   [(ngModel)]="form.firstName" [disabled]="!editMode" (blur)="validatePersonal()" placeholder="First name"/>
+            <p class="field-error" *ngIf="fieldErrors.firstName">{{ fieldErrors.firstName }}</p>
           </div>
           <div class="field-group half">
-            <label class="field-label">Last Name <span class="field-required">*</span></label>
-            <input class="field-input" [(ngModel)]="form.lastName" [disabled]="!editMode" placeholder="Last name"/>
+            <label class="field-label" for="pe-middle">Middle Name <span class="field-optional">(optional)</span></label>
+            <input class="field-input" id="pe-middle" autocomplete="additional-name" [maxlength]="namePartMax"
+                   [(ngModel)]="form.middleName" [disabled]="!editMode" (blur)="validatePersonal()" placeholder="Middle name"/>
+            <p class="field-error" *ngIf="fieldErrors.middleName">{{ fieldErrors.middleName }}</p>
+          </div>
+          <div class="field-group half">
+            <label class="field-label" for="pe-last">Last Name <span class="field-required">*</span></label>
+            <input class="field-input" id="pe-last" autocomplete="family-name" [maxlength]="namePartMax"
+                   [(ngModel)]="form.lastName" [disabled]="!editMode" (blur)="validatePersonal()" placeholder="Last name"/>
+            <p class="field-hint">Include Jr., Sr. or III here if it applies.</p>
+            <p class="field-error" *ngIf="fieldErrors.lastName">{{ fieldErrors.lastName }}</p>
           </div>
         </div>
         <div class="field-group">

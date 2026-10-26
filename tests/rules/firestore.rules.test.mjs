@@ -767,3 +767,25 @@ describe('profile: birthday (dob) and address', () => {
     await assertFails(updateDoc(doc(signedOut(), `users/${PATIENT_A}`), { dob: '1998-05-01' }));
   });
 });
+
+describe('profile: first, middle and last name', () => {
+  const NAME = { firstName: 'Zz Anna', middleName: 'Dela Cruz', lastName: 'Testmother', fullName: 'Zz Anna Dela Cruz Testmother' };
+
+  test('signup: creating own profile with first, middle and last name is allowed', async () => {
+    await env.withSecurityRulesDisabled(ctx => deleteDoc(doc(ctx.firestore(), `users/${PATIENT_A}`)));
+    await assertSucceeds(setDoc(doc(patientA(), `users/${PATIENT_A}`), { ...registration(PATIENT_A), ...NAME }));
+  });
+  test('editing own middleName (with the rebuilt fullName) is allowed', async () => {
+    await assertSucceeds(updateDoc(doc(patientA(), `users/${PATIENT_A}`), NAME));
+    await assertSucceeds(updateDoc(doc(patientA(), `users/${PATIENT_A}`), { middleName: '', fullName: 'Zz Anna Testmother' }));
+  });
+  test("the same writes on patient B's profile are refused", async () => {
+    await assertFails(updateDoc(doc(patientA(), `users/${PATIENT_B}`), NAME));
+    await assertFails(updateDoc(doc(patientA(), `users/${PATIENT_B}`), { middleName: 'X' }));
+    await assertFails(setDoc(doc(patientA(), `users/${PATIENT_B}`), { ...registration(PATIENT_B), ...NAME }));
+  });
+  test('a protected field sent together with a name write is refused', async () => {
+    await assertFails(updateDoc(doc(patientA(), `users/${PATIENT_A}`), { ...NAME, assignedDoctorNames: ['Dr. Other'] }));
+    await assertFails(updateDoc(doc(patientA(), `users/${PATIENT_A}`), { middleName: 'X', role: 'admin' }));
+  });
+});

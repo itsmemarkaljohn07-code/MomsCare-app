@@ -17,7 +17,8 @@ import {
   readAddress, readBirthday, todayLocalYmd, yearsBefore,
 } from '../../shared/profile-fields';
 import { pregnancyStatus } from '../../shared/pregnancy-status';
-import { ProfileEditForm, profileEditChanges } from '../../shared/profile-changes';
+import { ProfileEditForm, nameChanged, profileEditChanges } from '../../shared/profile-changes';
+import { NAME_PART_MAX, buildFullName, nameError, splitFullName } from '../../shared/person-name';
 import { Subscription } from 'rxjs';
 
 @Component({
@@ -51,7 +52,7 @@ export class ProfileEditPage implements OnInit, OnDestroy, ViewWillEnter, ViewWi
   // due date -- exactly the kind of conflicting pregnancy data this
   // feature is required to avoid.
   form = {
-    firstName: '', lastName: '',
+    firstName: '', middleName: '', lastName: '',
     email: '', phone: '',
     birthday: '',
     address: emptyAddress(),
@@ -84,7 +85,16 @@ export class ProfileEditPage implements OnInit, OnDestroy, ViewWillEnter, ViewWi
   // as at signup once filled in; the age is worked out, never saved.
   readonly addressPartMax = ADDRESS_PART_MAX;
   readonly streetMax = STREET_MAX;
-  fieldErrors: { birthday?: string; province?: string; city?: string; barangay?: string; street?: string } = {};
+  fieldErrors: {
+    firstName?: string; middleName?: string; lastName?: string;
+    birthday?: string; province?: string; city?: string; barangay?: string; street?: string;
+  } = {};
+  readonly namePartMax = NAME_PART_MAX;
+
+  /** The name as shown above the form: "First Middle Last". */
+  get displayName(): string {
+    return buildFullName(this.form.firstName, this.form.middleName, this.form.lastName);
+  }
 
   get todayYmd(): string { return todayLocalYmd(); }
   get birthdayOpenAt(): string { return yearsBefore(this.todayYmd, 25); }
@@ -97,7 +107,20 @@ export class ProfileEditPage implements OnInit, OnDestroy, ViewWillEnter, ViewWi
   validatePersonal(): boolean {
     const birthday = birthdayError(this.form.birthday, this.todayYmd, false);
     const address = addressErrors(this.form.address, false);
-    this.fieldErrors = { ...(birthday ? { birthday } : {}), ...address };
+    // The name is checked only once she changes it, so an older account
+    // whose split name doesn't fit (e.g. a one-word fullName) can still
+    // save her other fields. A cleared first or last name is caught by
+    // profileEditChanges (clearedRequired).
+    const names: Record<string, string> = {};
+    if (nameChanged(this.loadedForm, this.form)) {
+      const first = nameError(this.form.firstName, 'first name', true);
+      const middle = nameError(this.form.middleName, 'middle name', false);
+      const last = nameError(this.form.lastName, 'last name', true);
+      if (first) names['firstName'] = first;
+      if (middle) names['middleName'] = middle;
+      if (last) names['lastName'] = last;
+    }
+    this.fieldErrors = { ...names, ...(birthday ? { birthday } : {}), ...address };
     return Object.keys(this.fieldErrors).length === 0;
   }
 
@@ -193,13 +216,13 @@ export class ProfileEditPage implements OnInit, OnDestroy, ViewWillEnter, ViewWi
     let firstName = profile.firstName ?? '';
     let lastName  = profile.lastName  ?? '';
     if (!firstName && !lastName && profile.fullName) {
-      const parts = profile.fullName.trim().split(/\s+/);
-      firstName = parts[0] ?? '';
-      lastName  = parts.slice(1).join(' ');
+      ({ firstName, lastName } = splitFullName(profile.fullName));
     }
 
     this.form = {
       firstName, lastName,
+      // Older accounts have none; nothing is written until a name changes.
+      middleName: profile.middleName ?? '',
       email: profile.email ?? '',
       phone: profile.mobile ?? '',
       // '' / missing = no birthday yet; an older ISO value is read too.

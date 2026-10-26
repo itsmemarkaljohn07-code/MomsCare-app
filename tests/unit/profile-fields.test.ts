@@ -104,7 +104,7 @@ test('registration: dob as YYYY-MM-DD and the address map; never an age; retry w
 });
 
 const form = (over: Partial<ProfileEditForm> = {}): ProfileEditForm => ({
-  firstName: 'Zz', lastName: 'Test', email: 'zz@example.com', phone: '9000000000',
+  firstName: 'Zz', middleName: '', lastName: 'Test', email: 'zz@example.com', phone: '9000000000',
   birthday: '', address: emptyAddress(), dueDate: '', firstTimeMom: 'yes', bloodType: '',
   doctorName: '', clinic: '', emergencyContact: '', ...over,
 });

@@ -287,6 +287,14 @@ service cloud.firestore {
         allow update, delete: if false;
       }
 
+      // -- clinic readings --
+      // Weight and blood pressure measured at the clinic. The dashboard
+      // writes them with the Admin SDK; the patient only reads her own.
+      match /clinicReadings/{readingId} {
+        allow get, list: if isOwner(uid);
+        allow write: if false;
+      }
+
       match /checklist/{docId} {
         allow read, write: if isOwner(uid);
       }

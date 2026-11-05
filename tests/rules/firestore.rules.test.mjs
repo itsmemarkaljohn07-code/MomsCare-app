@@ -789,3 +789,44 @@ describe('profile: first, middle and last name', () => {
     await assertFails(updateDoc(doc(patientA(), `users/${PATIENT_A}`), { middleName: 'X', role: 'admin' }));
   });
 });
+
+describe('clinic readings: users/{uid}/clinicReadings (written by the dashboard server)', () => {
+  const READING = `users/${PATIENT_A}/clinicReadings/r1`;
+  const reading = (over = {}) => ({
+    weightKg: 62.4, bpSys: 112, bpDia: 72, note: '', measuredOn: '2026-11-03',
+    enteredByUid: DOC_ASSIGNED.uid, enteredByName: DOC_ASSIGNED.doctorName,
+    enteredAt: Timestamp.now(), updatedAt: Timestamp.now(), ...over,
+  });
+  const patientB = () => env.authenticatedContext(PATIENT_B, { email: 'b@example.com' }).firestore();
+  beforeEach(async () => {
+    await env.withSecurityRulesDisabled(ctx => setDoc(doc(ctx.firestore(), READING), reading()));
+  });
+
+  test('the owner can read one reading and list her own', async () => {
+    await assertSucceeds(getDoc(doc(patientA(), READING)));
+    await assertSucceeds(getDocs(collection(patientA(), `users/${PATIENT_A}/clinicReadings`)));
+  });
+  test('another patient is refused (get and list)', async () => {
+    await assertFails(getDoc(doc(patientB(), READING)));
+    await assertFails(getDocs(collection(patientB(), `users/${PATIENT_A}/clinicReadings`)));
+  });
+  test('the owner cannot create, update or delete', async () => {
+    await assertFails(setDoc(doc(patientA(), `users/${PATIENT_A}/clinicReadings/r2`), reading()));
+    await assertFails(addDoc(collection(patientA(), `users/${PATIENT_A}/clinicReadings`), reading()));
+    await assertFails(updateDoc(doc(patientA(), READING), { weightKg: 50 }));
+    await assertFails(deleteDoc(doc(patientA(), READING)));
+  });
+  test('signed out is refused', async () => {
+    await assertFails(getDoc(doc(signedOut(), READING)));
+    await assertFails(getDocs(collection(signedOut(), `users/${PATIENT_A}/clinicReadings`)));
+    await assertFails(setDoc(doc(signedOut(), `users/${PATIENT_A}/clinicReadings/r3`), reading()));
+  });
+  test('doctors and admins cannot write from the browser either', async () => {
+    await assertFails(setDoc(doc(doctor(DOC_ASSIGNED), `users/${PATIENT_A}/clinicReadings/r4`), reading()));
+    await assertFails(setDoc(doc(admin(), `users/${PATIENT_A}/clinicReadings/r5`), reading()));
+  });
+  test('a protected field write elsewhere is still refused', async () => {
+    await assertFails(updateDoc(doc(patientA(), `users/${PATIENT_A}`), { assignedDoctorNames: ['Dr. Other'] }));
+    await assertFails(updateDoc(doc(patientA(), `users/${PATIENT_A}/healthLogs/log1`), { weight: 1 }));
+  });
+});

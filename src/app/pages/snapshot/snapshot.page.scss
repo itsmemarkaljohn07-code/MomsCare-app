@@ -29,7 +29,7 @@ ion-content[data-theme="dark"] {
   --nav-border:  rgba(181, 127, 212, 0.20);
 
   .snapshot-content { --background: var(--bg); }
-  .hcard, .upload-card, .history-section, .provider-note { background: var(--card-bg); border-color: var(--card-border); }
+  .upload-card, .provider-note { background: var(--card-bg); border-color: var(--card-border); }
   .bottom-nav { background: var(--nav-bg); border-color: var(--nav-border); }
   .modal-sheet { background: #1e1030; }
   .photo-thumb { background: rgba(255,255,255,0.05); }
@@ -262,66 +262,6 @@ ion-content[data-theme="dark"] {
   padding: 8px; line-height: 1.4;
 }
 
-/* Health tracker */
-.health-log-header {
-  width: calc(100% - 32px); max-width: 440px;
-  display: flex; align-items: center; justify-content: space-between;
-  margin: 0 16px 16px; z-index: 2;
-  opacity: 0; transition: opacity 0.45s ease;
-  &.visible { opacity: 1; }
-}
-.health-log-title { font-size: 0.9rem; font-weight: 800; color: var(--dark); font-family: 'Nunito','Poppins',sans-serif; margin: 0; }
-.health-log-sub { font-size: 0.68rem; color: var(--muted); font-family: 'Nunito','Poppins',sans-serif; margin: 0; }
-.log-btn {
-  display: flex; align-items: center; gap: 5px;
-  background: linear-gradient(135deg, var(--pink), var(--purple)); color: white;
-  border: none; border-radius: 99px; padding: 8px 14px; cursor: pointer;
-  font-size: 0.72rem; font-weight: 800; font-family: 'Nunito','Poppins',sans-serif;
-  transition: transform 0.15s;
-  &:active { transform: scale(0.95); }
-}
-
-.health-cards {
-  width: calc(100% - 32px); max-width: 440px;
-  display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
-  margin: 0 16px 20px; z-index: 2;
-  opacity: 0; transition: opacity 0.5s ease 0.1s;
-  &.visible { opacity: 1; }
-}
-.hcard {
-  background: var(--card-bg); border: 1px solid var(--card-border);
-  border-radius: var(--radius-md); padding: 14px; box-shadow: var(--shadow-sm);
-}
-.hcard-top { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
-.hcard-icon-wrap {
-  width: 32px; height: 32px; border-radius: 50%;
-  background: rgba(224,126,184,0.12); display: flex; align-items: center; justify-content: center;
-  &.purple { background: rgba(181,127,212,0.12); }
-  &.mint   { background: rgba(109,191,191,0.12); }
-  &.rose   { background: rgba(217,96,154,0.12); }
-}
-.hcard-label { font-size: 0.62rem; font-weight: 800; color: var(--muted); font-family: 'Nunito','Poppins',sans-serif; text-transform: uppercase; }
-.hcard-val { font-size: 1.3rem; font-weight: 900; color: var(--dark); font-family: 'Nunito','Poppins',sans-serif; margin: 0; }
-.hcard-val-unit { font-size: 0.65rem; font-weight: 700; color: var(--muted); margin-left: 3px; }
-.hcard-unit { font-size: 0.62rem; color: var(--muted); margin: 6px 0 0; font-family: 'Nunito','Poppins',sans-serif; }
-.hcard-status {
-  font-size: 0.6rem; font-weight: 700; color: #d44b7a;
-  margin-top: 6px; font-family: 'Nunito','Poppins',sans-serif;
-  &.normal { color: #4caf82; }
-}
-.hcard-bar-wrap { margin: 8px 0 2px; }
-.hcard-bar-track { height: 4px; background: rgba(155,111,196,0.12); border-radius: 99px; overflow: hidden; }
-.hcard-bar-fill { height: 100%; background: linear-gradient(90deg, var(--pink), var(--purple)); border-radius: 99px; transition: width 0.6s ease; }
-.kick-dots-wrap { display: flex; flex-wrap: wrap; gap: 3px; margin: 4px 0; }
-.kick-dot-sm { width: 6px; height: 6px; border-radius: 50%; background: rgba(109,191,191,0.2); &.filled { background: var(--mint); } }
-.hcard-mood-name { font-size: 0.78rem; font-weight: 800; color: var(--dark); font-family: 'Nunito','Poppins',sans-serif; margin: 2px 0 8px; }
-.mood-dots { display: flex; gap: 5px; }
-.mood-dot {
-  width: 8px; height: 8px; border-radius: 50%; background: rgba(217,96,154,0.15); cursor: pointer;
-  transition: transform 0.15s;
-  &.active { background: var(--pink); transform: scale(1.25); }
-}
-
 /* Mood picker inside modal */
 .mood-row { display: flex; gap: 6px; flex-wrap: wrap; }
 .mood-btn {
@@ -332,27 +272,6 @@ ion-content[data-theme="dark"] {
   &.selected { background: rgba(224,126,184,0.12); border-color: rgba(224,126,184,0.3); }
 }
 .mood-name { font-size: 0.58rem; font-weight: 700; color: var(--muted); font-family: 'Nunito','Poppins',sans-serif; }
-
-/* History */
-.history-section {
-  width: calc(100% - 32px); max-width: 440px;
-  background: var(--card-bg); border: 1px solid var(--card-border);
-  border-radius: var(--radius-lg); padding: 16px; margin: 0 16px 20px;
-  box-shadow: var(--shadow-sm); z-index: 2;
-  opacity: 0; transition: opacity 0.5s ease 0.15s;
-  &.visible { opacity: 1; }
-}
-.history-title { font-size: 0.82rem; font-weight: 800; color: var(--dark); font-family: 'Nunito','Poppins',sans-serif; margin: 0 0 12px; }
-.history-row { display: flex; align-items: center; margin-bottom: 10px; }
-.history-date { display: flex; flex-direction: column; align-items: center; min-width: 40px; }
-.history-day { font-size: 1rem; font-weight: 900; color: var(--dark); font-family: 'Nunito','Poppins',sans-serif; line-height: 1; }
-.history-month { font-size: 0.55rem; font-weight: 700; color: var(--muted); text-transform: uppercase; font-family: 'Nunito','Poppins',sans-serif; }
-.history-time { font-size: 0.52rem; font-weight: 600; color: var(--muted); font-family: 'Nunito','Poppins',sans-serif; margin-top: 1px; }
-.history-divider { display: flex; flex-direction: column; align-items: center; padding: 0 10px; }
-.history-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--purple); }
-.history-line { width: 1px; height: 20px; background: var(--card-border); }
-.history-values { display: flex; gap: 5px; flex-wrap: wrap; }
-.history-chip { font-size: 0.6rem; font-weight: 700; color: var(--muted); background: rgba(155,111,196,0.06); padding: 3px 7px; border-radius: 8px; font-family: 'Nunito','Poppins',sans-serif; }
 
 /* Provider note */
 .provider-note {

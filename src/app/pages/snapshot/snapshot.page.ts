@@ -11,7 +11,10 @@ import { ProfileStoreService } from '../../services/profile-store.service';
 import { parseStoredDate } from '../../shared/date-utils';
 import { pregnancyStatus } from '../../shared/pregnancy-status';
 import { WeightUnit, kgToUnit, unitToKg, weightUnitOf } from '../../shared/weight-units';
-import { HealthService, HealthData } from '../../services/health.service';
+import { HealthService, HealthData, ClinicReading } from '../../services/health.service';
+import { HealthGraphComponent } from './health-graph/health-graph.component';
+import { SelfLogInput } from '../../shared/health-series';
+import { localYmd } from '../../shared/appointment-request';
 import { PhotoService, SnapshotPhotoRecord, HealthSnapshotAtUpload, PickerProblem } from '../../services/photo.service';
 import { CommentService, SnapshotComment } from '../../services/comment.service';
 import { Subscription } from 'rxjs';
@@ -42,7 +45,7 @@ export interface HealthLog {
   templateUrl: './snapshot.page.html',
   styleUrls: ['./snapshot.page.scss'],
   standalone: true,
-  imports: [IonicModule, CommonModule, FormsModule],
+  imports: [IonicModule, CommonModule, FormsModule, HealthGraphComponent],
 })
 export class SnapshotPage implements OnInit, OnDestroy {
 
@@ -52,6 +55,7 @@ export class SnapshotPage implements OnInit, OnDestroy {
   private userSub!: Subscription;
   private healthSub!: Subscription;
   private historySub!: Subscription;
+  private clinicSub?: Subscription;
   private routeSub?: Subscription;
   private profileSub?: Subscription;
   /** Photo whose comment thread a tapped push asked to open (?photoId=). */
@@ -422,7 +426,20 @@ export class SnapshotPage implements OnInit, OnDestroy {
     mood: 2,
   };
 
-  healthHistory: HealthLog[] = [];
+  // The graph's data: every log she saved and the clinic's readings, live.
+  graphLogs: SelfLogInput[] = [];
+  clinicReadings: ClinicReading[] = [];
+  private logsLoaded = false;
+  private clinicLoaded = false;
+  graphError = false;
+  clinicError = false;
+  get graphLoading(): boolean { return !this.logsLoaded || !this.clinicLoaded; }
+
+  /** The due date as YYYY-MM-DD (for the graph's pregnancy weeks). */
+  get dueDateYmd(): string | null {
+    const d = parseStoredDate(this.currentDueDate);
+    return d ? localYmd(d) : null;
+  }
 
   healthDraft = { weight: 0, bpSys: 120, bpDia: 80, kicks: 0, mood: 2 };
   /** Weight Unit from the live profile (Pregnancy Settings); stored values stay kg. */
@@ -442,15 +459,6 @@ export class SnapshotPage implements OnInit, OnDestroy {
     'M6 11 Q9 13.2 12 11',
     'M5.5 10.5 Q9 14.5 12.5 10.5',
   ];
-
-  get bpDisplay(): string {
-    return `${this.health.bpSys}/${this.health.bpDia}`;
-  }
-  get moodName(): string { return this.moodNames[this.health.mood]; }
-
-  get kickDots(): number[] {
-    return Array(Math.max(10, this.health.kicks)).fill(0);
-  }
 
   /** A stored (kg) weight in the patient's unit, e.g. "137.6". */
   showWeight(kg: number): number {
@@ -573,15 +581,40 @@ export class SnapshotPage implements OnInit, OnDestroy {
       }
     });
 
-    this.historySub = this.healthService.getHistory$().subscribe(list => {
-      this.healthHistory = list.map(h => ({
-        date:   h.loggedAt?.toDate ? h.loggedAt.toDate() : new Date(),
-        weight: h.weight,
-        bpSys:  h.bpSys,
-        bpDia:  h.bpDia,
-        kicks:  h.kicks,
-        mood:   h.mood,
-      }));
+    this.historySub = this.healthService.getAllHistory$().subscribe({
+      next: list => {
+        this.graphLogs = list.map(h => ({
+          // A log saved offline has no server time yet: it counts as now.
+          loggedAt: h.loggedAt?.toDate ? h.loggedAt.toDate() : new Date(),
+          weight: h.weight,
+          bpSys:  h.bpSys,
+          bpDia:  h.bpDia,
+          kicks:  h.kicks,
+          mood:   h.mood,
+        }));
+        this.logsLoaded = true;
+        this.graphError = false;
+      },
+      error: err => {
+        console.error('Failed to load health logs:', err);
+        this.graphError = true;
+      },
+    });
+
+    // Kept apart from her own logs: if these can't be read, her own
+    // readings still show.
+    this.clinicSub = this.healthService.getClinicReadings$().subscribe({
+      next: list => {
+        this.clinicReadings = list;
+        this.clinicLoaded = true;
+        this.clinicError = false;
+      },
+      error: err => {
+        console.warn('Clinic readings unavailable:', err?.code ?? err);
+        this.clinicReadings = [];
+        this.clinicLoaded = true;
+        this.clinicError = true;
+      },
     });
 
     requestAnimationFrame(() => setTimeout(() => (this.animReady = true), 80));
@@ -593,6 +626,7 @@ export class SnapshotPage implements OnInit, OnDestroy {
     this.userSub?.unsubscribe();
     this.healthSub?.unsubscribe();
     this.historySub?.unsubscribe();
+    this.clinicSub?.unsubscribe();
     this.routeSub?.unsubscribe();
     this.profileSub?.unsubscribe();
     this.photosSub?.unsubscribe();

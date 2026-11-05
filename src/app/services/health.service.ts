@@ -22,6 +22,22 @@ export interface HealthLogEntry extends HealthData {
   loggedAt?: any;
 }
 
+/** Weight and blood pressure measured at the clinic
+ *  (users/{uid}/clinicReadings). Written by the dashboard server only;
+ *  the patient can read her own. measuredOn is a Manila calendar day. */
+export interface ClinicReading {
+  id?: string;
+  weightKg: number | null;
+  bpSys: number | null;
+  bpDia: number | null;
+  note: string;
+  measuredOn: string;
+  enteredByUid?: string;
+  enteredByName?: string;
+  enteredAt?: any;
+  updatedAt?: any;
+}
+
 /**
  * Single source of truth for pregnancy health data, shared identically
  * between the Homepage's Health Snapshot and the Snapshot Page's Health
@@ -64,6 +80,30 @@ export class HealthService {
           const q = query(this.historyCol(user.uid), orderBy('loggedAt', 'desc'), limit(max));
           return collectionData(q, { idField: 'id' });
         }) as Observable<HealthLogEntry[]>;
+      })
+    );
+  }
+
+  /** Real-time stream of every health log entry (the Health Tracker graph). */
+  getAllHistory$(): Observable<HealthLogEntry[]> {
+    return this.auth.user$.pipe(
+      switchMap(user => {
+        if (!user) return of([]);
+        return runInInjectionContext(this.envInjector, () =>
+          collectionData(this.historyCol(user.uid), { idField: 'id' })
+        ) as Observable<HealthLogEntry[]>;
+      })
+    );
+  }
+
+  /** Real-time stream of the clinic's readings for the signed-in user. */
+  getClinicReadings$(): Observable<ClinicReading[]> {
+    return this.auth.user$.pipe(
+      switchMap(user => {
+        if (!user) return of([]);
+        return runInInjectionContext(this.envInjector, () =>
+          collectionData(collection(this.firestore, `users/${user.uid}/clinicReadings`), { idField: 'id' })
+        ) as Observable<ClinicReading[]>;
       })
     );
   }

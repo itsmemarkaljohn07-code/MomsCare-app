@@ -618,7 +618,7 @@ describe('patient A: appointment requests', () => {
     await assertSucceeds(setDoc(doc(patientA(), REQ), newRequest()));
     const { notes, ...noNotes } = newRequest({
       options: [{ date: '2026-11-03', from: '09:00', to: '10:30' }, { date: '2026-11-05', from: '14:00', to: '14:30' }],
-      type: 'Other', icon: '👩‍⚕️',
+      icon: '👩‍⚕️',
     });
     await assertSucceeds(setDoc(doc(patientA(), `users/${PATIENT_A}/appointmentRequests/req2`), noNotes));
   });
@@ -645,6 +645,19 @@ describe('patient A: appointment requests', () => {
     ]) {
       await assertFails(setDoc(doc(patientA(), REQ), newRequest(bad)));
     }
+  });
+  test('type: only Prenatal Checkup is allowed', async () => {
+    await assertSucceeds(setDoc(doc(patientA(), REQ), newRequest({ type: 'Prenatal Checkup' })));
+    for (const type of ['Ultrasound', 'Blood Test', 'Postpartum Checkup', 'Other', 'Booking Appointment']) {
+      await assertFails(setDoc(doc(patientA(), `users/${PATIENT_A}/appointmentRequests/req2`), newRequest({ type })));
+    }
+    const { type, ...noType } = newRequest();
+    await assertFails(setDoc(doc(patientA(), `users/${PATIENT_A}/appointmentRequests/no-type`), noType));
+  });
+  test('an older request stored with another type can still be read and withdrawn', async () => {
+    await seed({ type: 'Ultrasound' });
+    await assertSucceeds(getDoc(doc(patientA(), REQ)));
+    await assertSucceeds(updateDoc(doc(patientA(), REQ), { status: 'withdrawn', withdrawnAt: serverTimestamp() }));
   });
   test('cannot write the same id twice', async () => {
     await assertSucceeds(setDoc(doc(patientA(), REQ), newRequest()));

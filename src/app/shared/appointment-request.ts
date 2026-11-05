@@ -4,14 +4,11 @@
 // document the app writes. No Angular and no Firebase here, so every rule can
 // be tested on its own. firestore.rules enforces the same lists and limits.
 
-/** Appointment names a patient can request: the dashboard's appointment
- *  form list without "Booking Appointment" (the clinic's own first visit).
+/** The one appointment a patient can request. The form shows it as a
+ *  fixed label; the clinic books any other kind from the dashboard.
  *  Older requests with any name still display as stored. */
-export const REQUEST_TYPES = [
-  'Prenatal Checkup', 'Nuchal Scan', 'Anomaly Scan',
-  'Glucose Tolerance Test', 'Group B Strep Test', 'Ultrasound', 'Blood Test',
-  'Postpartum Checkup', 'Other',
-] as const;
+export const REQUEST_TYPE = 'Prenatal Checkup';
+export const REQUEST_TYPES = [REQUEST_TYPE] as const;
 
 /** Card icons and their names, the same as the dashboard's form. */
 export const REQUEST_ICONS: readonly { value: string; label: string }[] = [

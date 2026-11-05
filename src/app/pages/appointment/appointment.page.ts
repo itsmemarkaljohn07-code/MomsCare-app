@@ -22,7 +22,7 @@ import { McDropdownComponent, McDropdownOption } from '../../shared/mc-dropdown/
 import { McDatepickerComponent } from '../../shared/mc-datepicker/mc-datepicker.component';
 import {
   DEFAULT_REQUEST_COLOR, DEFAULT_REQUEST_ICON, REQUEST_COLORS, REQUEST_ICONS, REQUEST_NOTES_MAX,
-  REQUEST_OPTIONS_MAX, REQUEST_REASON_MAX, REQUEST_TYPES, RequestForm, RequestFormErrors, RequestOption,
+  REQUEST_OPTIONS_MAX, REQUEST_REASON_MAX, REQUEST_TYPE, RequestForm, RequestFormErrors, RequestOption,
   emptyOption, formatSlot, fromSlots, localYmd, toSlots, validateRequestForm,
 } from '../../shared/appointment-request';
 import { Subscription } from 'rxjs';
@@ -279,7 +279,7 @@ export class AppointmentsPage implements OnInit, OnDestroy {
   // only the clinic creates appointments. One document id per form open,
   // so a double tap or a retry can never create two requests.
 
-  readonly requestTypeOptions: McDropdownOption[] = REQUEST_TYPES.map(t => ({ value: t, label: t }));
+  readonly requestType = REQUEST_TYPE;
   readonly requestFromOptions: McDropdownOption[] = fromSlots().map(t => ({ value: t, label: formatSlot(t) }));
   readonly requestIcons = REQUEST_ICONS;
   readonly requestColors = REQUEST_COLORS;
@@ -313,7 +313,7 @@ export class AppointmentsPage implements OnInit, OnDestroy {
 
   private blankRequestForm(): RequestForm {
     return {
-      type: '', options: [emptyOption()], reason: '', notes: '',
+      type: REQUEST_TYPE, options: [emptyOption()], reason: '', notes: '',
       icon: DEFAULT_REQUEST_ICON, accentColor: DEFAULT_REQUEST_COLOR,
     };
   }

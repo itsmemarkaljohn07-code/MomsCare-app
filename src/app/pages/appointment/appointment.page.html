@@ -194,10 +194,8 @@
           <p class="req-sub">The clinic reviews your request and schedules the appointment. Nothing is booked until then.</p>
 
           <div class="field-group">
-            <label class="field-label">Appointment</label>
-            <mc-dropdown label="Appointment" placeholder="Choose the kind of appointment"
-                         [options]="requestTypeOptions" [(ngModel)]="requestForm.type"
-                         (ngModelChange)="revalidateRequest()" [disabled]="requestSaving"></mc-dropdown>
+            <span class="field-label" id="req-type-label">Appointment</span>
+            <p class="req-fixed" aria-labelledby="req-type-label">{{ requestType }}</p>
             <p class="req-error" *ngIf="requestErrors.type">{{ requestErrors.type }}</p>
           </div>
 

@@ -4,7 +4,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import {
-  REQUEST_COLORS, REQUEST_ICONS, REQUEST_TYPES,
+  REQUEST_COLORS, REQUEST_ICONS, REQUEST_TYPE, REQUEST_TYPES,
   buildRequestDoc, formatSlot, fromSlots, halfHourSlots, toSlots, validateRequestForm,
 } from '../../src/app/shared/appointment-request.ts';
 import type { RequestForm } from '../../src/app/shared/appointment-request.ts';
@@ -44,6 +44,15 @@ test('every required field is checked', () => {
     options: [{ date: '', from: '', to: '' }],
   }), now);
   assert.deepEqual(Object.keys(e).sort(), ['accentColor', 'icon', 'option0', 'reason', 'type']);
+});
+
+test('only Prenatal Checkup can be requested', () => {
+  assert.equal(REQUEST_TYPE, 'Prenatal Checkup');
+  assert.equal(validateRequestForm(form(), now).type, undefined);
+  for (const type of ['Ultrasound', 'Blood Test', 'Postpartum Checkup', 'Other', '']) {
+    assert.ok(validateRequestForm(form({ type }), now).type, type);
+  }
+  assert.equal(buildRequestDoc('uid1', form()).type, 'Prenatal Checkup');
 });
 
 test('dates and times: no past day, no passed time today, end after start', () => {
@@ -90,11 +99,9 @@ test('the app lists match firestore.rules', () => {
     const body = rules.slice(start + 1, rules.indexOf(']', start));
     return [...body.matchAll(/'([^']*)'/g)].map(m => m[1]);
   };
-  // The rules still accept "Booking Appointment" (unchanged); the app no
-  // longer offers it, so its list must be a subset of the rules' list.
-  const ruleTypes = listAfter('d.type in');
-  assert.ok(REQUEST_TYPES.every(t => ruleTypes.includes(t)));
-  assert.ok(!(REQUEST_TYPES as readonly string[]).includes('Booking Appointment'));
+  // A patient may request only a Prenatal Checkup, in the app and the rules.
+  assert.deepEqual(listAfter('d.type in'), ['Prenatal Checkup']);
+  assert.deepEqual([...REQUEST_TYPES], ['Prenatal Checkup']);
   assert.deepEqual(listAfter('d.icon in'), REQUEST_ICONS.map(i => i.value));
   assert.deepEqual(listAfter('d.accentColor in'), [...REQUEST_COLORS]);
 });

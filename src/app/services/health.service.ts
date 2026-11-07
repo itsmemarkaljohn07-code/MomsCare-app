@@ -24,7 +24,8 @@ export interface HealthLogEntry extends HealthData {
   loggedAt?: any;
 }
 
-/** Weight and blood pressure measured at the clinic
+/** Measurements taken at the clinic (weight, blood pressure, fundal height,
+ *  fetal heart rate, pulse, temperature)
  *  (users/{uid}/clinicReadings). Written by the dashboard server only;
  *  the patient can read her own. measuredOn is a Manila calendar day. */
 export interface ClinicReading {
@@ -32,6 +33,11 @@ export interface ClinicReading {
   weightKg: number | null;
   bpSys: number | null;
   bpDia: number | null;
+  /** Newer measures (older documents may lack them). */
+  fundalHeightCm?: number | null;
+  fetalHeartRate?: number | null;
+  pulse?: number | null;
+  temperatureC?: number | null;
   note: string;
   measuredOn: string;
   enteredByUid?: string;

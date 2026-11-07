@@ -59,8 +59,9 @@ test('missing values are null, not zero; unreadable entries are skipped', () => 
   assert.equal(own.bpDia, 72);
   assert.equal(own.mood, null);
   assert.equal(own.kicks, null);
-  const [c] = clinicPoints([clinic('2026-11-03', { weightKg: null, bpSys: null, bpDia: null })], 'kg');
-  assert.deepEqual([c.weight, c.bpSys, c.bpDia, c.kicks, c.mood], [null, null, null, null, null]);
+  const [c] = clinicPoints([clinic('2026-11-03', { weightKg: null, bpSys: null })], 'kg');
+  assert.deepEqual([c.weight, c.bpSys, c.bpDia, c.kicks, c.mood], [null, null, 76, null, null]);
+  assert.equal(clinicPoints([clinic('2026-11-03', { weightKg: null, bpSys: null, bpDia: null })], 'kg').length, 0);
   assert.equal(clinicPoints([clinic('11/03/2026'), clinic(undefined as any)], 'kg').length, 0);
   assert.equal(selfPoints([{ loggedAt: null, weight: 60 }], 'kg').length, 0);
 });
@@ -110,7 +111,10 @@ test('latest values: newest across both sources; the clinic wins on the same day
   assert.deepEqual(latest.weight, { value: 63, day: '2026-11-03', source: 'clinic' });
   assert.deepEqual(latest.bp, { value: { sys: 112, dia: 72 }, day: '2026-11-04', source: 'self' });
   assert.equal(latest.kicks?.source, 'self');
-  assert.deepEqual(latestValues([]), { weight: null, bp: null, kicks: null, mood: null });
+  assert.deepEqual(latestValues([]), {
+    weight: null, bp: null, kicks: null, mood: null,
+    fundalHeightCm: null, fetalHeartRate: null, pulse: null, temperatureC: null,
+  });
 });
 
 test('nice axis scale covers the data with round ticks', () => {
@@ -120,4 +124,88 @@ test('nice axis scale covers the data with round ticks', () => {
   const flat = niceScale(120, 120, 10);
   assert.ok(flat.min <= 115 && flat.max >= 125);
   assert.ok(flat.ticks.length >= 3 && flat.ticks.length <= 6);
+});
+
+// ── Clinic-only measures: fundal height, fetal heart rate, pulse, temperature ──
+
+const full = (measuredOn: string, over: Partial<ClinicReadingInput> = {}): ClinicReadingInput => clinic(measuredOn, {
+  fundalHeightCm: 27, fetalHeartRate: 142, pulse: 84, temperatureC: 36.7, ...over,
+});
+
+test('new measures: read for clinic readings, null for her own', () => {
+  const [c] = clinicPoints([full('2026-11-03')], 'kg');
+  assert.deepEqual([c.fundalHeightCm, c.fetalHeartRate, c.pulse, c.temperatureC], [27, 142, 84, 36.7]);
+  const [own] = selfPoints([log('2026-11-03T09:00:00')], 'kg');
+  assert.deepEqual([own.fundalHeightCm, own.fetalHeartRate, own.pulse, own.temperatureC], [null, null, null, null]);
+});
+
+test('no conversion for the new measures, even in lbs', () => {
+  const [c] = clinicPoints([full('2026-11-03', { weightKg: 63 })], 'lbs');
+  assert.equal(c.weight, 138.9);
+  assert.deepEqual([c.fundalHeightCm, c.fetalHeartRate, c.pulse, c.temperatureC], [27, 142, 84, 36.7]);
+});
+
+test('a reading with only a new measure is a valid point; one with no measure at all is left out', () => {
+  const pts = clinicPoints([
+    { measuredOn: '2026-11-03', pulse: 88 },
+    { measuredOn: '2026-11-04', weightKg: null, bpSys: null, bpDia: null, note: 'Nothing measured' },
+  ], 'kg');
+  assert.equal(pts.length, 1);
+  assert.deepEqual([pts[0].pulse, pts[0].weight, pts[0].bpSys, pts[0].fundalHeightCm], [88, null, null, null]);
+});
+
+test('older documents without the new fields still work', () => {
+  const [c] = clinicPoints([{ measuredOn: '2026-10-12', weightKg: 62.9, bpSys: 118, bpDia: 76, note: '' }], 'kg');
+  assert.deepEqual([c.weight, c.bpSys, c.bpDia], [62.9, 118, 76]);
+  assert.deepEqual([c.fundalHeightCm, c.fetalHeartRate, c.pulse, c.temperatureC], [null, null, null, null]);
+});
+
+test('garbage values are null: strings, zero, negative, NaN, Infinity, objects', () => {
+  for (const bad of ['140', 0, -3, NaN, Infinity, { v: 1 }, true, null, undefined]) {
+    const pts = clinicPoints([{ measuredOn: '2026-11-03', weightKg: 60, fundalHeightCm: bad, fetalHeartRate: bad, pulse: bad, temperatureC: bad }], 'kg');
+    assert.deepEqual([pts[0].fundalHeightCm, pts[0].fetalHeartRate, pts[0].pulse, pts[0].temperatureC], [null, null, null, null], String(bad));
+  }
+});
+
+test('same-day mix: her reading and the clinic reading stay separate; the clinic wins latest values', () => {
+  const s = buildHealthSeries({
+    logs: [log('2026-11-03T23:30:00', { weight: 62 })],
+    clinic: [full('2026-11-03', { weightKg: 63 })],
+    unit: 'kg', dueDate: DUE, range: '4w', today: TODAY,
+  });
+  assert.deepEqual(s.points.map(p => p.source), ['self', 'clinic']);
+  assert.equal(s.latest.weight?.source, 'clinic');
+  assert.deepEqual(s.latest.pulse, { value: 84, day: '2026-11-03', source: 'clinic' });
+});
+
+test('range cut-offs apply to the new measures', () => {
+  const clinicList = [full('2026-10-08', { pulse: 80 }), full('2026-10-09', { pulse: 81 }), { measuredOn: '2026-08-05', temperatureC: 36.5 }];
+  const pick = (range: '4w' | '3m' | 'all') => buildHealthSeries({ logs: [], clinic: clinicList, unit: 'kg', dueDate: DUE, range, today: TODAY }).points;
+  assert.deepEqual(pick('4w').map(p => p.pulse), [81]);
+  assert.deepEqual(pick('3m').map(p => p.temperatureC), [36.5, 36.7, 36.7]);
+  assert.equal(pick('all').length, 3);
+});
+
+test('latest values: newest per measure, each with its own day', () => {
+  const latest = latestValues(sortPoints(clinicPoints([
+    full('2026-10-01'),
+    { measuredOn: '2026-10-20', pulse: 90 },
+    { measuredOn: '2026-10-25', temperatureC: 37.1, fetalHeartRate: 'n/a' },
+  ], 'kg')));
+  assert.deepEqual(latest.pulse, { value: 90, day: '2026-10-20', source: 'clinic' });
+  assert.deepEqual(latest.temperatureC, { value: 37.1, day: '2026-10-25', source: 'clinic' });
+  assert.deepEqual(latest.fetalHeartRate, { value: 142, day: '2026-10-01', source: 'clinic' });
+  assert.deepEqual(latest.fundalHeightCm, { value: 27, day: '2026-10-01', source: 'clinic' });
+  const none = latestValues([]);
+  assert.deepEqual([none.fundalHeightCm, none.fetalHeartRate, none.pulse, none.temperatureC], [null, null, null, null]);
+});
+
+test('Manila day boundary: her logs at 23:30 and 00:30 Manila land on their own Manila days', () => {
+  const pts = selfPoints([log('2026-11-03T23:30:00', { weight: 61 }), log('2026-11-04T00:30:00', { weight: 62 })], 'kg');
+  assert.deepEqual(pts.map(p => [p.day, p.weight]), [['2026-11-03', 61], ['2026-11-04', 62]]);
+  // 4 weeks back from today: a log at 00:30 Manila on the first day is in, 23:30 the day before is out.
+  const s = buildHealthSeries({
+    logs: [log('2026-10-08T23:30:00'), log('2026-10-09T00:30:00')], clinic: [], unit: 'kg', dueDate: DUE, range: '4w', today: TODAY,
+  });
+  assert.deepEqual(s.points.map(p => p.day), ['2026-10-09']);
 });

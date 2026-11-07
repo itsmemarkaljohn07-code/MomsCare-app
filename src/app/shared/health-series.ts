@@ -42,8 +42,24 @@ export interface ClinicReadingInput {
   weightKg?: unknown;
   bpSys?: unknown;
   bpDia?: unknown;
+  /** Newer measures; older documents don't have them. */
+  fundalHeightCm?: unknown;
+  fetalHeartRate?: unknown;
+  pulse?: unknown;
+  temperatureC?: unknown;
   note?: unknown;
 }
+
+/** Measures only the clinic records (none for her own readings). Shown
+ *  as stored: no unit conversion. */
+export type ClinicMeasure = 'fundalHeightCm' | 'fetalHeartRate' | 'pulse' | 'temperatureC';
+
+export const CLINIC_MEASURES: readonly { key: ClinicMeasure; name: string; unit: string }[] = [
+  { key: 'fundalHeightCm', name: 'Fundal height', unit: 'cm' },
+  { key: 'fetalHeartRate', name: 'Fetal heart rate', unit: 'bpm' },
+  { key: 'pulse', name: 'Pulse', unit: 'bpm' },
+  { key: 'temperatureC', name: 'Temperature', unit: '°C' },
+];
 
 /** One reading on the graph. A missing value is null. */
 export interface HealthPoint {
@@ -58,6 +74,11 @@ export interface HealthPoint {
   bpDia: number | null;
   kicks: number | null;
   mood: number | null;
+  /** Clinic only (null for her own readings). */
+  fundalHeightCm: number | null;
+  fetalHeartRate: number | null;
+  pulse: number | null;
+  temperatureC: number | null;
   note: string;
 }
 
@@ -149,18 +170,23 @@ export function selfPoints(logs: SelfLogInput[], unit: WeightUnit, dueDate?: str
     bpDia: positive(log.bpDia),
     kicks: wholeInRange(log.kicks, 0, 1000),
     mood: wholeInRange(log.mood, 0, MOOD_NAMES.length - 1),
+    fundalHeightCm: null,
+    fetalHeartRate: null,
+    pulse: null,
+    temperatureC: null,
     note: '',
   }));
 }
 
-/** The clinic's readings (weight in kg, converted). One without a valid
- *  measuredOn day is left out. */
+/** The clinic's readings (weight in kg, converted; the other measures as
+ *  stored). One without a valid measuredOn day, or without any measure at
+ *  all, is left out. Anything but a finite positive number is missing. */
 export function clinicPoints(readings: ClinicReadingInput[], unit: WeightUnit, dueDate?: string | null): HealthPoint[] {
   const out: HealthPoint[] = [];
   for (const r of readings) {
     const day = typeof r.measuredOn === 'string' && YMD.test(r.measuredOn) ? r.measuredOn : null;
     if (!day || isNaN(dayNumber(day))) continue;
-    out.push({
+    const p: HealthPoint = {
       day,
       source: 'clinic',
       week: pregnancyWeekOn(day, dueDate),
@@ -169,8 +195,15 @@ export function clinicPoints(readings: ClinicReadingInput[], unit: WeightUnit, d
       bpDia: positive(r.bpDia),
       kicks: null,
       mood: null,
+      fundalHeightCm: positive(r.fundalHeightCm),
+      fetalHeartRate: positive(r.fetalHeartRate),
+      pulse: positive(r.pulse),
+      temperatureC: positive(r.temperatureC),
       note: typeof r.note === 'string' ? r.note : '',
-    });
+    };
+    const hasMeasure = p.weight !== null || p.bpSys !== null || p.bpDia !== null
+      || CLINIC_MEASURES.some(m => p[m.key] !== null);
+    if (hasMeasure) out.push(p);
   }
   return out;
 }
@@ -197,17 +230,28 @@ export interface LatestValues {
   bp: LatestValue<{ sys: number; dia: number }> | null;
   kicks: LatestValue<number> | null;
   mood: LatestValue<number> | null;
+  fundalHeightCm: LatestValue<number> | null;
+  fetalHeartRate: LatestValue<number> | null;
+  pulse: LatestValue<number> | null;
+  temperatureC: LatestValue<number> | null;
 }
 
 /** The newest value of each measure across both sources. On the same day
  *  the clinic's measurement wins (it sorts after the patient's). */
 export function latestValues(sorted: HealthPoint[]): LatestValues {
-  const out: LatestValues = { weight: null, bp: null, kicks: null, mood: null };
+  const out: LatestValues = {
+    weight: null, bp: null, kicks: null, mood: null,
+    fundalHeightCm: null, fetalHeartRate: null, pulse: null, temperatureC: null,
+  };
   for (const p of sorted) {
     if (p.weight !== null) out.weight = { value: p.weight, day: p.day, source: p.source };
     if (p.bpSys !== null && p.bpDia !== null) out.bp = { value: { sys: p.bpSys, dia: p.bpDia }, day: p.day, source: p.source };
     if (p.kicks !== null) out.kicks = { value: p.kicks, day: p.day, source: p.source };
     if (p.mood !== null) out.mood = { value: p.mood, day: p.day, source: p.source };
+    for (const m of CLINIC_MEASURES) {
+      const v = p[m.key];
+      if (v !== null) out[m.key] = { value: v, day: p.day, source: p.source };
+    }
   }
   return out;
 }

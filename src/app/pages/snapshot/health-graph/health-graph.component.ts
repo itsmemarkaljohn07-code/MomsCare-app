@@ -1,8 +1,10 @@
 // health-graph.component.ts
 // The Health Tracker graph: weight, blood pressure, kicks and mood over
-// time, from the patient's own readings and the clinic's. Plain SVG, the
-// same series and colours as the dashboard's Health Trends charts. The
-// numbers come from shared/health-series.ts; this file only draws them.
+// time, from the patient's own readings and the clinic's, plus the measures
+// only the clinic takes at checkups (fundal height, fetal heart rate, pulse,
+// temperature). Plain SVG, the same series and colours as the dashboard's
+// Health Trends charts. The numbers come from shared/health-series.ts; this
+// file only draws them, and never judges a value.
 import {
   AfterViewInit, Component, ElementRef, EventEmitter, HostBinding, Input, NgZone,
   OnChanges, OnDestroy, Output,
@@ -10,13 +12,20 @@ import {
 import { CommonModule } from '@angular/common';
 import { WeightUnit, weightUnitLabel } from '../../../shared/weight-units';
 import {
-  ClinicReadingInput, HealthPoint, HealthRange, HealthSeries, MOOD_NAMES, RANGE_LABELS, ReadingSource,
+  CLINIC_MEASURES, ClinicMeasure, ClinicReadingInput, HealthPoint, HealthRange, HealthSeries, MOOD_NAMES,
+  RANGE_LABELS, ReadingSource,
   SOURCE_LABELS, SelfLogInput, addDays, buildHealthSeries, dayNumber, manilaDay, niceScale,
   pregnancyWeekOn, shortDayLabel, weekLabel,
 } from '../../../shared/health-series';
 
-type ChartId = 'weight' | 'bp' | 'kicks' | 'mood';
-type ValueKey = 'weight' | 'bpSys' | 'bpDia' | 'kicks' | 'mood';
+type ChartId = 'weight' | 'bp' | 'kicks' | 'mood' | ClinicMeasure;
+type ValueKey = 'weight' | 'bpSys' | 'bpDia' | 'kicks' | 'mood' | ClinicMeasure;
+
+/** Axis spread for the checkup measures: temperature in whole or half
+ *  degrees, heart rates in steps of 5 or more. */
+const CLINIC_MIN_SPAN: Record<ClinicMeasure, number> = {
+  fundalHeightCm: 4, fetalHeartRate: 20, pulse: 20, temperatureC: 2,
+};
 
 interface Mark { x: number; y: number; source: ReadingSource; }
 
@@ -69,12 +78,21 @@ export class HealthGraphComponent implements OnChanges, AfterViewInit, OnDestroy
   readonly rangeLabels = RANGE_LABELS;
   readonly sourceLabels = SOURCE_LABELS;
   readonly moodNames = MOOD_NAMES;
-  readonly chartNouns: Record<ChartId, string> = { weight: 'weight', bp: 'blood pressure', kicks: 'kick', mood: 'mood' };
+  readonly chartNouns: Record<ChartId, string> = {
+    weight: 'weight', bp: 'blood pressure', kicks: 'kick', mood: 'mood',
+    fundalHeightCm: 'fundal height', fetalHeartRate: 'fetal heart rate', pulse: 'pulse', temperatureC: 'temperature',
+  };
   range: HealthRange = '3m';
   showTable = false;
 
   series: HealthSeries | null = null;
   charts: Chart[] = [];
+  /** Checkup measures with at least one reading in the range (no empty cards). */
+  checkupCharts: Chart[] = [];
+  /** Latest-value tiles for checkup measures ever recorded. */
+  checkupTiles: { key: ClinicMeasure; name: string; unit: string; value: number; day: string }[] = [];
+  /** Table columns: only measures with data in the period. */
+  tableCols: { key: ValueKey | 'bp'; label: string }[] = [];
   /** Selected reading (index into chart.points) per chart. */
   selected: Partial<Record<ChartId, number>> = {};
   width = 320;
@@ -84,6 +102,8 @@ export class HealthGraphComponent implements OnChanges, AfterViewInit, OnDestroy
   constructor(private host: ElementRef<HTMLElement>, private zone: NgZone) {}
 
   get unitLabel(): string { return weightUnitLabel(this.unit); }
+
+  chartNoun(c: Chart): string { return this.chartNouns[c.id]; }
 
   ngOnChanges(): void { this.rebuild(); }
 
@@ -122,7 +142,26 @@ export class HealthGraphComponent implements OnChanges, AfterViewInit, OnDestroy
       this.chart('kicks', 'Kicks', [{ key: 'kicks', name: 'Kicks' }], s, 36, v => fmt(v), 4, 0),
       this.chart('mood', 'Mood', [{ key: 'mood', name: 'Mood' }], s, 62, v => MOOD_NAMES[v] ?? '', 4, 0, 4),
     ];
-    for (const c of this.charts) {
+    this.checkupCharts = CLINIC_MEASURES
+      .map(m => this.chart(m.key, `${m.name} (${m.unit})`, [{ key: m.key, name: m.name }], s, 36,
+        v => fmt(v), CLINIC_MIN_SPAN[m.key]))
+      .filter(c => c.points.length > 0);
+    this.checkupTiles = [];
+    for (const m of CLINIC_MEASURES) {
+      const l = s.latest[m.key];
+      if (l) this.checkupTiles.push({ key: m.key, name: m.name, unit: m.unit, value: l.value, day: l.day });
+    }
+
+    const has = (k: ValueKey) => s.points.some(p => p[k] !== null);
+    this.tableCols = [
+      ...(has('weight') ? [{ key: 'weight' as const, label: `Weight (${u})` }] : []),
+      ...(has('bpSys') || has('bpDia') ? [{ key: 'bp' as const, label: 'BP' }] : []),
+      ...(has('kicks') ? [{ key: 'kicks' as const, label: 'Kicks' }] : []),
+      ...(has('mood') ? [{ key: 'mood' as const, label: 'Mood' }] : []),
+      ...CLINIC_MEASURES.filter(m => has(m.key)).map(m => ({ key: m.key, label: `${m.name} (${m.unit})` })),
+    ];
+
+    for (const c of [...this.charts, ...this.checkupCharts]) {
       const i = this.selected[c.id];
       if (i !== undefined && i >= c.points.length) delete this.selected[c.id];
     }
@@ -189,6 +228,7 @@ export class HealthGraphComponent implements OnChanges, AfterViewInit, OnDestroy
   private summary(title: string, keys: { key: ValueKey; name: string }[], points: HealthPoint[], s: HealthSeries): string {
     const period = RANGE_LABELS[this.range].toLowerCase();
     if (!points.length) return `${title}: no readings in the ${period}.`;
+    const n = points.length;
     const last = points[points.length - 1];
     const parts = keys.map(k => {
       const vals = points.map(p => p[k.key]).filter((v): v is number => v !== null);
@@ -197,8 +237,7 @@ export class HealthGraphComponent implements OnChanges, AfterViewInit, OnDestroy
         ? `${keys.length > 1 ? k.name + ' latest' : 'Latest'} ${this.valueText(k.key, lastVal)}, lowest ${this.valueText(k.key, Math.min(...vals))}, highest ${this.valueText(k.key, Math.max(...vals))}`
         : `Latest ${this.valueText(k.key, lastVal)}`;
     });
-    const n = points.length;
-    return `${title}: ${n} reading${n === 1 ? '' : 's'} from ${shortDayLabel(points[0].day)} to ${shortDayLabel(last.day)}. `
+    return `${title}, ${period}: ${n} reading${n === 1 ? '' : 's'} from ${shortDayLabel(points[0].day)} to ${shortDayLabel(last.day)}. `
       + `${parts.join('; ')}. Last reading on ${shortDayLabel(last.day)}, ${SOURCE_LABELS[last.source].toLowerCase()}.`;
   }
 
@@ -206,7 +245,8 @@ export class HealthGraphComponent implements OnChanges, AfterViewInit, OnDestroy
     if (key === 'weight') return `${fmt(v)} ${this.unitLabel}`;
     if (key === 'mood') return MOOD_NAMES[v] ?? '';
     if (key === 'kicks') return `${v} kick${v === 1 ? '' : 's'}`;
-    return `${fmt(v)}`;
+    const m = CLINIC_MEASURES.find(c => c.key === key);
+    return m ? `${fmt(v)} ${m.unit}` : `${fmt(v)}`;
   }
 
   // ── Selecting a reading (tap, drag or arrow keys) ────────────────
@@ -266,6 +306,8 @@ export class HealthGraphComponent implements OnChanges, AfterViewInit, OnDestroy
   }
 
   readonly shortDay = shortDayLabel;
+  /** A value to 1 decimal, without a unit. */
+  readonly number = fmt;
   readonly weekText = weekLabel;
 
   /** Diamond marker for a clinic reading. */
@@ -275,6 +317,14 @@ export class HealthGraphComponent implements OnChanges, AfterViewInit, OnDestroy
 
   get tableRows(): HealthPoint[] {
     return [...(this.series?.points ?? [])].reverse();
+  }
+
+  /** One table cell: the value without its unit (the header has it), or a dash. */
+  cell(p: HealthPoint, key: ValueKey | 'bp'): string {
+    if (key === 'bp') return p.bpSys !== null && p.bpDia !== null ? `${fmt(p.bpSys)}/${fmt(p.bpDia)}` : '–';
+    const v = p[key];
+    if (v === null) return '–';
+    return key === 'mood' ? MOOD_NAMES[v] ?? '–' : fmt(v);
   }
 
   trackChart = (_: number, c: Chart) => c.id;

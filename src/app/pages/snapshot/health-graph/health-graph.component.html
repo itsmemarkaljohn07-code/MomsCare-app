@@ -64,9 +64,15 @@
         <span class="hg-tile-val hg-tile-val--none" *ngIf="!s.latest.mood">No reading</span>
         <span class="hg-tile-meta" *ngIf="s.latest.mood as m">{{ dayText(m.day) }}</span>
       </div>
+      <!-- Checkup measures: a tile only once one has ever been recorded. -->
+      <div class="hg-tile" *ngFor="let t of checkupTiles">
+        <span class="hg-tile-label">{{ t.name }}</span>
+        <span class="hg-tile-val">{{ number(t.value) }} <small>{{ t.unit }}</small></span>
+        <span class="hg-tile-meta">{{ dayText(t.day) }}<br>{{ sourceLabels.clinic }}</span>
+      </div>
     </section>
 
-    <!-- Range -->
+    <!-- Range (applies to every chart) -->
     <div class="hg-ranges" role="radiogroup" aria-label="Period shown">
       <button type="button" *ngFor="let r of ranges" class="hg-range" role="radio"
               [attr.aria-checked]="range === r" [class.active]="range === r"
@@ -84,7 +90,7 @@
         {{ sourceLabels.clinic }}
       </span>
     </div>
-    <p class="hg-note" *ngIf="clinicError" role="status">The clinic's measurements couldn't be loaded right now. Your own readings are shown.</p>
+    <p class="hg-note" *ngIf="clinicError" role="status">Clinic readings are unavailable right now. Your own readings are shown.</p>
 
     <!-- Nothing in this period -->
     <div class="hg-card hg-state" *ngIf="s.points.length === 0" role="status">
@@ -92,63 +98,20 @@
       <button type="button" class="hg-link" *ngIf="range !== 'all'" (click)="setRange('all')">Show the whole pregnancy</button>
     </div>
 
-    <!-- Charts -->
     <ng-container *ngIf="s.points.length > 0">
-      <section class="hg-card hg-chart" *ngFor="let c of charts; trackBy: trackChart" [attr.aria-labelledby]="'hg-t-' + c.id">
-        <div class="hg-chart-head">
-          <h3 class="hg-chart-title" [id]="'hg-t-' + c.id">{{ c.title }}</h3>
-          <span class="hg-series-key" *ngIf="c.id === 'bp'">
-            <span class="hg-swatch s-bpSys" aria-hidden="true"></span>Systolic
-            <span class="hg-swatch s-bpDia" aria-hidden="true"></span>Diastolic
-          </span>
-        </div>
+      <!-- Weight, blood pressure, kicks, mood -->
+      <ng-container *ngFor="let c of charts; trackBy: trackChart">
+        <ng-container *ngTemplateOutlet="chartCard; context: { $implicit: c }"></ng-container>
+      </ng-container>
 
-        <p class="hg-chart-empty" *ngIf="c.points.length === 0">No {{ chartNouns[c.id] }} readings in this period.</p>
-
-        <ng-container *ngIf="c.points.length > 0">
-          <!-- What the selected reading says (also read out by screen readers). -->
-          <div class="hg-readout" aria-live="polite">
-            <ng-container *ngIf="selectedPoint(c) as p; else hint">
-              <span class="hg-readout-day">{{ dayText(p) }}</span>
-              <span class="hg-readout-val">{{ readoutValue(c, p) }}</span>
-              <span class="hg-readout-src">{{ sourceLabels[p.source] }}<ng-container *ngIf="p.note"> · {{ p.note }}</ng-container></span>
-            </ng-container>
-            <ng-template #hint><span class="hg-readout-hint">Tap the chart to see a reading</span></ng-template>
-          </div>
-
-          <div class="hg-plot" tabindex="0" role="group"
-               [attr.aria-label]="c.summary + ' Use the left and right arrow keys to read each value.'"
-               (keydown)="onKey(c, $event)">
-            <svg [attr.width]="width" height="190" [attr.viewBox]="'0 0 ' + width + ' 190'" role="img"
-                 [attr.aria-label]="c.summary" class="hg-svg"
-                 (pointerdown)="onPointer(c, $event)" (pointermove)="onPointer(c, $event)">
-              <!-- grid + y labels -->
-              <g class="hg-grid">
-                <line *ngFor="let t of c.yTicks" [attr.x1]="c.padL" [attr.x2]="width - 12" [attr.y1]="t.y" [attr.y2]="t.y"/>
-              </g>
-              <g class="hg-axis-text">
-                <text *ngFor="let t of c.yTicks" [attr.x]="c.padL - 6" [attr.y]="t.y + 3.5" text-anchor="end">{{ t.label }}</text>
-              </g>
-              <!-- x labels: date, then pregnancy week -->
-              <g class="hg-axis-text">
-                <ng-container *ngFor="let t of c.xTicks">
-                  <text [attr.x]="t.x" y="170" [attr.text-anchor]="t.anchor">{{ t.date }}</text>
-                  <text *ngIf="t.week" [attr.x]="t.x" y="183" [attr.text-anchor]="t.anchor" class="hg-axis-week">{{ t.week }}</text>
-                </ng-container>
-              </g>
-              <!-- crosshair -->
-              <line *ngIf="selectedPoint(c)" class="hg-cross" [attr.x1]="selectedX(c)" [attr.x2]="selectedX(c)" y1="12" y2="152"/>
-              <!-- lines, then markers on top -->
-              <path *ngFor="let l of c.lines" [attr.d]="l.path" [class]="'hg-line s-' + l.key"/>
-              <g *ngFor="let l of c.lines" [class]="'s-' + l.key">
-                <ng-container *ngFor="let m of l.marks">
-                  <circle *ngIf="m.source === 'self'" class="hg-mark-self" [attr.cx]="m.x" [attr.cy]="m.y" r="4.5"/>
-                  <path *ngIf="m.source === 'clinic'" class="hg-mark-clinic" [attr.d]="diamond(m)"/>
-                </ng-container>
-              </g>
-            </svg>
-          </div>
+      <!-- Measured at checkups: a card only for a measure with readings in the period. -->
+      <section class="hg-group" *ngIf="checkupCharts.length > 0" aria-labelledby="hg-checkups">
+        <h3 class="hg-group-title" id="hg-checkups">Measured at your checkups</h3>
+        <p class="hg-group-sub">Taken by your care team at checkups.</p>
+        <ng-container *ngFor="let c of checkupCharts; trackBy: trackChart">
+          <ng-container *ngTemplateOutlet="chartCard; context: { $implicit: c }"></ng-container>
         </ng-container>
+        <p class="hg-group-note">These numbers are recorded by your care team. Ask them what they mean for you.</p>
       </section>
     </ng-container>
 
@@ -158,24 +121,87 @@
             (click)="showTable = !showTable">
       {{ showTable ? 'Hide the readings table' : 'Show readings as a table' }}
     </button>
-    <div class="hg-card hg-table-wrap" id="hg-table" *ngIf="showTable && s.points.length > 0">
-      <table class="hg-table">
-        <caption>Readings in the {{ rangeLabels[range].toLowerCase() }}, newest first</caption>
-        <thead>
-          <tr><th scope="col">Date</th><th scope="col">From</th><th scope="col">Weight</th><th scope="col">BP</th><th scope="col">Kicks</th><th scope="col">Mood</th></tr>
-        </thead>
-        <tbody>
-          <tr *ngFor="let p of tableRows">
-            <th scope="row">{{ shortDay(p.day) }}<span class="hg-table-week" *ngIf="p.week !== null">{{ weekText(p.week) }}</span></th>
-            <td>{{ p.source === 'clinic' ? 'Clinic' : 'You' }}</td>
-            <td>{{ p.weight !== null ? valueText('weight', p.weight) : '–' }}</td>
-            <td>{{ p.bpSys !== null && p.bpDia !== null ? p.bpSys + '/' + p.bpDia : '–' }}</td>
-            <td>{{ p.kicks !== null ? p.kicks : '–' }}</td>
-            <td>{{ p.mood !== null ? moodNames[p.mood] : '–' }}</td>
-          </tr>
-        </tbody>
-      </table>
+    <div class="hg-card hg-table-card" *ngIf="showTable && s.points.length > 0">
+      <div class="hg-table-wrap" id="hg-table" tabindex="0" role="region" aria-label="Readings table">
+        <table class="hg-table">
+          <caption>Readings in the {{ rangeLabels[range].toLowerCase() }}, newest first</caption>
+          <thead>
+            <tr>
+              <th scope="col" class="hg-sticky">Date</th>
+              <th scope="col">From</th>
+              <th scope="col" *ngFor="let col of tableCols">{{ col.label }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let p of tableRows">
+              <th scope="row" class="hg-sticky">{{ shortDay(p.day) }}<span class="hg-table-week" *ngIf="p.week !== null">{{ weekText(p.week) }}</span></th>
+              <td>{{ p.source === 'clinic' ? 'Clinic' : 'You' }}</td>
+              <td *ngFor="let col of tableCols">{{ cell(p, col.key) }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </div>
 
   </ng-container>
 </ng-container>
+
+<!-- One chart card: title, readout, the plot. -->
+<ng-template #chartCard let-c>
+  <section class="hg-card hg-chart" [attr.aria-labelledby]="'hg-t-' + c.id">
+    <div class="hg-chart-head">
+      <h3 class="hg-chart-title" [id]="'hg-t-' + c.id">{{ c.title }}</h3>
+      <span class="hg-series-key" *ngIf="c.id === 'bp'">
+        <span class="hg-swatch s-bpSys" aria-hidden="true"></span>Systolic
+        <span class="hg-swatch s-bpDia" aria-hidden="true"></span>Diastolic
+      </span>
+    </div>
+
+    <p class="hg-chart-empty" *ngIf="c.points.length === 0">No {{ chartNoun(c) }} readings in this period.</p>
+
+    <ng-container *ngIf="c.points.length > 0">
+      <!-- What the selected reading says (also read out by screen readers). -->
+      <div class="hg-readout" aria-live="polite">
+        <ng-container *ngIf="selectedPoint(c) as p; else hint">
+          <span class="hg-readout-day">{{ dayText(p) }}</span>
+          <span class="hg-readout-val">{{ readoutValue(c, p) }}</span>
+          <span class="hg-readout-src">{{ sourceLabels[p.source] }}<ng-container *ngIf="p.note"> · {{ p.note }}</ng-container></span>
+        </ng-container>
+        <ng-template #hint><span class="hg-readout-hint">Tap the chart to see a reading</span></ng-template>
+      </div>
+
+      <div class="hg-plot" tabindex="0" role="group"
+           [attr.aria-label]="c.summary + ' Use the left and right arrow keys to read each value.'"
+           (keydown)="onKey(c, $event)">
+        <svg [attr.width]="width" height="190" [attr.viewBox]="'0 0 ' + width + ' 190'" role="img"
+             [attr.aria-label]="c.summary" class="hg-svg"
+             (pointerdown)="onPointer(c, $event)" (pointermove)="onPointer(c, $event)">
+          <!-- grid + y labels -->
+          <g class="hg-grid">
+            <line *ngFor="let t of c.yTicks" [attr.x1]="c.padL" [attr.x2]="width - 12" [attr.y1]="t.y" [attr.y2]="t.y"/>
+          </g>
+          <g class="hg-axis-text">
+            <text *ngFor="let t of c.yTicks" [attr.x]="c.padL - 6" [attr.y]="t.y + 3.5" text-anchor="end">{{ t.label }}</text>
+          </g>
+          <!-- x labels: date, then pregnancy week -->
+          <g class="hg-axis-text">
+            <ng-container *ngFor="let t of c.xTicks">
+              <text [attr.x]="t.x" y="170" [attr.text-anchor]="t.anchor">{{ t.date }}</text>
+              <text *ngIf="t.week" [attr.x]="t.x" y="183" [attr.text-anchor]="t.anchor" class="hg-axis-week">{{ t.week }}</text>
+            </ng-container>
+          </g>
+          <!-- crosshair -->
+          <line *ngIf="selectedPoint(c)" class="hg-cross" [attr.x1]="selectedX(c)" [attr.x2]="selectedX(c)" y1="12" y2="152"/>
+          <!-- lines, then markers on top -->
+          <path *ngFor="let l of c.lines" [attr.d]="l.path" [class]="'hg-line s-' + l.key"/>
+          <g *ngFor="let l of c.lines" [class]="'s-' + l.key">
+            <ng-container *ngFor="let m of l.marks">
+              <circle *ngIf="m.source === 'self'" class="hg-mark-self" [attr.cx]="m.x" [attr.cy]="m.y" r="4.5"/>
+              <path *ngIf="m.source === 'clinic'" class="hg-mark-clinic" [attr.d]="diamond(m)"/>
+            </ng-container>
+          </g>
+        </svg>
+      </div>
+    </ng-container>
+  </section>
+</ng-template>

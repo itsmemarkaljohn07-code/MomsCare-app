@@ -1,6 +1,10 @@
 /* health-graph.component.scss */
 // Series colours: the dashboard's Health Trends chart colours (--chart-5,
 // -1, -4, -2, -3), with dark-mode steps checked against the dark card.
+// The four checkup measures (fundal height, fetal heart rate, pulse,
+// temperature) use colours checked with the dataviz palette validator in
+// both modes (lightness band, chroma, colour-blind separation, contrast).
+// No colour ever stands for a judgement of a value.
 
 :host {
   --c-weight: #9b6fc4;
@@ -8,6 +12,10 @@
   --c-bpDia:  #5b8def;
   --c-kicks:  #2e9a83;
   --c-mood:   #b07a1f;
+  --c-fundalHeightCm: #1a8fa8;
+  --c-fetalHeartRate: #7d8f1c;
+  --c-pulse:          #5d63c9;
+  --c-temperatureC:   #d0632a;
   --hg-ink:   #2d1a40;
   --hg-muted: #7a5c99;
   --hg-card:  #ffffff;
@@ -28,6 +36,10 @@
   --c-bpDia:  #5a8be6;
   --c-kicks:  #3fae96;
   --c-mood:   #c99236;
+  --c-fundalHeightCm: #2b9cb6;
+  --c-fetalHeartRate: #859624;
+  --c-pulse:          #7277da;
+  --c-temperatureC:   #d6703a;
   --hg-ink:   #ede0fa;
   --hg-muted: #b49ad0;
   --hg-card:  #201530;
@@ -95,6 +107,7 @@
 
 /* latest values */
 .hg-latest { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+@media (min-width: 768px) { .hg-latest { grid-template-columns: repeat(3, 1fr); } }
 .hg-tile {
   display: flex; flex-direction: column; gap: 2px; min-width: 0;
   background: var(--hg-card); border: 1px solid var(--hg-border);
@@ -165,6 +178,16 @@
 .s-bpDia  { --c: var(--c-bpDia); }
 .s-kicks  { --c: var(--c-kicks); }
 .s-mood   { --c: var(--c-mood); }
+.s-fundalHeightCm { --c: var(--c-fundalHeightCm); }
+.s-fetalHeartRate { --c: var(--c-fetalHeartRate); }
+.s-pulse          { --c: var(--c-pulse); }
+.s-temperatureC   { --c: var(--c-temperatureC); }
+
+/* measured at checkups */
+.hg-group { margin-top: 18px; }
+.hg-group-title { font-size: 0.86rem; font-weight: 800; margin: 0; }
+.hg-group-sub { font-size: 0.7rem; color: var(--hg-muted); margin: 2px 0 10px; }
+.hg-group-note { font-size: 0.66rem; line-height: 1.45; color: var(--hg-muted); margin: 0 2px 14px; }
 .hg-line { stroke: var(--c); }
 .hg-mark-self { fill: var(--c); }
 .hg-mark-clinic { stroke: var(--c); }
@@ -176,7 +199,11 @@
   font: 800 0.74rem 'Nunito', 'Poppins', sans-serif; color: var(--c-weight);
   &:focus-visible { outline: 2px solid var(--c-weight); outline-offset: 2px; }
 }
-.hg-table-wrap { padding: 8px; overflow-x: auto; }
+.hg-table-card { padding: 8px; }
+.hg-table-wrap {
+  overflow-x: auto; overscroll-behavior-x: contain; border-radius: 10px;
+  &:focus-visible { outline: 2px solid var(--c-weight); outline-offset: 2px; }
+}
 .hg-table {
   width: 100%; border-collapse: collapse; font-size: 0.68rem;
   caption { text-align: left; font-weight: 800; font-size: 0.72rem; padding: 4px 6px 8px; }
@@ -184,4 +211,6 @@
   thead th { color: var(--hg-muted); font-weight: 800; }
   tbody th { font-weight: 700; white-space: normal; min-width: 52px; }
   .hg-table-week { display: block; font-weight: 600; color: var(--hg-muted); }
+  // The date stays in view while the other columns scroll.
+  .hg-sticky { position: sticky; left: 0; z-index: 1; background: var(--hg-card); }
 }

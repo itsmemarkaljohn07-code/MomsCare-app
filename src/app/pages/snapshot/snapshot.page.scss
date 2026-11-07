@@ -581,6 +581,9 @@ ion-content[data-theme="dark"] {
 .bp-slash  { font-size:1.3rem; font-weight:700; color:var(--muted); }
 .input-unit { font-size:0.72rem; font-weight:700; color:var(--muted); font-family:'Nunito','Poppins',sans-serif; white-space:nowrap; }
 .input-hint { font-size:0.65rem; color:var(--muted); font-family:'Nunito','Poppins',sans-serif; margin:6px 0 0; }
+.input-error { font-size:0.7rem; font-weight:700; color:#c43c6c; font-family:'Nunito','Poppins',sans-serif; margin:6px 0 0; line-height:1.4; }
+.input-error--form { margin:0 0 10px; text-align:center; }
+ion-content[data-theme="dark"] .input-error { color:#f08aaf; }
 .kick-counter { display:flex; align-items:center; gap:16px; }
 .kick-btn {
   width:40px; height:40px; border-radius:50%;

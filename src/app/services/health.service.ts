@@ -8,10 +8,12 @@ import { AuthService } from './auth.service';
 import { Observable, of } from 'rxjs';
 import { switchMap } from 'rxjs/operators';
 
+/** A saved reading. Weight (kg) and blood pressure are present only when
+ *  she entered them; older documents always have them. */
 export interface HealthData {
-  weight: number;
-  bpSys: number;
-  bpDia: number;
+  weight?: number;
+  bpSys?: number;
+  bpDia?: number;
   kicks: number;
   mood: number;
   updatedAt?: any;

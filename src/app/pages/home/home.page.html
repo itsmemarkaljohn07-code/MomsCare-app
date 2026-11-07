@@ -355,7 +355,8 @@
           </div>
           <div class="hs-item-text">
             <span class="hs-item-label">Weight</span>
-            <span class="hs-item-val">{{ showWeight(health.weight) }}<small>{{ weightUnit }}</small></span>
+            <span class="hs-item-val" *ngIf="health.weight !== null">{{ showWeight(health.weight) }}<small>{{ weightUnit }}</small></span>
+            <span class="hs-item-val" *ngIf="health.weight === null">-</span>
           </div>
         </div>
 
@@ -382,7 +383,8 @@
           </div>
           <div class="hs-item-text">
             <span class="hs-item-label">Fetal Kicks</span>
-            <span class="hs-item-val">{{ health.kicks }}<small>today</small></span>
+            <span class="hs-item-val" *ngIf="health.kicks !== null">{{ health.kicks }}<small>today</small></span>
+            <span class="hs-item-val" *ngIf="health.kicks === null">-</span>
           </div>
         </div>
 
@@ -392,13 +394,13 @@
               <circle cx="9" cy="9" r="7" stroke="#d9609a" stroke-width="1.4"/>
               <circle cx="6.5" cy="7.5" r="0.9" fill="#d9609a"/>
               <circle cx="11.5" cy="7.5" r="0.9" fill="#d9609a"/>
-              <path [attr.d]="moodMouthPaths[health.mood]" stroke="#d9609a" stroke-width="1.3"
+              <path [attr.d]="moodMouthPaths[health.mood ?? 2]" stroke="#d9609a" stroke-width="1.3"
                     stroke-linecap="round" fill="none"/>
             </svg>
           </div>
           <div class="hs-item-text">
             <span class="hs-item-label">Mood</span>
-            <span class="hs-item-val">{{ moodNames[health.mood] }}</span>
+            <span class="hs-item-val">{{ health.mood !== null ? moodNames[health.mood] : '-' }}</span>
           </div>
         </div>
 

@@ -17,7 +17,8 @@ import { isMissedAppointment } from '../../shared/appointment-status';
 import { NotificationsService, AppNotification, NotificationPage } from '../../services/notifications.service';
 import { droppedFromLive, mergeFeed, reachedEnd } from '../../shared/notification-feed';
 import { AppointmentsService, AppointmentRecord } from '../../services/appointments.service';
-import { HealthService, HealthData } from '../../services/health.service';
+import { HealthService } from '../../services/health.service';
+import { realValue } from '../../shared/health-form';
 import { ChecklistRemindersService } from '../../services/checklist-reminders.service';
 import { ChecklistState, dueChecklistBellSlots, localDateKey, uncheckedReminderItems } from '../../services/checklist-reminder-plan';
 import type { PluginListenerHandle } from '@capacitor/core';
@@ -579,15 +580,17 @@ export class HomePage implements OnInit, OnDestroy, DoCheck {
   // separate data source — editing happens only on Snapshot, tapping
   // this card navigates there.
   // ════════════════════════════════════════════════════════
-  health: HealthData = { weight: 0, bpSys: 0, bpDia: 0, kicks: 0, mood: 2 };
+  // A value she never entered is null and shows as "-" (never 0 or 120/80).
+  health: { weight: number | null; bpSys: number | null; bpDia: number | null; kicks: number | null; mood: number | null }
+    = { weight: null, bpSys: null, bpDia: null, kicks: null, mood: null };
   /** Weight Unit from the live profile (Pregnancy Settings); health data stays in kg. */
   weightUnit: WeightUnit = 'kg';
   showWeight(kg: number): number { return kgToUnit(kg, this.weightUnit); }
 
   get bpDisplay(): string {
-    return this.health.bpSys && this.health.bpDia
+    return this.health.bpSys !== null && this.health.bpDia !== null
       ? `${this.health.bpSys}/${this.health.bpDia}`
-      : '--/--';
+      : '-';
   }
 
   moodNames = ['Low', 'Okay', 'Good', 'Great', 'Amazing'];
@@ -961,15 +964,15 @@ export class HomePage implements OnInit, OnDestroy, DoCheck {
       .subscribe((records: AppointmentRecord[]) => (this.allAppointments = records));
 
     this.healthSub = this.healthService.getCurrentHealth$().subscribe(data => {
-      if (data) {
-        this.health = {
-          weight: data.weight ?? 0,
-          bpSys:  data.bpSys  ?? 0,
-          bpDia:  data.bpDia  ?? 0,
-          kicks:  data.kicks  ?? 0,
-          mood:   data.mood   ?? 2,
-        };
-      }
+      const kicks = data?.kicks;
+      const mood = data?.mood;
+      this.health = {
+        weight: realValue(data?.weight),
+        bpSys:  realValue(data?.bpSys),
+        bpDia:  realValue(data?.bpDia),
+        kicks:  typeof kicks === 'number' && Number.isInteger(kicks) && kicks >= 0 ? kicks : null,
+        mood:   typeof mood === 'number' && Number.isInteger(mood) && mood >= 0 && mood <= 4 ? mood : null,
+      };
     });
 
     requestAnimationFrame(() => {

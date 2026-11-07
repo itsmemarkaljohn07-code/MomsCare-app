@@ -10,7 +10,8 @@ import { AuthService } from '../../services/auth.service';
 import { ProfileStoreService } from '../../services/profile-store.service';
 import { parseStoredDate } from '../../shared/date-utils';
 import { pregnancyStatus } from '../../shared/pregnancy-status';
-import { WeightUnit, kgToUnit, unitToKg, weightUnitOf } from '../../shared/weight-units';
+import { WeightUnit, kgToUnit, weightUnitOf } from '../../shared/weight-units';
+import { HealthFormDraft, HealthFormErrors, buildHealthEntry, realValue, validateHealthForm } from '../../shared/health-form';
 import { HealthService, HealthData, ClinicReading } from '../../services/health.service';
 import { HealthGraphComponent } from './health-graph/health-graph.component';
 import { SelfLogInput } from '../../shared/health-series';
@@ -441,11 +442,17 @@ export class SnapshotPage implements OnInit, OnDestroy {
     return d ? localYmd(d) : null;
   }
 
-  healthDraft = { weight: 0, bpSys: 120, bpDia: 80, kicks: 0, mood: 2 };
+  /** The form starts blank: only what she types is saved. Kicks and mood
+   *  open with her current values, as before. */
+  healthDraft: HealthFormDraft = { weight: null, bpSys: null, bpDia: null, kicks: 0, mood: 2 };
+  healthErrors: HealthFormErrors = {};
+  /** Kicks and mood the form opened with (a save must change something). */
+  private healthOpened = { kicks: 0, mood: 2 };
+  /** Her last real stored values, shown only as placeholders. */
+  lastReal: { weight: number | null; bpSys: number | null; bpDia: number | null } = { weight: null, bpSys: null, bpDia: null };
+  healthSaving = false;
   /** Weight Unit from the live profile (Pregnancy Settings); stored values stay kg. */
   weightUnit: WeightUnit = 'kg';
-  /** The weight the form opened with, in that unit. */
-  private draftWeightShown = 0;
   showHealthForm = false;
   activeField = '';
 
@@ -465,17 +472,31 @@ export class SnapshotPage implements OnInit, OnDestroy {
     return kgToUnit(kg, this.weightUnit);
   }
 
+  get weightPlaceholder(): string {
+    return this.lastReal.weight !== null
+      ? String(kgToUnit(this.lastReal.weight, this.weightUnit))
+      : (this.weightUnit === 'lbs' ? 'e.g. 137.6' : 'e.g. 62.4');
+  }
+
   openHealthForm(): void {
     // The weight is typed in the patient's unit; it's stored in kg.
-    this.draftWeightShown = kgToUnit(this.health.weight, this.weightUnit);
     this.healthDraft = {
-      weight: this.draftWeightShown,
-      bpSys:  this.health.bpSys,
-      bpDia:  this.health.bpDia,
+      weight: null,
+      bpSys:  null,
+      bpDia:  null,
       kicks:  this.health.kicks,
       mood:   this.health.mood,
     };
+    this.healthOpened = { kicks: this.health.kicks, mood: this.health.mood };
+    this.healthErrors = {};
     this.showHealthForm = true;
+  }
+
+  /** Re-checks once a message is showing, so it clears as she fixes it. */
+  revalidateHealth(): void {
+    if (Object.keys(this.healthErrors).length) {
+      this.healthErrors = validateHealthForm(this.healthDraft, this.weightUnit, this.healthOpened);
+    }
   }
 
   closeHealthForm(): void {
@@ -493,22 +514,18 @@ export class SnapshotPage implements OnInit, OnDestroy {
 
   async saveHealth(): Promise<void> {
     if (!this.currentUid) { this.closeHealthForm(); return; }
-    // An unchanged weight keeps the stored kg exactly (converting the
-    // rounded display back would drift it, e.g. 62.4 -> 137.6 lbs -> 62.41).
-    const weight = Number(this.healthDraft.weight) === this.draftWeightShown
-      ? this.health.weight
-      : unitToKg(this.healthDraft.weight, this.weightUnit);
-    const payload: HealthData = {
-      weight,
-      bpSys:  this.healthDraft.bpSys,
-      bpDia:  this.healthDraft.bpDia,
-      kicks:  this.healthDraft.kicks,
-      mood:   this.healthDraft.mood,
-    };
+    if (this.healthSaving) return;
+    this.healthErrors = validateHealthForm(this.healthDraft, this.weightUnit, this.healthOpened);
+    if (Object.keys(this.healthErrors).length) return;
+    // Only the measures she entered (plus kicks and mood) are saved.
+    const payload: HealthData = buildHealthEntry(this.healthDraft, this.weightUnit);
+    this.healthSaving = true;
     try {
       await this.healthService.saveHealth(this.currentUid, payload);
     } catch (err) {
       console.error('Failed to save health data:', err);
+    } finally {
+      this.healthSaving = false;
     }
     this.closeHealthForm();
   }
@@ -569,6 +586,11 @@ export class SnapshotPage implements OnInit, OnDestroy {
     });
 
     this.healthSub = this.healthService.getCurrentHealth$().subscribe(data => {
+      this.lastReal = {
+        weight: realValue(data?.weight),
+        bpSys:  realValue(data?.bpSys),
+        bpDia:  realValue(data?.bpDia),
+      };
       if (data) {
         this.health = {
           date: new Date(),

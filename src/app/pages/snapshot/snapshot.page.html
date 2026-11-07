@@ -377,12 +377,15 @@
           <label class="input-label">Current Weight</label>
         </div>
         <div class="input-row">
-          <input class="health-input" type="number" step="0.1"
-                 [(ngModel)]="healthDraft.weight"
+          <input class="health-input" type="number" step="0.1" inputmode="decimal"
+                 aria-label="Current weight" [attr.aria-invalid]="!!healthErrors.weight"
+                 [attr.aria-describedby]="healthErrors.weight ? 'hf-weight-err' : null"
+                 [(ngModel)]="healthDraft.weight" (ngModelChange)="revalidateHealth()"
                  (focus)="activeField='weight'" (blur)="activeField=''"
-                 [placeholder]="weightUnit === 'lbs' ? 'e.g. 137.6' : 'e.g. 62.4'" />
+                 [placeholder]="weightPlaceholder" />
           <span class="input-unit">{{ weightUnit }}</span>
         </div>
+        <p class="input-error" id="hf-weight-err" *ngIf="healthErrors.weight">{{ healthErrors.weight }}</p>
       </div>
 
             <div class="input-group" [class.active]="activeField === 'bp'">
@@ -399,18 +402,23 @@
         </div>
 
         <div class="input-row bp-row">
-          <input class="health-input bp-input" type="number"
-                 [(ngModel)]="healthDraft.bpSys"
+          <input class="health-input bp-input" type="number" inputmode="numeric"
+                 aria-label="Systolic" [attr.aria-invalid]="!!healthErrors.bp"
+                 [attr.aria-describedby]="healthErrors.bp ? 'hf-bp-err' : null"
+                 [(ngModel)]="healthDraft.bpSys" (ngModelChange)="revalidateHealth()"
                  (focus)="activeField='bp'" (blur)="activeField=''"
-                 placeholder="120" maxlength="3" />
+                 [placeholder]="lastReal.bpSys ?? ''" maxlength="3" />
           <span class="bp-slash">/</span>
-          <input class="health-input bp-input" type="number"
-                 [(ngModel)]="healthDraft.bpDia"
+          <input class="health-input bp-input" type="number" inputmode="numeric"
+                 aria-label="Diastolic" [attr.aria-invalid]="!!healthErrors.bp"
+                 [attr.aria-describedby]="healthErrors.bp ? 'hf-bp-err' : null"
+                 [(ngModel)]="healthDraft.bpDia" (ngModelChange)="revalidateHealth()"
                  (focus)="activeField='bp'" (blur)="activeField=''"
-                 placeholder="80" maxlength="3" />
+                 [placeholder]="lastReal.bpDia ?? ''" maxlength="3" />
           <span class="input-unit">mmHg</span>
         </div>
-        <p class="input-hint">Systolic / Diastolic</p>
+        <p class="input-error" id="hf-bp-err" *ngIf="healthErrors.bp">{{ healthErrors.bp }}</p>
+        <p class="input-hint">Systolic / Diastolic. Leave both empty if you didn't measure it.</p>
       </div>
 
             <div class="input-group" [class.active]="activeField === 'kicks'">
@@ -424,12 +432,12 @@
         </div>
         
         <div class="kick-counter">
-          <button class="kick-btn minus" (click)="adjustKicks(-1)">−</button>
+          <button class="kick-btn minus" (click)="adjustKicks(-1); revalidateHealth()" aria-label="One kick less">−</button>
           <div class="kick-display">
             <span class="kick-num">{{ healthDraft.kicks }}</span>
             <span class="kick-unit">kicks</span>
           </div>
-          <button class="kick-btn plus" (click)="adjustKicks(1)">+</button>
+          <button class="kick-btn plus" (click)="adjustKicks(1); revalidateHealth()" aria-label="One kick more">+</button>
         </div>
         <p class="input-hint">Tap + each time you feel a movement</p>
       </div>
@@ -450,7 +458,7 @@
         <div class="mood-row">
           <button class="mood-btn" *ngFor="let name of moodNames; let i = index"
                   [class.selected]="healthDraft.mood === i"
-                  (click)="setMood(i)">
+                  (click)="setMood(i); revalidateHealth()">
             <svg width="20" height="20" viewBox="0 0 18 18" fill="none">
               <circle cx="9" cy="9" r="7" stroke="#d9609a" stroke-width="1.4"/>
               <circle cx="6.5" cy="7.5" r="1" fill="#d9609a"/>
@@ -463,8 +471,9 @@
         </div>
       </div>
 
-      <button class="modal-save-btn" (click)="saveHealth()">
-        <span>Save Health Data</span>
+      <p class="input-error input-error--form" *ngIf="healthErrors.form" role="alert">{{ healthErrors.form }}</p>
+      <button class="modal-save-btn" (click)="saveHealth()" [disabled]="healthSaving">
+        <span>{{ healthSaving ? 'Saving...' : 'Save Health Data' }}</span>
         <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
           <path d="M3 8h10M9 4l4 4-4 4" stroke="white" stroke-width="1.8"
                 stroke-linecap="round" stroke-linejoin="round"/>
